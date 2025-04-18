@@ -1,5 +1,5 @@
 <p style="text-align:center">
-  <strong>Convert any PDF into a podcast episode! Experience research papers, websites, and more in a whole new way.</strong>
+  <strong>Convert any PDF document into an audio podcast! Experience articles, websites, and more in a whole new way.</strong>
   <br>
-  <a href="https://github.com/knowsuchagency/pdf-to-podcast">knowsuchagency/pdf-to-podcast</a>
+  <a href="https://podcast.mr5ai.com">https://podcast.mr5ai.com</a>
 </p>
