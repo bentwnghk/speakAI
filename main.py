@@ -45,10 +45,10 @@ class Dialogue(BaseModel):
     dialogue: List[DialogueItem]
 
 
-def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
+def get_mp3(text: str, voice: str, api_key: str = None, base_url: str = None) -> bytes:
     client = OpenAI(
         api_key=api_key or os.getenv("OPENAI_API_KEY"),
-        base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
+        base_url=base_url or os.getenv("OPENAI_BASE_URL", "https://api.mr5ai.com/v1"),
     )
 
     with client.audio.speech.with_streaming_response.create(
@@ -62,7 +62,7 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
             return file.getvalue()
 
 
-def generate_audio(file: str, openai_api_key: str = None) -> bytes:
+def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str = None) -> bytes:
 
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
         raise gr.Error("OpenAI API key is required")
@@ -75,6 +75,7 @@ def generate_audio(file: str, openai_api_key: str = None) -> bytes:
     @llm(
         model="gpt-4o",
         api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
+        base_url=openai_base_url or os.getenv("OPENAI_BASE_URL"),
     )
     def generate_dialogue(text: str) -> Dialogue:
         """
@@ -120,7 +121,7 @@ def generate_audio(file: str, openai_api_key: str = None) -> bytes:
         futures = []
         for line in llm_output.dialogue:
             transcript_line = f"{line.speaker}: {line.text}"
-            future = executor.submit(get_mp3, line.text, line.voice, openai_api_key)
+            future = executor.submit(get_mp3, line.text, line.voice, openai_api_key, openai_base_url)
             futures.append((future, transcript_line))
             characters += len(line.text)
 
@@ -164,6 +165,10 @@ demo = gr.Interface(
         gr.Textbox(
             label="OpenAI API Key",
             visible=not os.getenv("OPENAI_API_KEY"),
+        ),
+        gr.Textbox(
+            label="OpenAI Base URL",
+            visible=not os.getenv("OPENAI_BASE_URL"),
         ),
     ],
     outputs=[
