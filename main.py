@@ -77,7 +77,7 @@ def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str =
 
     @retry(retry=retry_if_exception_type(ValidationError))
     @llm(
-        model="gpt-4o",
+        model="gpt-4.1-mini",
         api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
         base_url=openai_base_url or os.getenv("OPENAI_BASE_URL"),
     )
