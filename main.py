@@ -158,7 +158,7 @@ def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str =
 
 demo = gr.Interface(
     title="Mr.🆖 PodcastAI",
-    theme="origin",
+    theme="citrus",
     description=Path("description.md").read_text(),
     fn=generate_audio,
     examples=[[str(p)] for p in Path("examples").glob("*.pdf")],
