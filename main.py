@@ -29,14 +29,15 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class DialogueItem(BaseModel):
     text: str
-    speaker: Literal["female-1", "male-1", "female-2"]
+    speaker: Literal["female-1", "male-1", "female-2", "male-2"]
 
     @property
     def voice(self):
         return {
-            "female-1": "alloy",
-            "male-1": "onyx",
-            "female-2": "shimmer",
+            "female-1": "onyx",
+            "male-1": "alloy",
+            "female-2": "fable",
+            "male-2": "echo",
         }[self.speaker]
 
 
@@ -66,6 +67,9 @@ def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str =
 
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
         raise gr.Error("OpenAI API key is required")
+
+    if not (os.getenv("OPENAI_BASE_URL") or openai_base_url):
+        raise gr.Error("OpenAI Base URL is required")
 
     with Path(file).open("rb") as f:
         reader = PdfReader(f)
@@ -153,7 +157,7 @@ def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str =
 
 
 demo = gr.Interface(
-    title="PDF to Podcast",
+    title="Mr.🆖 PodcastAI",
     theme="origin",
     description=Path("description.md").read_text(),
     fn=generate_audio,
