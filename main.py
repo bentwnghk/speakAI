@@ -155,6 +155,9 @@ def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str =
 
     return temporary_file.name, transcript
 
+document_extensions = [
+    '.pdf'
+]
 
 demo = gr.Interface(
     title="Mr.🆖 PodcastAI",
@@ -165,7 +168,7 @@ demo = gr.Interface(
     inputs=[
         gr.File(
             label="PDF",
-            file_types=".pdf",
+            file_types=document_extensions,
         ),
         gr.Textbox(
             label="OpenAI API Key",
