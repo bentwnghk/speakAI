@@ -48,6 +48,7 @@ class Dialogue(BaseModel):
 def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
     client = OpenAI(
         api_key=api_key or os.getenv("OPENAI_API_KEY"),
+        base_url=os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     )
 
     with client.audio.speech.with_streaming_response.create(
