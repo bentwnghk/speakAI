@@ -223,6 +223,25 @@ allowed_extensions = [
     ".txt", ".pdf", ".jpg", ".jpeg", ".png"
 ]
 
+# ----
+# EXAMPLES SECTION: Put your example files in an "examples" folder.
+# Each example is [files (list of paths), language, openai_api_key, openai_base_url]
+# If you want to leave the API key and base_url blank, set to "".
+# Make sure these files exist or adjust paths accordingly.
+examples = [
+    [
+        ["examples/Intangible cultural heritage item.pdf"], "English", "", ""
+    ],
+    [
+        ["examples/Chinese flying taxis.pdf"], "English", "", ""
+    ],
+    [
+        ["examples/AI for education.pdf"], "Traditional Chinese", "", ""
+    ],
+    # You can add more examples as needed
+]
+# ----
+
 demo = gr.Interface(
     title="Mr.🆖 PodcastAI 🎙️🎧",
     theme="ocean",
@@ -258,6 +277,7 @@ demo = gr.Interface(
     head=os.getenv("HEAD", "") + Path("head.html").read_text(),
     cache_examples=True,
     api_name=False,
+    examples=examples,  # <-- ADD THIS LINE
 )
 
 demo = demo.queue(
