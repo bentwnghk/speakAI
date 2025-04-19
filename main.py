@@ -225,13 +225,11 @@ allowed_extensions = [
 desc = Path("description.md").read_text()
 foot = Path("footer.md").read_text()
 head_html = os.getenv("HEAD", "") + Path("head.html").read_text()
-examples = [[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions]
 
 with gr.Blocks(
     title="Mr.🆖 PodcastAI 🎙️🎧",
     theme="ocean",
     head=head_html,
-
 ) as demo:
 
     gr.Markdown(desc)
@@ -256,12 +254,6 @@ with gr.Blocks(
         file_types=allowed_extensions,
         file_count="multiple",
         visible=False
-    )
-
-    gr.Examples(
-        examples=examples,
-        inputs=file_input,
-        label="File Examples",
     )
 
     api_key_input = gr.Textbox(
@@ -291,15 +283,6 @@ with gr.Blocks(
         outputs=[text_input, file_input]
     )
 
-    # Auto-set radio mode to "File" if an example is clicked
-    def set_file_mode(files):
-        return gr.update(value="File")
-    file_input.change(
-        set_file_mode,
-        inputs=[file_input],
-        outputs=[mode_radio],
-    )
-    
     submit_btn.click(
         generate_audio,
         inputs=[mode_radio, file_input, text_input, api_key_input, base_url_input],
