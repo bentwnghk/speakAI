@@ -107,26 +107,6 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_b
     return response.choices[0].message.content.strip()
 
 def generate_audio(mode, files, user_text, openai_api_key: str = None, openai_base_url: str = None):
-    # Normalize files to a list of file paths
-    if files is not None:
-        # If files is a dict (FileData), wrap into a list
-        if isinstance(files, dict):   # FileData object
-            files = [files['path']]
-        # If files is a list of dicts (multiple FileData)
-        elif isinstance(files, list):
-            fixed_files = []
-            for item in files:
-                if isinstance(item, dict) and 'path' in item:
-                    fixed_files.append(item['path'])
-                elif isinstance(item, str):
-                    fixed_files.append(item)
-            files = fixed_files
-        # If files is a single str path
-        elif isinstance(files, str):
-            files = [files]
-        else:
-            files = []
-    # Now files is always a list of strings (file paths), or None
     """Main entrypoint: Combines mode/file/text logic, returns mp3, transcript"""
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
         raise gr.Error("OpenAI API key is required")
