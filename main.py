@@ -43,6 +43,23 @@ class Dialogue(BaseModel):
     scratchpad: str
     dialogue: List[DialogueItem]
 
+input_mode = gr.Radio(
+    ["Text", "File"],
+    label="Choose input type",
+    value="Text",
+)
+text_input = gr.Textbox(
+    label="Paste text",
+    lines=12,
+    visible=True,
+)
+file_input = gr.Files(
+    label="PDF or Image",
+    file_types=allowed_extensions,
+    file_count="multiple",
+    visible=False,
+)
+
 def get_mp3(text: str, voice: str, api_key: str = None, base_url: str = None) -> bytes:
     client = OpenAI(
         api_key=api_key or os.getenv("OPENAI_API_KEY"),
@@ -109,25 +126,36 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_b
     )
     return response.choices[0].message.content.strip()
 
-def generate_audio(files, openai_api_key: str = None, openai_base_url: str = None) -> bytes:
-    if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
-        raise gr.Error("OpenAI API key is required")
-    if not (os.getenv("OPENAI_BASE_URL") or openai_base_url):
-        raise gr.Error("OpenAI Base URL is required")
-    if not isinstance(files, list):
-        files = [files]
-    texts = []
-    for file in files:
-        if is_pdf(file):
-            with Path(file).open("rb") as f:
-                reader = PdfReader(f)
-                text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
-        elif is_image(file):
-            text = extract_text_from_image_via_vision(file, openai_api_key, openai_base_url)
-        else:
-            raise gr.Error(f"UUnsupported file type: {file}. Please upload PDF or image.")
-        texts.append(text)
-    full_text = "\n\n".join(texts)
+def generate_audio(
+    input_mode,
+    text_input,
+    file_input,
+    openai_api_key: str = None,
+    openai_base_url: str = None,
+):
+    if input_mode == "Text":
+        if not text_input or not text_input.strip():
+            raise gr.Error("Please provide text input.")
+        full_text = text_input.strip()
+    elif input_mode == "File":
+        if not file_input or not isinstance(file_input, list) or len(file_input) == 0:
+            raise gr.Error("Please upload at least one file.")
+        # Adapted file reading logic (from your code)
+        files = file_input
+        texts = []
+        for file in files:
+            if is_pdf(file):
+                with Path(file).open("rb") as f:
+                    reader = PdfReader(f)
+                    text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+            elif is_image(file):
+                text = extract_text_from_image_via_vision(file, openai_api_key, openai_base_url)
+            else:
+                raise gr.Error(f"Unsupported file type: {file}. Please upload PDF or image.")
+            texts.append(text)
+        full_text = "\n\n".join(texts)
+    else:
+        raise gr.Error("Unknown input mode.")
 
     @retry(retry=retry_if_exception_type(ValidationError))
     @llm(
@@ -168,7 +196,7 @@ def generate_audio(files, openai_api_key: str = None, openai_base_url: str = Non
         </podcast_dialogue>
         """
 
-    llm_output = generate_dialogue(text)
+    llm_output = generate_dialogue(full_text)
 
     audio = b""
     transcript = ""
@@ -207,6 +235,13 @@ def generate_audio(files, openai_api_key: str = None, openai_base_url: str = Non
 
     return temporary_file.name, transcript
 
+def toggle_inputs(mode):
+    # show text_input if mode=="Text", else show file_input
+    return (
+        gr.update(visible=(mode == "Text")),
+        gr.update(visible=(mode == "File")),
+    )
+
 allowed_extensions = [
     ".pdf", ".jpg", ".jpeg", ".png"
 ]
@@ -217,22 +252,14 @@ demo = gr.Interface(
     description=Path("description.md").read_text(),
     article=Path("footer.md").read_text(),
     fn=generate_audio,
-    # examples can now include both pdfs and images
+    # Note: update your examples if you want text examples too!
     examples=[[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
     inputs=[
-        gr.Files(
-            label="PDF or Image",
-            file_types=allowed_extensions,
-            file_count="multiple",
-        ),
-        gr.Textbox(
-            label="OpenAI API Key",
-            visible=not os.getenv("OPENAI_API_KEY"),
-        ),
-        gr.Textbox(
-            label="OpenAI Base URL",
-            visible=not os.getenv("OPENAI_BASE_URL"),
-        ),
+        input_mode,
+        text_input,
+        file_input,
+        gr.Textbox(label="OpenAI API Key", visible=not os.getenv("OPENAI_API_KEY")),
+        gr.Textbox(label="OpenAI Base URL", visible=not os.getenv("OPENAI_BASE_URL")),
     ],
     outputs=[
         gr.Audio(label="Audio", format="mp3"),
@@ -243,6 +270,12 @@ demo = gr.Interface(
     head=os.getenv("HEAD", "") + Path("head.html").read_text(),
     cache_examples=True,
     api_name=False,
+)
+
+input_mode.change(
+    toggle_inputs,
+    input_mode,
+    [text_input, file_input],
 )
 
 demo = demo.queue(
