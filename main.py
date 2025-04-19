@@ -184,7 +184,7 @@ demo = gr.Interface(
         gr.Audio(label="Audio", format="mp3"),
         gr.Textbox(label="Transcript"),
     ],
-    allow_flagging="never",
+    flagging_mode="never",
     clear_btn=None,
     head=os.getenv("HEAD", "") + Path("head.html").read_text(),
     cache_examples=True,
@@ -200,4 +200,4 @@ demo = demo.queue(
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
-    demo.launch(show_api=False,)
+    demo.launch(show_api=False)
