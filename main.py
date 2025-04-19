@@ -230,13 +230,13 @@ allowed_extensions = [
 # Make sure these files exist or adjust paths accordingly.
 examples = [
     [
-        ["examples/Intangible cultural heritage item.pdf"], "English", "", ""
+        ["examples/Intangible cultural heritage item.pdf"], "English"
     ],
     [
-        ["examples/Chinese flying taxis.pdf"], "English", "", ""
+        ["examples/Chinese flying taxis.pdf"], "English"
     ],
     [
-        ["examples/AI for education.pdf"], "Traditional Chinese", "", ""
+        ["examples/AI for education.pdf"], "Traditional Chinese"
     ],
     # You can add more examples as needed
 ]
