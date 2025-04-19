@@ -200,4 +200,4 @@ demo = demo.queue(
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
-    demo.launch(show_api=False)
+    demo.launch()
