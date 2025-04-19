@@ -229,7 +229,6 @@ demo = gr.Interface(
     description=Path("description.md").read_text(),
     article=Path("footer.md").read_text(),
     fn=generate_audio,
-    examples=[[str(p)] for p in Path("examples").glob("*.pdf")],
     inputs=[
         gr.Files(
             label="TXT, PDF, or Image",
