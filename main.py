@@ -86,7 +86,13 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_b
         {
             "role": "user",
             "content": [
-                {"type": "image_url", "image_url": image_url},
+                {
+                    "type": "image_url",
+                    "image_url": {
+                        "url": image_url,
+                        "detail": "auto"
+                    }
+                },
                 {
                     "type": "text",
                     "text": "Extract all the computer-readable text from this image as accurately as possible. Avoid commentary, return only the extracted text."
