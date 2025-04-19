@@ -2,7 +2,7 @@ name: build_docker
 
 on:
   push:
-    branches: [main]
+    branches: [image-n-pdf]
   workflow_dispatch:
 
 jobs:
@@ -35,5 +35,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/pdf-to-podcast:${{ env.RELEASE_DATE }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/pdf-to-podcast:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/pdf-to-podcast2:${{ env.RELEASE_DATE }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/pdf-to-podcast2:latest
