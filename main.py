@@ -3,6 +3,7 @@ import glob
 import io
 import os
 import time
+import base64
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Literal
@@ -17,15 +18,13 @@ from promptic import llm
 from pydantic import BaseModel, ValidationError
 from pypdf import PdfReader
 from tenacity import retry, retry_if_exception_type
-
+from mimetypes import guess_type
 
 if sentry_dsn := os.getenv("SENTRY_DSN"):
     sentry_sdk.init(sentry_dsn)
 
 app = FastAPI()
-
 app.mount("/static", StaticFiles(directory="static"), name="static")
-
 
 class DialogueItem(BaseModel):
     text: str
@@ -40,18 +39,15 @@ class DialogueItem(BaseModel):
             "male-2": "echo",
         }[self.speaker]
 
-
 class Dialogue(BaseModel):
     scratchpad: str
     dialogue: List[DialogueItem]
-
 
 def get_mp3(text: str, voice: str, api_key: str = None, base_url: str = None) -> bytes:
     client = OpenAI(
         api_key=api_key or os.getenv("OPENAI_API_KEY"),
         base_url=base_url or os.getenv("OPENAI_BASE_URL", "https://api.mr5ai.com/v1"),
     )
-
     with client.audio.speech.with_streaming_response.create(
         model="tts-1",
         voice=voice,
@@ -62,18 +58,68 @@ def get_mp3(text: str, voice: str, api_key: str = None, base_url: str = None) ->
                 file.write(chunk)
             return file.getvalue()
 
+def is_pdf(filename):
+    t, _ = guess_type(filename)
+    return filename.lower().endswith(".pdf") or (t or "").endswith("pdf")
+
+def is_image(filename):
+    t, _ = guess_type(filename)
+    image_exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+    return filename.lower().endswith(image_exts) or (t or "").startswith("image")
+
+def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_base_url=None):
+    """
+    Use OpenAI GPT-4 Vision to extract text from an image file.
+    """
+    client = OpenAI(
+        api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
+        base_url=openai_base_url or os.getenv("OPENAI_BASE_URL", "https://api.mr5ai.com/v1"),
+    )
+
+    with open(image_file, "rb") as f:
+        data = f.read()
+        mime_type = guess_type(image_file)[0] or "image/png"
+        b64 = base64.b64encode(data).decode("utf-8")
+        image_url = f"data:{mime_type};base64,{b64}"
+
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": image_url},
+                {
+                    "type": "text",
+                    "text": "Extract all the computer-readable text from this image as accurately as possible. Avoid commentary, return only the extracted text."
+                },
+            ]
+        }
+    ]
+
+    response = client.chat.completions.create(
+        model="gpt-4.1-mini",  # or "gpt-4o"
+        messages=messages,
+        max_tokens=8192,
+        temperature=0,
+    )
+    return response.choices[0].message.content.strip()
 
 def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str = None) -> bytes:
-
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
         raise gr.Error("OpenAI API key is required")
 
     if not (os.getenv("OPENAI_BASE_URL") or openai_base_url):
         raise gr.Error("OpenAI Base URL is required")
 
-    with Path(file).open("rb") as f:
-        reader = PdfReader(f)
-        text = "\n\n".join([page.extract_text() for page in reader.pages])
+    if is_pdf(file):
+        # Process PDF file
+        with Path(file).open("rb") as f:
+            reader = PdfReader(f)
+            text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+    elif is_image(file):
+        # Process image file
+        text = extract_text_from_image_via_vision(file, openai_api_key, openai_base_url)
+    else:
+        raise gr.Error("Unsupported file type. Please upload a PDF or image.")
 
     @retry(retry=retry_if_exception_type(ValidationError))
     @llm(
@@ -118,7 +164,6 @@ def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str =
 
     audio = b""
     transcript = ""
-
     characters = 0
 
     with cf.ThreadPoolExecutor() as executor:
@@ -139,7 +184,6 @@ def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str =
     temporary_directory = "./gradio_cached_examples/tmp/"
     os.makedirs(temporary_directory, exist_ok=True)
 
-    # we use a temporary file because Gradio's audio component doesn't work with raw bytes in Safari
     temporary_file = NamedTemporaryFile(
         dir=temporary_directory,
         delete=False,
@@ -148,15 +192,15 @@ def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str =
     temporary_file.write(audio)
     temporary_file.close()
 
-    # Delete any files in the temp directory that end with .mp3 and are over a day old
+    # Clean old files
     for file in glob.glob(f"{temporary_directory}*.mp3"):
         if os.path.isfile(file) and time.time() - os.path.getmtime(file) > 24 * 60 * 60:
             os.remove(file)
 
     return temporary_file.name, transcript
 
-document_extensions = [
-    '.pdf'
+allowed_extensions = [
+    ".pdf", ".jpg", ".jpeg", ".png", ".webp", ".bmp"
 ]
 
 demo = gr.Interface(
@@ -165,11 +209,12 @@ demo = gr.Interface(
     description=Path("description.md").read_text(),
     article=Path("footer.md").read_text(),
     fn=generate_audio,
-    examples=[[str(p)] for p in Path("examples").glob("*.pdf")],
+    # examples can now include both pdfs and images
+    examples=[[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
     inputs=[
         gr.File(
-            label="PDF",
-            file_types=document_extensions,
+            label="PDF or Image",
+            file_types=allowed_extensions,
         ),
         gr.Textbox(
             label="OpenAI API Key",
@@ -190,7 +235,6 @@ demo = gr.Interface(
     cache_examples=True,
     api_name=False,
 )
-
 
 demo = demo.queue(
     max_size=20,
