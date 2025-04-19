@@ -233,7 +233,7 @@ examples = [
         ["examples/Intangible cultural heritage item.pdf"], "English"
     ],
     [
-        ["examples/JUPAS_Guide.pdf"], "Traditional Chinese"
+        ["examples/JUPAS_Guide.jpg"], "Traditional Chinese"
     ],
     [
         ["examples/AI_To_Replace_Doctors_Teachers.txt"], "English"
