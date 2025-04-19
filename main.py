@@ -148,7 +148,7 @@ def generate_audio(files, language="English", openai_api_key: str = None, openai
         """
         Your task is to take the input text provided and turn it into an engaging, informative podcast dialogue. The input text may be messy or unstructured, as it could come from a variety of sources like PDFs or web pages. Don't worry about the formatting issues or any irrelevant information; your goal is to extract the key points and interesting facts that could be discussed in a podcast.
 
-        Important: The ENTIRE podcast dialogue (including brainstorming, scratchpad, and actual dialogue) should be written in {language}. If 'Chinese', use correct idiomatic Traditional Chinese (繁體中文) suitable for a Hong Kong audience.
+        Important: The ENTIRE podcast dialogue (including brainstorming, scratchpad, and actual dialogue) should be written in {language}. If 'Chinese', use correct idiomatic Traditional Chinese (繁體中文) suitable for a Taiwanese audience.
 
         Here is the input text you will be working with:
 
