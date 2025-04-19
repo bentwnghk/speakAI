@@ -160,7 +160,7 @@ document_extensions = [
 ]
 
 demo = gr.Interface(
-    title="Mr.🆖 PodcastAI",
+    title="Mr.🆖 PodcastAI 🎙️🎧",
     theme="ocean",
     description=Path("description.md").read_text(),
     article=Path("footer.md").read_text(),
