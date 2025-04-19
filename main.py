@@ -233,10 +233,10 @@ examples = [
         ["examples/Intangible cultural heritage item.pdf"], "English"
     ],
     [
-        ["examples/Chinese flying taxis.pdf"], "English"
+        ["examples/JUPAS_Guide.pdf"], "Traditional Chinese"
     ],
     [
-        ["examples/AI for education.pdf"], "Traditional Chinese"
+        ["examples/AI_To_Replace_Doctors_Teachers.txt"], "English"
     ],
     # You can add more examples as needed
 ]
