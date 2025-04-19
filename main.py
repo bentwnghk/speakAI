@@ -109,7 +109,7 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_b
     )
     return response.choices[0].message.content.strip()
 
-def generate_audio(files, openai_api_key: str = None, openai_base_url: str = None) -> bytes:
+def generate_audio(files, language="English", openai_api_key: str = None, openai_base_url: str = None) -> bytes:
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
         raise gr.Error("OpenAI API key is required")
     if not (os.getenv("OPENAI_BASE_URL") or openai_base_url):
@@ -135,9 +135,11 @@ def generate_audio(files, openai_api_key: str = None, openai_base_url: str = Non
         api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
         base_url=openai_base_url or os.getenv("OPENAI_BASE_URL"),
     )
-    def generate_dialogue(text: str) -> Dialogue:
+    def generate_dialogue(text: str, language: str) -> Dialogue:
         """
         Your task is to take the input text provided and turn it into an engaging, informative podcast dialogue. The input text may be messy or unstructured, as it could come from a variety of sources like PDFs or web pages. Don't worry about the formatting issues or any irrelevant information; your goal is to extract the key points and interesting facts that could be discussed in a podcast.
+
+        Important: The ENTIRE podcast dialogue (including brainstorming, scratchpad, and actual dialogue) should be written in {language}. If 'Chinese', use correct idiomatic Traditional Chinese (繁體中文) suitable for a Taiwanese audience.
 
         Here is the input text you will be working with:
 
@@ -168,7 +170,7 @@ def generate_audio(files, openai_api_key: str = None, openai_base_url: str = Non
         </podcast_dialogue>
         """
 
-    llm_output = generate_dialogue(text)
+    llm_output = generate_dialogue(text, language)
 
     audio = b""
     transcript = ""
@@ -218,12 +220,18 @@ demo = gr.Interface(
     article=Path("footer.md").read_text(),
     fn=generate_audio,
     # examples can now include both pdfs and images
-    examples=[[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
+    # examples=[[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
+    examples=[[str(p), "English"] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
     inputs=[
         gr.Files(
             label="PDF or Image",
             file_types=allowed_extensions,
             file_count="multiple",
+        ),
+        gr.Radio(
+            label="Podcast Language",
+            choices=["English", "Traditional Chinese"],
+            value="English",  # Default value
         ),
         gr.Textbox(
             label="OpenAI API Key",
