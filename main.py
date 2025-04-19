@@ -106,21 +106,19 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_b
     )
     return response.choices[0].message.content.strip()
 
-def generate_audio(input_method, files, user_text, openai_api_key: str = None, openai_base_url: str = None):
+def generate_audio(mode, files, user_text, openai_api_key: str = None, openai_base_url: str = None):
+    """Main entrypoint: Combines mode/file/text logic, returns mp3, transcript"""
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
         raise gr.Error("OpenAI API key is required")
     if not (os.getenv("OPENAI_BASE_URL") or openai_base_url):
         raise gr.Error("OpenAI Base URL is required")
 
-    # Enforce that ONLY one input method is active
-    if input_method == "File Upload":
-        if not files:
-            raise gr.Error("Please upload at least one PDF or image file.")
-        if user_text:
-            raise gr.Error("Please do not provide both text and files at the same time.")
-        # Process files as before:
-        if not isinstance(files, list):
-            files = [files]
+    # --- Input validation (point 3) ---
+    files_present = files is not None and len(files) > 0
+    text_present = user_text is not None and user_text.strip() != ""
+
+    if (mode == "File") and files_present and not text_present:
+        # process files into full_text
         texts = []
         for file in files:
             if is_pdf(file):
@@ -133,16 +131,15 @@ def generate_audio(input_method, files, user_text, openai_api_key: str = None, o
                 raise gr.Error(f"Unsupported file type: {file}. Please upload PDF or image.")
             texts.append(text)
         full_text = "\n\n".join(texts)
-    elif input_method == "Paste Text":
-        if not user_text or not user_text.strip():
-            raise gr.Error("Please input some text.")
-        if files:
-            raise gr.Error("Please do not provide both text and files at the same time.")
-        full_text = user_text
+    elif (mode == "Text") and text_present and not files_present:
+        full_text = user_text.strip()
+    elif ((mode == "File" and text_present) or
+          (mode == "Text" and files_present) or
+          (not files_present and not text_present)):
+        raise gr.Error("Please provide either files or text, not both or neither.")
     else:
-        raise gr.Error("Invalid input method.")
+        raise gr.Error("Unknown error with input selection.")
 
-    # LLM and the rest as before:
     @retry(retry=retry_if_exception_type(ValidationError))
     @llm(
         model="gpt-4.1-mini",
@@ -221,69 +218,97 @@ def generate_audio(input_method, files, user_text, openai_api_key: str = None, o
 
     return temporary_file.name, transcript
 
-allowed_extensions = [".pdf", ".jpg", ".jpeg", ".png"]
+allowed_extensions = [
+    ".pdf", ".jpg", ".jpeg", ".png"
+]
 
 desc = Path("description.md").read_text()
 foot = Path("footer.md").read_text()
 head_html = os.getenv("HEAD", "") + Path("head.html").read_text()
+examples = [[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions]
 
-# BUILD THE INTERFACE
-def build_interface():
-    with gr.Blocks(title="Mr.🆖 PodcastAI 🎙️🎧", theme="ocean", head=head_html) as demo:
-        gr.Markdown(desc)
-        with gr.Tab("File Upload"):
-            input_files = gr.Files(
-                label="PDF or Image",
-                file_types=allowed_extensions,
-                file_count="multiple",
-            )
-            files_api_key = gr.Textbox(
-                label="OpenAI API Key",
-                visible=not os.getenv("OPENAI_API_KEY"),
-            )
-            files_base_url = gr.Textbox(
-                label="OpenAI Base URL",
-                visible=not os.getenv("OPENAI_BASE_URL"),
-            )
-            file_submit = gr.Button("Generate Podcast Audio")
-            output_audio1 = gr.Audio(label="Audio", format="mp3")
-            output_text1 = gr.Textbox(label="Transcript")
-            file_submit.click(
-                fn=generate_audio,
-                inputs=["File Upload", input_files, None, files_api_key, files_base_url],
-                outputs=[output_audio1, output_text1]
-            )
+with gr.Blocks(
+    title="Mr.🆖 PodcastAI 🎙️🎧",
+    theme="ocean",
+    head=head_html,
 
-        with gr.Tab("Paste Text"):
-            input_text = gr.Textbox(
-                label="Paste Text Here",
-                lines=12,
-                max_lines=64,
-                placeholder="Paste or type your source article or notes here."
-            )
-            text_api_key = gr.Textbox(
-                label="OpenAI API Key",
-                visible=not os.getenv("OPENAI_API_KEY"),
-            )
-            text_base_url = gr.Textbox(
-                label="OpenAI Base URL",
-                visible=not os.getenv("OPENAI_BASE_URL"),
-            )
-            text_submit = gr.Button("Generate Podcast Audio")
-            output_audio2 = gr.Audio(label="Audio", format="mp3")
-            output_text2 = gr.Textbox(label="Transcript")
-            text_submit.click(
-                fn=generate_audio,
-                inputs=["Paste Text", None, input_text, text_api_key, text_base_url],
-                outputs=[output_audio2, output_text2]
-            )
-        gr.Markdown(foot)
+) as demo:
 
-    demo.queue(max_size=20, default_concurrency_limit=20)
-    return demo
+    gr.Markdown(desc)
 
-demo = build_interface()
+    mode_radio = gr.Radio(
+        choices=["Text", "File"],
+        value="Text",
+        label="Input mode:",
+        info="Choose whether to paste text or upload PDF/image file(s)"
+    )
 
+    text_input = gr.Textbox(
+        label="Paste text here",
+        lines=12,
+        max_lines=64,
+        visible=True,
+        placeholder="Paste or type your source article or notes here."
+    )
+
+    file_input = gr.Files(
+        label="Upload PDF or image file(s)",
+        file_types=allowed_extensions,
+        file_count="multiple",
+        visible=False
+    )
+
+    gr.Examples(
+        examples=examples,
+        inputs=file_input,
+        label="File Examples",
+    )
+
+    api_key_input = gr.Textbox(
+        label="OpenAI API Key",
+        visible=not os.getenv("OPENAI_API_KEY"),
+    )
+
+    base_url_input = gr.Textbox(
+        label="OpenAI Base URL",
+        visible=not os.getenv("OPENAI_BASE_URL"),
+    )
+
+    submit_btn = gr.Button("Generate Podcast Audio")
+
+    output_audio = gr.Audio(label="Audio", format="mp3")
+    output_text = gr.Textbox(label="Transcript")
+
+    def update_input_visibility(mode):
+        return {
+            text_input: gr.update(visible=mode=="Text"),
+            file_input: gr.update(visible=mode=="File")
+        }
+
+    mode_radio.change(
+        update_input_visibility,
+        inputs=[mode_radio],
+        outputs=[text_input, file_input]
+    )
+
+    # Auto-set radio mode to "File" if an example is clicked
+    def set_file_mode(files):
+        return gr.update(value="File")
+    file_input.change(
+        set_file_mode,
+        inputs=[file_input],
+        outputs=[mode_radio],
+    )
+    
+    submit_btn.click(
+        generate_audio,
+        inputs=[mode_radio, file_input, text_input, api_key_input, base_url_input],
+        outputs=[output_audio, output_text]
+    )
+
+    gr.Markdown(foot)
+
+demo.queue(max_size=20, default_concurrency_limit=20)
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
