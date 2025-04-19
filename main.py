@@ -26,6 +26,7 @@ if sentry_dsn := os.getenv("SENTRY_DSN"):
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
 class DialogueItem(BaseModel):
     text: str
     speaker: Literal["female-1", "male-1", "female-2", "male-2"]
@@ -39,9 +40,11 @@ class DialogueItem(BaseModel):
             "male-2": "echo",
         }[self.speaker]
 
+
 class Dialogue(BaseModel):
     scratchpad: str
     dialogue: List[DialogueItem]
+
 
 def get_mp3(text: str, voice: str, api_key: str = None, base_url: str = None) -> bytes:
     client = OpenAI(
@@ -58,6 +61,7 @@ def get_mp3(text: str, voice: str, api_key: str = None, base_url: str = None) ->
                 file.write(chunk)
             return file.getvalue()
 
+
 def is_pdf(filename):
     t, _ = guess_type(filename)
     return filename.lower().endswith(".pdf") or (t or "").endswith("pdf")
@@ -67,15 +71,16 @@ def is_image(filename):
     image_exts = (".jpg", ".jpeg", ".png")
     return filename.lower().endswith(image_exts) or (t or "").startswith("image")
 
+def is_text(filename):
+    t, _ = guess_type(filename)
+    return filename.lower().endswith(".txt") or (t or "") == "text/plain"
+
+
 def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_base_url=None):
-    """
-    Use OpenAI GPT-4 Vision to extract text from an image file.
-    """
     client = OpenAI(
         api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
         base_url=openai_base_url or os.getenv("OPENAI_BASE_URL", "https://api.mr5ai.com/v1"),
     )
-
     with open(image_file, "rb") as f:
         data = f.read()
         mime_type = guess_type(image_file)[0] or "image/png"
@@ -102,12 +107,13 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_b
     ]
 
     response = client.chat.completions.create(
-        model="gpt-4.1-mini",  # or "gpt-4o"
+        model="gpt-4.1-mini",
         messages=messages,
         max_tokens=8192,
         temperature=0,
     )
     return response.choices[0].message.content.strip()
+
 
 def generate_audio(files, language="English", openai_api_key: str = None, openai_base_url: str = None) -> bytes:
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
@@ -124,8 +130,11 @@ def generate_audio(files, language="English", openai_api_key: str = None, openai
                 text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
         elif is_image(file):
             text = extract_text_from_image_via_vision(file, openai_api_key, openai_base_url)
+        elif is_text(file):
+            with open(file, "r", encoding="utf-8") as f:
+                text = f.read()
         else:
-            raise gr.Error(f"UUnsupported file type: {file}. Please upload PDF or image.")
+            raise gr.Error(f"Unsupported file type: {file}. Please upload TXT, PDF, or image file.")
         texts.append(text)
     full_text = "\n\n".join(texts)
 
@@ -170,7 +179,7 @@ def generate_audio(files, language="English", openai_api_key: str = None, openai
         </podcast_dialogue>
         """
 
-    llm_output = generate_dialogue(text, language)
+    llm_output = generate_dialogue(full_text, language)
 
     audio = b""
     transcript = ""
@@ -209,8 +218,9 @@ def generate_audio(files, language="English", openai_api_key: str = None, openai
 
     return temporary_file.name, transcript
 
+
 allowed_extensions = [
-    ".pdf", ".jpg", ".jpeg", ".png"
+    ".txt", ".pdf", ".jpg", ".jpeg", ".png"
 ]
 
 demo = gr.Interface(
@@ -219,12 +229,10 @@ demo = gr.Interface(
     description=Path("description.md").read_text(),
     article=Path("footer.md").read_text(),
     fn=generate_audio,
-    # examples can now include both pdfs and images
     # examples=[[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
-    # examples=[[str(p), "English"] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
     inputs=[
         gr.Files(
-            label="PDF or Image",
+            label="TXT, PDF, or Image",
             file_types=allowed_extensions,
             file_count="multiple",
         ),
