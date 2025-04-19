@@ -187,7 +187,7 @@ demo = gr.Interface(
     allow_flagging="never",
     clear_btn=None,
     head=os.getenv("HEAD", "") + Path("head.html").read_text(),
-    cache_examples="lazy",
+    cache_examples=True,
     api_name=False,
 )
 
@@ -200,4 +200,4 @@ demo = demo.queue(
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(show_api=False,)
