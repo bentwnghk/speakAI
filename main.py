@@ -64,7 +64,7 @@ def is_pdf(filename):
 
 def is_image(filename):
     t, _ = guess_type(filename)
-    image_exts = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+    image_exts = (".jpg", ".jpeg", ".png")
     return filename.lower().endswith(image_exts) or (t or "").startswith("image")
 
 def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_base_url=None):
@@ -125,7 +125,7 @@ def generate_audio(files, openai_api_key: str = None, openai_base_url: str = Non
         elif is_image(file):
             text = extract_text_from_image_via_vision(file, openai_api_key, openai_base_url)
         else:
-            raise gr.Error(f"Unsupported file type: {file}")
+            raise gr.Error(f"UUnsupported file type: {file}. Please upload PDF or image.")
         texts.append(text)
     full_text = "\n\n".join(texts)
 
@@ -208,7 +208,7 @@ def generate_audio(files, openai_api_key: str = None, openai_base_url: str = Non
     return temporary_file.name, transcript
 
 allowed_extensions = [
-    ".pdf", ".jpg", ".jpeg", ".png", ".webp", ".bmp"
+    ".pdf", ".jpg", ".jpeg", ".png"
 ]
 
 demo = gr.Interface(
@@ -221,7 +221,7 @@ demo = gr.Interface(
     examples=[[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
     inputs=[
         gr.Files(
-            label="PDF or Image(s)",
+            label="PDF or Image",
             file_types=allowed_extensions,
             file_count="multiple",
         ),
