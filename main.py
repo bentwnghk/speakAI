@@ -102,7 +102,7 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_b
     ]
 
     response = client.chat.completions.create(
-        model="gpt-4o",  # or "gpt-4o"
+        model="gpt-4.1-mini",  # or "gpt-4o"
         messages=messages,
         max_tokens=8192,
         temperature=0,
