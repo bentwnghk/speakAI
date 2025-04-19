@@ -109,23 +109,25 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_b
     )
     return response.choices[0].message.content.strip()
 
-def generate_audio(file: str, openai_api_key: str = None, openai_base_url: str = None) -> bytes:
+def generate_audio(files, openai_api_key: str = None, openai_base_url: str = None) -> bytes:
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
         raise gr.Error("OpenAI API key is required")
-
     if not (os.getenv("OPENAI_BASE_URL") or openai_base_url):
         raise gr.Error("OpenAI Base URL is required")
-
-    if is_pdf(file):
-        # Process PDF file
-        with Path(file).open("rb") as f:
-            reader = PdfReader(f)
-            text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
-    elif is_image(file):
-        # Process image file
-        text = extract_text_from_image_via_vision(file, openai_api_key, openai_base_url)
-    else:
-        raise gr.Error("Unsupported file type. Please upload a PDF or image.")
+    if not isinstance(files, list):
+        files = [files]
+    texts = []
+    for file in files:
+        if is_pdf(file):
+            with Path(file).open("rb") as f:
+                reader = PdfReader(f)
+                text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+        elif is_image(file):
+            text = extract_text_from_image_via_vision(file, openai_api_key, openai_base_url)
+        else:
+            raise gr.Error(f"Unsupported file type: {file}")
+        texts.append(text)
+    full_text = "\n\n".join(texts)
 
     @retry(retry=retry_if_exception_type(ValidationError))
     @llm(
@@ -218,9 +220,10 @@ demo = gr.Interface(
     # examples can now include both pdfs and images
     examples=[[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
     inputs=[
-        gr.File(
-            label="PDF or Image",
+        gr.Files(
+            label="PDF or Image(s)",
             file_types=allowed_extensions,
+            file_count="multiple",
         ),
         gr.Textbox(
             label="OpenAI API Key",
