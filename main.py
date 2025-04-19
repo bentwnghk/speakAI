@@ -68,6 +68,9 @@ def is_image(filename):
     return filename.lower().endswith(image_exts) or (t or "").startswith("image")
 
 def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_base_url=None):
+    """
+    Use OpenAI GPT-4 Vision to extract text from an image file.
+    """
     client = OpenAI(
         api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
         base_url=openai_base_url or os.getenv("OPENAI_BASE_URL", "https://api.mr5ai.com/v1"),
@@ -106,39 +109,25 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_b
     )
     return response.choices[0].message.content.strip()
 
-def generate_audio(mode, files, user_text, openai_api_key: str = None, openai_base_url: str = None):
-    """Main entrypoint: Combines mode/file/text logic, returns mp3, transcript"""
+def generate_audio(files, openai_api_key: str = None, openai_base_url: str = None) -> bytes:
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
         raise gr.Error("OpenAI API key is required")
     if not (os.getenv("OPENAI_BASE_URL") or openai_base_url):
         raise gr.Error("OpenAI Base URL is required")
-
-    # --- Input validation (point 3) ---
-    files_present = files is not None and len(files) > 0
-    text_present = user_text is not None and user_text.strip() != ""
-
-    if (mode == "File") and files_present and not text_present:
-        # process files into full_text
-        texts = []
-        for file in files:
-            if is_pdf(file):
-                with Path(file).open("rb") as f:
-                    reader = PdfReader(f)
-                    text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
-            elif is_image(file):
-                text = extract_text_from_image_via_vision(file, openai_api_key, openai_base_url)
-            else:
-                raise gr.Error(f"Unsupported file type: {file}. Please upload PDF or image.")
-            texts.append(text)
-        full_text = "\n\n".join(texts)
-    elif (mode == "Text") and text_present and not files_present:
-        full_text = user_text.strip()
-    elif ((mode == "File" and text_present) or
-          (mode == "Text" and files_present) or
-          (not files_present and not text_present)):
-        raise gr.Error("Please provide either files or text, not both or neither.")
-    else:
-        raise gr.Error("Unknown error with input selection.")
+    if not isinstance(files, list):
+        files = [files]
+    texts = []
+    for file in files:
+        if is_pdf(file):
+            with Path(file).open("rb") as f:
+                reader = PdfReader(f)
+                text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+        elif is_image(file):
+            text = extract_text_from_image_via_vision(file, openai_api_key, openai_base_url)
+        else:
+            raise gr.Error(f"UUnsupported file type: {file}. Please upload PDF or image.")
+        texts.append(text)
+    full_text = "\n\n".join(texts)
 
     @retry(retry=retry_if_exception_type(ValidationError))
     @llm(
@@ -179,7 +168,7 @@ def generate_audio(mode, files, user_text, openai_api_key: str = None, openai_ba
         </podcast_dialogue>
         """
 
-    llm_output = generate_dialogue(full_text)
+    llm_output = generate_dialogue(text)
 
     audio = b""
     transcript = ""
@@ -222,76 +211,45 @@ allowed_extensions = [
     ".pdf", ".jpg", ".jpeg", ".png"
 ]
 
-desc = Path("description.md").read_text()
-foot = Path("footer.md").read_text()
-head_html = os.getenv("HEAD", "") + Path("head.html").read_text()
-
-with gr.Blocks(
+demo = gr.Interface(
     title="Mr.🆖 PodcastAI 🎙️🎧",
     theme="ocean",
-    head=head_html,
-) as demo:
+    description=Path("description.md").read_text(),
+    article=Path("footer.md").read_text(),
+    fn=generate_audio,
+    # examples can now include both pdfs and images
+    examples=[[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
+    inputs=[
+        gr.Files(
+            label="PDF or Image",
+            file_types=allowed_extensions,
+            file_count="multiple",
+        ),
+        gr.Textbox(
+            label="OpenAI API Key",
+            visible=not os.getenv("OPENAI_API_KEY"),
+        ),
+        gr.Textbox(
+            label="OpenAI Base URL",
+            visible=not os.getenv("OPENAI_BASE_URL"),
+        ),
+    ],
+    outputs=[
+        gr.Audio(label="Audio", format="mp3"),
+        gr.Textbox(label="Transcript"),
+    ],
+    flagging_mode="never",
+    clear_btn=None,
+    head=os.getenv("HEAD", "") + Path("head.html").read_text(),
+    cache_examples=True,
+    api_name=False,
+)
 
-    gr.Markdown(desc)
+demo = demo.queue(
+    max_size=20,
+    default_concurrency_limit=20,
+)
 
-    mode_radio = gr.Radio(
-        choices=["Text", "File"],
-        value="Text",
-        label="Input mode:",
-        info="Choose whether to paste text or upload PDF/image file(s)"
-    )
-
-    text_input = gr.Textbox(
-        label="Paste text here",
-        lines=12,
-        max_lines=64,
-        visible=True,
-        placeholder="Paste or type your source article or notes here."
-    )
-
-    file_input = gr.Files(
-        label="Upload PDF or image file(s)",
-        file_types=allowed_extensions,
-        file_count="multiple",
-        visible=False
-    )
-
-    api_key_input = gr.Textbox(
-        label="OpenAI API Key",
-        visible=not os.getenv("OPENAI_API_KEY"),
-    )
-
-    base_url_input = gr.Textbox(
-        label="OpenAI Base URL",
-        visible=not os.getenv("OPENAI_BASE_URL"),
-    )
-
-    submit_btn = gr.Button("Generate Podcast Audio")
-
-    output_audio = gr.Audio(label="Audio", format="mp3")
-    output_text = gr.Textbox(label="Transcript")
-
-    def update_input_visibility(mode):
-        return {
-            text_input: gr.update(visible=mode=="Text"),
-            file_input: gr.update(visible=mode=="File")
-        }
-
-    mode_radio.change(
-        update_input_visibility,
-        inputs=[mode_radio],
-        outputs=[text_input, file_input]
-    )
-
-    submit_btn.click(
-        generate_audio,
-        inputs=[mode_radio, file_input, text_input, api_key_input, base_url_input],
-        outputs=[output_audio, output_text]
-    )
-
-    gr.Markdown(foot)
-
-demo.queue(max_size=20, default_concurrency_limit=20)
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
