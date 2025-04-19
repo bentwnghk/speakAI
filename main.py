@@ -220,7 +220,7 @@ demo = gr.Interface(
     article=Path("footer.md").read_text(),
     fn=generate_audio,
     # examples can now include both pdfs and images
-    examples=[[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
+    # examples=[[str(p)] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
     # examples=[[str(p), "English"] for p in Path("examples").glob("*") if p.suffix.lower() in allowed_extensions],
     inputs=[
         gr.Files(
