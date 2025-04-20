@@ -46,10 +46,10 @@ class Dialogue(BaseModel):
     dialogue: List[DialogueItem]
 
 
-def get_mp3(text: str, voice: str, api_key: str = None, base_url: str = None) -> bytes:
+def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
     client = OpenAI(
         api_key=api_key or os.getenv("OPENAI_API_KEY"),
-        base_url=base_url or os.getenv("OPENAI_BASE_URL", "https://api.mr5ai.com/v1"),
+        base_url=os.getenv("OPENAI_BASE_URL"),
     )
     with client.audio.speech.with_streaming_response.create(
         model="tts-1",
@@ -76,10 +76,10 @@ def is_text(filename):
     return filename.lower().endswith(".txt") or (t or "") == "text/plain"
 
 
-def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_base_url=None):
+def extract_text_from_image_via_vision(image_file, openai_api_key=None):
     client = OpenAI(
         api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
-        base_url=openai_base_url or os.getenv("OPENAI_BASE_URL", "https://api.mr5ai.com/v1"),
+        base_url=os.getenv("OPENAI_BASE_URL"),
     )
     with open(image_file, "rb") as f:
         data = f.read()
@@ -115,11 +115,11 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None, openai_b
     return response.choices[0].message.content.strip()
 
 
-def generate_audio(files, language="English", openai_api_key: str = None, openai_base_url: str = None) -> bytes:
+def generate_audio(files, language="English", openai_api_key: str = None) -> bytes:
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
         raise gr.Error("OpenAI API key is required")
-    if not (os.getenv("OPENAI_BASE_URL") or openai_base_url):
-        raise gr.Error("OpenAI Base URL is required")
+    if not os.getenv("OPENAI_BASE_URL"):
+        raise gr.Error("OpenAI Base URL is not set")
     if not isinstance(files, list):
         files = [files]
     texts = []
@@ -129,7 +129,7 @@ def generate_audio(files, language="English", openai_api_key: str = None, openai
                 reader = PdfReader(f)
                 text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
         elif is_image(file):
-            text = extract_text_from_image_via_vision(file, openai_api_key, openai_base_url)
+            text = extract_text_from_image_via_vision(file, openai_api_key)
         elif is_text(file):
             with open(file, "r", encoding="utf-8") as f:
                 text = f.read()
@@ -142,7 +142,7 @@ def generate_audio(files, language="English", openai_api_key: str = None, openai
     @llm(
         model="gpt-4.1-mini",
         api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
-        base_url=openai_base_url or os.getenv("OPENAI_BASE_URL"),
+        base_url=os.getenv("OPENAI_BASE_URL"),
     )
     def generate_dialogue(text: str, language: str) -> Dialogue:
         """
@@ -189,7 +189,7 @@ def generate_audio(files, language="English", openai_api_key: str = None, openai
         futures = []
         for line in llm_output.dialogue:
             transcript_line = f"{line.speaker}: {line.text}"
-            future = executor.submit(get_mp3, line.text, line.voice, openai_api_key, openai_base_url)
+            future = executor.submit(get_mp3, line.text, line.voice, openai_api_key)
             futures.append((future, transcript_line))
             characters += len(line.text)
 
@@ -248,6 +248,8 @@ demo = gr.Interface(
     description=Path("description.md").read_text(),
     article=Path("footer.md").read_text(),
     fn=generate_audio,
+    submit_button="Generate Podcast",  # Change the wording here
+    examples=examples,  # <-- ADD THIS LINE
     inputs=[
         gr.Files(
             label="TXT, PDF, or Image",
@@ -263,10 +265,6 @@ demo = gr.Interface(
             label="OpenAI API Key",
             visible=not os.getenv("OPENAI_API_KEY"),
         ),
-        gr.Textbox(
-            label="OpenAI Base URL",
-            visible=not os.getenv("OPENAI_BASE_URL"),
-        ),
     ],
     outputs=[
         gr.Audio(label="Audio", format="mp3"),
@@ -277,7 +275,6 @@ demo = gr.Interface(
     head=os.getenv("HEAD", "") + Path("head.html").read_text(),
     cache_examples=True,
     api_name=False,
-    examples=examples,  # <-- ADD THIS LINE
 )
 
 demo = demo.queue(
