@@ -248,6 +248,7 @@ demo = gr.Interface(
     description=Path("description.md").read_text(),
     article=Path("footer.md").read_text(),
     fn=generate_audio,
+    submit_btn="Generate Podcast",  # Change the wording here
     examples=examples,  # <-- ADD THIS LINE
     inputs=[
         gr.Files(
@@ -274,7 +275,6 @@ demo = gr.Interface(
     head=os.getenv("HEAD", "") + Path("head.html").read_text(),
     cache_examples=True,
     api_name=False,
-    submit_button="Generate Podcast",  # Change the wording here
 )
 
 demo = demo.queue(
