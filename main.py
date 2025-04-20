@@ -248,7 +248,7 @@ demo = gr.Interface(
     description=Path("description.md").read_text(),
     article=Path("footer.md").read_text(),
     fn=generate_audio,
-    submit_btn="Generate Podcast",  # Change the wording here
+    submit_btn="✨ Generate Podcast",  # Change the wording here
     examples=examples,  # <-- ADD THIS LINE
     inputs=[
         gr.Files(
