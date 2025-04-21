@@ -63,15 +63,21 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
 
 
 def is_pdf(filename):
+    # Added check for None filename
+    if not filename: return False
     t, _ = guess_type(filename)
     return filename.lower().endswith(".pdf") or (t or "").endswith("pdf")
 
 def is_image(filename):
+    # Added check for None filename
+    if not filename: return False
     t, _ = guess_type(filename)
     image_exts = (".jpg", ".jpeg", ".png")
     return filename.lower().endswith(image_exts) or (t or "").startswith("image")
 
 def is_text(filename):
+    # Added check for None filename
+    if not filename: return False
     t, _ = guess_type(filename)
     return filename.lower().endswith(".txt") or (t or "") == "text/plain"
 
@@ -107,9 +113,9 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None):
     ]
 
     response = client.chat.completions.create(
-        model="gpt-4.1-mini",
+        model="gpt-4.1-mini", # Using a Vision-capable model
         messages=messages,
-        max_tokens=8192,
+        max_tokens=4096, # Adjusted max_tokens slightly lower than 8192
         temperature=0,
     )
     return response.choices[0].message.content.strip()
@@ -132,37 +138,55 @@ def generate_audio(
     if input_method == "Upload Files":
         if not files:
             raise gr.Error("Please upload at least one file or switch to text input.")
-        if not isinstance(files, list): # Ensure files is a list even if single file uploaded
-            files = [files]
+        # No need for isinstance check, gr.Files(file_count='multiple') always returns a list
         texts = []
         for file_path in files:
-            if is_pdf(file_path):
+            # Add explicit check for file_path being None or empty string
+            if not file_path:
+                logger.warning("Received an empty file path in the list, skipping.")
+                continue
+            file_path_obj = Path(file_path) # Work with Path object for clarity
+            if is_pdf(str(file_path_obj)):
                 try:
-                    with Path(file_path).open("rb") as f:
+                    with file_path_obj.open("rb") as f:
                         reader = PdfReader(f)
-                        text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+                        # Added check for encrypted PDFs
+                        if reader.is_encrypted:
+                             logger.warning(f"Skipping encrypted PDF: {file_path_obj.name}")
+                             raise gr.Error(f"Cannot process password-protected PDF: {file_path_obj.name}")
+                        page_texts = [page.extract_text() for page in reader.pages if page.extract_text()]
+                        text = "\n\n".join(page_texts) if page_texts else ""
                 except Exception as e:
-                    logger.error(f"Error reading PDF {file_path}: {e}")
-                    raise gr.Error(f"Error processing PDF file: {Path(file_path).name}. It might be corrupted or password-protected.")
-            elif is_image(file_path):
+                    logger.error(f"Error reading PDF {file_path_obj.name}: {e}")
+                    # Provide more specific error for common issues
+                    if "PdfReadError" in str(type(e)):
+                         raise gr.Error(f"Error reading PDF file: {file_path_obj.name}. It might be corrupted or improperly formatted.")
+                    else:
+                         raise gr.Error(f"Error processing PDF file: {file_path_obj.name}.")
+            elif is_image(str(file_path_obj)):
                 try:
-                    text = extract_text_from_image_via_vision(file_path, openai_api_key)
+                    text = extract_text_from_image_via_vision(str(file_path_obj), openai_api_key)
                 except Exception as e:
-                    logger.error(f"Error processing image {file_path} with Vision API: {e}")
-                    raise gr.Error(f"Error extracting text from image: {Path(file_path).name}. Check API key and file.")
-            elif is_text(file_path):
+                    logger.error(f"Error processing image {file_path_obj.name} with Vision API: {e}")
+                    raise gr.Error(f"Error extracting text from image: {file_path_obj.name}. Check API key, file format, and OpenAI status.")
+            elif is_text(str(file_path_obj)):
                 try:
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path_obj, "r", encoding="utf-8") as f:
                         text = f.read()
                 except Exception as e:
-                    logger.error(f"Error reading text file {file_path}: {e}")
-                    raise gr.Error(f"Error reading text file: {Path(file_path).name}.")
+                    logger.error(f"Error reading text file {file_path_obj.name}: {e}")
+                    raise gr.Error(f"Error reading text file: {file_path_obj.name}.")
             else:
-                raise gr.Error(f"Unsupported file type: {Path(file_path).name}. Please upload TXT, PDF, or image file.")
+                # Check if it's an empty placeholder or truly unsupported
+                if file_path_obj.stat().st_size > 0 :
+                    raise gr.Error(f"Unsupported file type: {file_path_obj.name}. Please upload TXT, PDF, or image file (JPG, JPEG, PNG).")
+                else:
+                     logger.warning(f"Skipping empty or placeholder file: {file_path_obj.name}")
+                     text = "" # Treat as empty text
             texts.append(text)
-        full_text = "\n\n".join(texts)
+        full_text = "\n\n".join(filter(None, texts)) # Filter out empty strings before joining
         if not full_text.strip():
-             raise gr.Error("Could not extract any text from the uploaded file(s).")
+             raise gr.Error("Could not extract any text from the uploaded file(s). Please check the files or try different ones.")
 
     elif input_method == "Enter Text":
         if not input_text or not input_text.strip():
@@ -174,7 +198,7 @@ def generate_audio(
 
     @retry(retry=retry_if_exception_type(ValidationError))
     @llm(
-        model="gpt-4.1-mini",
+        model="gpt-4.1-mini", # Use the newer model for better performance potentially
         api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
         base_url=os.getenv("OPENAI_BASE_URL"),
     )
@@ -205,7 +229,7 @@ def generate_audio(
         Now that you have brainstormed ideas and created a rough outline, it's time to write the actual podcast dialogue. Aim for a natural, conversational flow between the host and any guest speakers. Incorporate the best ideas from your brainstorming session and make sure to explain any complex topics in an easy-to-understand way.
 
         <podcast_dialogue>
-        Write your engaging, informative podcast dialogue here, based on the key points and creative ideas you came up with during the brainstorming session. Use a conversational tone and include any necessary context or explanations to make the content accessible to a general audience. Use made-up names for the hosts and guests to create a more engaging and immersive experience for listeners. Do not include any bracketed placeholders like [Host] or [Guest]. Design your output to be read aloud -- it will be directly converted into audio. Assign appropriate speakers (female-1, male-1, female-2, male-2) to each line.
+        Write your engaging, informative podcast dialogue here, based on the key points and creative ideas you came up with during the brainstorming session. Use a conversational tone and include any necessary context or explanations to make the content accessible to a general audience. Use made-up names for the hosts and guests to create a more engaging and immersive experience for listeners. Do not include any bracketed placeholders like [Host] or [Guest]. Design your output to be read aloud -- it will be directly converted into audio. Assign appropriate speakers (female-1, male-1, female-2, male-2) to each line, varying them for a natural conversation.
 
         Make the dialogue as long and detailed as possible, while still staying on topic and maintaining an engaging flow. Aim to use your full output capacity to create the longest podcast episode you can, while still communicating the key information from the input text in an entertaining way.
 
@@ -214,6 +238,8 @@ def generate_audio(
         """
 
     try:
+        # Add progress update before calling LLM
+        gr.Info("Generating dialogue script with AI...")
         llm_output = generate_dialogue(full_text, language)
     except ValidationError as e:
         logger.error(f"LLM output validation failed: {e}")
@@ -221,12 +247,16 @@ def generate_audio(
     except Exception as e:
         logger.error(f"Error during dialogue generation: {e}")
         # Check for common API errors
-        if "authentication" in str(e).lower():
+        error_str = str(e).lower()
+        if "authentication" in error_str:
              raise gr.Error("Authentication error with OpenAI API. Please check your API key.")
-        elif "rate limit" in str(e).lower():
+        elif "rate limit" in error_str:
              raise gr.Error("OpenAI API rate limit exceeded. Please wait and try again.")
-        elif "base_url" in str(e).lower():
-             raise gr.Error(f"Could not connect to OpenAI Base URL: {os.getenv('OPENAI_BASE_URL')}. Please check the URL and network connection.")
+        elif "base_url" in error_str or "connection" in error_str:
+             base_url = os.getenv('OPENAI_BASE_URL', 'the configured OpenAI endpoint')
+             raise gr.Error(f"Could not connect to {base_url}. Please check the URL and network connection.")
+        elif "invalid request" in error_str and "image" in error_str:
+             raise gr.Error("Error processing image with Vision API. The image might be invalid, unsupported, or the model doesn't support image input.")
         else:
             raise gr.Error(f"An error occurred during dialogue generation: {e}")
 
@@ -234,59 +264,77 @@ def generate_audio(
     audio = b""
     transcript = ""
     characters = 0
+    total_lines = len(llm_output.dialogue)
+
+    # Add progress update before starting TTS
+    gr.Info(f"Generating audio for {total_lines} dialogue lines...")
 
     with cf.ThreadPoolExecutor() as executor:
-        futures = []
-        for line in llm_output.dialogue:
+        futures_map = {} # Store future -> transcript_line mapping
+        for i, line in enumerate(llm_output.dialogue):
             transcript_line = f"{line.speaker}: {line.text}"
             try:
                 future = executor.submit(get_mp3, line.text, line.voice, openai_api_key)
-                futures.append((future, transcript_line))
+                futures_map[future] = transcript_line
                 characters += len(line.text)
             except Exception as e:
-                logger.error(f"Error submitting TTS task for line '{line.text[:50]}...': {e}")
-                # Optionally skip this line or raise an error
-                # For now, let's add a note to the transcript and continue
-                transcript += f"[Error generating audio for this line: {line.speaker}: {line.text}]\n\n"
+                logger.error(f"Error submitting TTS task for line {i+1}/{total_lines} '{line.text[:50]}...': {e}")
+                # Add error note directly to transcript
+                transcript += f"[Error submitting audio task for: {transcript_line}]\n\n"
 
-
-        for future, transcript_line in futures:
+        # Process completed futures as they finish
+        processed_lines = 0
+        for future in cf.as_completed(futures_map):
+            transcript_line = futures_map[future]
             try:
                 audio_chunk = future.result()
                 audio += audio_chunk
                 transcript += transcript_line + "\n\n"
+                processed_lines += 1
+                # Optional: Update progress more frequently
+                # if processed_lines % 5 == 0: # Update every 5 lines
+                #     gr.Info(f"Generated audio for {processed_lines}/{total_lines} lines...")
             except Exception as e:
                  logger.error(f"Error retrieving TTS result for line '{transcript_line[:50]}...': {e}")
-                 # Add error note to transcript
+                 # Add error note to transcript if retrieval fails
                  transcript += f"[Error generating audio for: {transcript_line}]\n\n"
 
-
-    logger.info(f"Generated {characters} characters of audio")
+    logger.info(f"Generated {characters} characters of audio for {processed_lines}/{total_lines} lines.")
 
     if not audio:
-        raise gr.Error("Failed to generate any audio. Check OpenAI TTS service status or API key.")
+        # Check if transcript has error messages
+        if "[Error" in transcript:
+             raise gr.Error("Failed to generate audio for some/all lines. Please check the transcript for details and review OpenAI API key/status.")
+        else:
+             raise gr.Error("Failed to generate any audio, even though dialogue script was created. Check OpenAI TTS service status or API key.")
+
 
     temporary_directory = "./gradio_cached_examples/tmp/"
     os.makedirs(temporary_directory, exist_ok=True)
 
     temporary_file = NamedTemporaryFile(
         dir=temporary_directory,
-        delete=False,
+        delete=False, # Keep file until Gradio cleans it up
         suffix=".mp3",
+        prefix="podcast_audio_" # Add prefix for easier identification
     )
-    temporary_file.write(audio)
-    temporary_file.close()
+    try:
+        temporary_file.write(audio)
+        temp_file_path = temporary_file.name
+    finally:
+        temporary_file.close()
 
-    # Clean old files
+
+    # Clean old files (optional - Gradio might handle temp files, but good practice)
     for file in glob.glob(f"{temporary_directory}*.mp3"):
-        if os.path.isfile(file) and time.time() - os.path.getmtime(file) > 24 * 60 * 60:
-            try:
+        try:
+            if os.path.isfile(file) and time.time() - os.path.getmtime(file) > 24 * 60 * 60: # Older than 1 day
                 os.remove(file)
-            except OSError as e:
-                logger.warning(f"Could not remove old temp file {file}: {e}")
+        except OSError as e:
+            logger.warning(f"Could not remove old temp file {file}: {e}")
 
-
-    return temporary_file.name, transcript
+    gr.Info("Podcast generation complete!")
+    return temp_file_path, transcript
 
 
 allowed_extensions = [
@@ -316,7 +364,8 @@ examples = [
 # ----
 
 # Gradio Interface using Blocks for dynamic UI
-with gr.Blocks(theme="ocean") as demo:
+# Added title argument here
+with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
     gr.Markdown(Path("description.md").read_text())
 
     with gr.Row():
@@ -353,23 +402,34 @@ with gr.Blocks(theme="ocean") as demo:
             visible=not os.getenv("OPENAI_API_KEY"), # Only show if not in env
         )
 
-    submit_button = gr.Button("✨ Generate Podcast")
+    # Added variant="primary" for button color
+    submit_button = gr.Button("✨ Generate Podcast", variant="primary")
 
-    with gr.Row():
-        audio_output = gr.Audio(label="Podcast Audio", format="mp3")
-        transcript_output = gr.Textbox(label="Transcript", lines=15)
+    # Outputs arranged vertically (removed gr.Row wrapper)
+    audio_output = gr.Audio(label="Podcast Audio", format="mp3")
+    transcript_output = gr.Textbox(label="Transcript", lines=15, show_copy_button=True) # Added copy button
 
     # Dynamic UI Logic
     def switch_input_method(choice):
         if choice == "Upload Files":
-            return {file_upload_ui: gr.update(visible=True), text_input_ui: gr.update(visible=False)}
+            return {
+                file_upload_ui: gr.update(visible=True),
+                text_input_ui: gr.update(visible=False),
+                # Clear other input type when switching
+                text_input: gr.update(value="")
+            }
         else: # Enter Text
-            return {file_upload_ui: gr.update(visible=False), text_input_ui: gr.update(visible=True)}
+            return {
+                file_upload_ui: gr.update(visible=False),
+                text_input_ui: gr.update(visible=True),
+                # Clear other input type when switching
+                file_input: gr.update(value=None)
+            }
 
     input_method_radio.change(
         fn=switch_input_method,
         inputs=input_method_radio,
-        outputs=[file_upload_ui, text_input_ui]
+        outputs=[file_upload_ui, text_input_ui, file_input, text_input] # Added file/text inputs to clear
     )
 
     # Connect button click to the main function
@@ -391,18 +451,19 @@ with gr.Blocks(theme="ocean") as demo:
         inputs=[input_method_radio, file_input, text_input, lang_input, api_key_input], # Ensure order matches function signature
         outputs=[audio_output, transcript_output],
         fn=generate_audio, # Make examples clickable
-        cache_examples=True,
+        cache_examples=True, # Cache example results for speed
+        # Prevent examples running automatically on load if inputs change slightly:
+        run_on_click=True,
     )
 
     gr.Markdown(Path("footer.md").read_text())
     demo.head = os.getenv("HEAD", "") + Path("head.html").read_text()
-    demo.flagging_mode="never"
-
+    # Removed flagging_mode='never' as it's default, remove clear_btn=None as it's also default
 
 # Queue and Mount
 demo = demo.queue(
     max_size=20,
-    default_concurrency_limit=20,
+    default_concurrency_limit=5, # Adjusted concurrency limit for stability
 )
 
 app = gr.mount_gradio_app(app, demo, path="/")
@@ -411,8 +472,13 @@ if __name__ == "__main__":
     # Ensure examples directory exists for file uploads
     examples_dir.mkdir(exist_ok=True)
     # Add dummy files if they don't exist, to prevent errors on startup if examples are missing
-    if not (examples_dir / "Intangible cultural heritage item.pdf").exists(): (examples_dir / "Intangible cultural heritage item.pdf").touch()
-    if not (examples_dir / "JUPAS_Guide.jpg").exists(): (examples_dir / "JUPAS_Guide.jpg").touch()
-    if not (examples_dir / "AI_To_Replace_Doctors_Teachers.txt").exists(): (examples_dir / "AI_To_Replace_Doctors_Teachers.txt").touch()
+    # Check and create files only if they absolutely don't exist
+    if not (examples_dir / "Intangible cultural heritage item.pdf").is_file(): (examples_dir / "Intangible cultural heritage item.pdf").touch()
+    if not (examples_dir / "JUPAS_Guide.jpg").is_file(): (examples_dir / "JUPAS_Guide.jpg").touch()
+    if not (examples_dir / "AI_To_Replace_Doctors_Teachers.txt").is_file(): (examples_dir / "AI_To_Replace_Doctors_Teachers.txt").touch()
 
+    # Ensure temp dir exists before launch
+    os.makedirs("./gradio_cached_examples/tmp/", exist_ok=True)
+
+    logger.info("Starting Gradio application...")
     demo.launch(show_api=False)
