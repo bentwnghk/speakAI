@@ -6,7 +6,7 @@ import time
 import base64
 from pathlib import Path
 from tempfile import NamedTemporaryFile
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 import gradio as gr
 import sentry_sdk
@@ -115,28 +115,62 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None):
     return response.choices[0].message.content.strip()
 
 
-def generate_audio(files, language="English", openai_api_key: str = None) -> bytes:
+def generate_audio(
+    input_method: str,
+    files: Optional[List[str]],
+    input_text: Optional[str],
+    language: str = "English",
+    openai_api_key: str = None,
+) -> (str, str):
+    """Generates podcast audio from either uploaded files or direct text input."""
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
         raise gr.Error("OpenAI API key is required")
-    if not os.getenv("OPENAI_BASE_URL"):
-        raise gr.Error("OpenAI Base URL is not set")
-    if not isinstance(files, list):
-        files = [files]
-    texts = []
-    for file in files:
-        if is_pdf(file):
-            with Path(file).open("rb") as f:
-                reader = PdfReader(f)
-                text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
-        elif is_image(file):
-            text = extract_text_from_image_via_vision(file, openai_api_key)
-        elif is_text(file):
-            with open(file, "r", encoding="utf-8") as f:
-                text = f.read()
-        else:
-            raise gr.Error(f"Unsupported file type: {file}. Please upload TXT, PDF, or image file.")
-        texts.append(text)
-    full_text = "\n\n".join(texts)
+    # Base URL check removed as it might not always be needed if default is used
+
+    full_text = ""
+
+    if input_method == "Upload Files":
+        if not files:
+            raise gr.Error("Please upload at least one file or switch to text input.")
+        if not isinstance(files, list): # Ensure files is a list even if single file uploaded
+            files = [files]
+        texts = []
+        for file_path in files:
+            if is_pdf(file_path):
+                try:
+                    with Path(file_path).open("rb") as f:
+                        reader = PdfReader(f)
+                        text = "\n\n".join([page.extract_text() for page in reader.pages if page.extract_text()])
+                except Exception as e:
+                    logger.error(f"Error reading PDF {file_path}: {e}")
+                    raise gr.Error(f"Error processing PDF file: {Path(file_path).name}. It might be corrupted or password-protected.")
+            elif is_image(file_path):
+                try:
+                    text = extract_text_from_image_via_vision(file_path, openai_api_key)
+                except Exception as e:
+                    logger.error(f"Error processing image {file_path} with Vision API: {e}")
+                    raise gr.Error(f"Error extracting text from image: {Path(file_path).name}. Check API key and file.")
+            elif is_text(file_path):
+                try:
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        text = f.read()
+                except Exception as e:
+                    logger.error(f"Error reading text file {file_path}: {e}")
+                    raise gr.Error(f"Error reading text file: {Path(file_path).name}.")
+            else:
+                raise gr.Error(f"Unsupported file type: {Path(file_path).name}. Please upload TXT, PDF, or image file.")
+            texts.append(text)
+        full_text = "\n\n".join(texts)
+        if not full_text.strip():
+             raise gr.Error("Could not extract any text from the uploaded file(s).")
+
+    elif input_method == "Enter Text":
+        if not input_text or not input_text.strip():
+            raise gr.Error("Please enter text or switch to file upload.")
+        full_text = input_text
+    else:
+        raise gr.Error("Invalid input method selected.")
+
 
     @retry(retry=retry_if_exception_type(ValidationError))
     @llm(
@@ -148,7 +182,7 @@ def generate_audio(files, language="English", openai_api_key: str = None) -> byt
         """
         Your task is to take the input text provided and turn it into an engaging, informative podcast dialogue. The input text may be messy or unstructured, as it could come from a variety of sources like PDFs or web pages. Don't worry about the formatting issues or any irrelevant information; your goal is to extract the key points and interesting facts that could be discussed in a podcast.
 
-        Important: The ENTIRE podcast dialogue (including brainstorming, scratchpad, and actual dialogue) should be written in {language}. If 'Chinese', use correct idiomatic Traditional Chinese (繁體中文) suitable for a Taiwanese audience.
+        Important: The ENTIRE podcast dialogue (including brainstorming, scratchpad, and actual dialogue) should be written in {language}. If 'Traditional Chinese', use correct idiomatic Traditional Chinese (繁體中文) suitable for a Taiwanese audience.
 
         Here is the input text you will be working with:
 
@@ -171,7 +205,7 @@ def generate_audio(files, language="English", openai_api_key: str = None) -> byt
         Now that you have brainstormed ideas and created a rough outline, it's time to write the actual podcast dialogue. Aim for a natural, conversational flow between the host and any guest speakers. Incorporate the best ideas from your brainstorming session and make sure to explain any complex topics in an easy-to-understand way.
 
         <podcast_dialogue>
-        Write your engaging, informative podcast dialogue here, based on the key points and creative ideas you came up with during the brainstorming session. Use a conversational tone and include any necessary context or explanations to make the content accessible to a general audience. Use made-up names for the hosts and guests to create a more engaging and immersive experience for listeners. Do not include any bracketed placeholders like [Host] or [Guest]. Design your output to be read aloud -- it will be directly converted into audio.
+        Write your engaging, informative podcast dialogue here, based on the key points and creative ideas you came up with during the brainstorming session. Use a conversational tone and include any necessary context or explanations to make the content accessible to a general audience. Use made-up names for the hosts and guests to create a more engaging and immersive experience for listeners. Do not include any bracketed placeholders like [Host] or [Guest]. Design your output to be read aloud -- it will be directly converted into audio. Assign appropriate speakers (female-1, male-1, female-2, male-2) to each line.
 
         Make the dialogue as long and detailed as possible, while still staying on topic and maintaining an engaging flow. Aim to use your full output capacity to create the longest podcast episode you can, while still communicating the key information from the input text in an entertaining way.
 
@@ -179,7 +213,23 @@ def generate_audio(files, language="English", openai_api_key: str = None) -> byt
         </podcast_dialogue>
         """
 
-    llm_output = generate_dialogue(full_text, language)
+    try:
+        llm_output = generate_dialogue(full_text, language)
+    except ValidationError as e:
+        logger.error(f"LLM output validation failed: {e}")
+        raise gr.Error(f"The AI model returned an unexpected format. Please try again or rephrase your input. Details: {e}")
+    except Exception as e:
+        logger.error(f"Error during dialogue generation: {e}")
+        # Check for common API errors
+        if "authentication" in str(e).lower():
+             raise gr.Error("Authentication error with OpenAI API. Please check your API key.")
+        elif "rate limit" in str(e).lower():
+             raise gr.Error("OpenAI API rate limit exceeded. Please wait and try again.")
+        elif "base_url" in str(e).lower():
+             raise gr.Error(f"Could not connect to OpenAI Base URL: {os.getenv('OPENAI_BASE_URL')}. Please check the URL and network connection.")
+        else:
+            raise gr.Error(f"An error occurred during dialogue generation: {e}")
+
 
     audio = b""
     transcript = ""
@@ -189,16 +239,32 @@ def generate_audio(files, language="English", openai_api_key: str = None) -> byt
         futures = []
         for line in llm_output.dialogue:
             transcript_line = f"{line.speaker}: {line.text}"
-            future = executor.submit(get_mp3, line.text, line.voice, openai_api_key)
-            futures.append((future, transcript_line))
-            characters += len(line.text)
+            try:
+                future = executor.submit(get_mp3, line.text, line.voice, openai_api_key)
+                futures.append((future, transcript_line))
+                characters += len(line.text)
+            except Exception as e:
+                logger.error(f"Error submitting TTS task for line '{line.text[:50]}...': {e}")
+                # Optionally skip this line or raise an error
+                # For now, let's add a note to the transcript and continue
+                transcript += f"[Error generating audio for this line: {line.speaker}: {line.text}]\n\n"
+
 
         for future, transcript_line in futures:
-            audio_chunk = future.result()
-            audio += audio_chunk
-            transcript += transcript_line + "\n\n"
+            try:
+                audio_chunk = future.result()
+                audio += audio_chunk
+                transcript += transcript_line + "\n\n"
+            except Exception as e:
+                 logger.error(f"Error retrieving TTS result for line '{transcript_line[:50]}...': {e}")
+                 # Add error note to transcript
+                 transcript += f"[Error generating audio for: {transcript_line}]\n\n"
+
 
     logger.info(f"Generated {characters} characters of audio")
+
+    if not audio:
+        raise gr.Error("Failed to generate any audio. Check OpenAI TTS service status or API key.")
 
     temporary_directory = "./gradio_cached_examples/tmp/"
     os.makedirs(temporary_directory, exist_ok=True)
@@ -214,7 +280,11 @@ def generate_audio(files, language="English", openai_api_key: str = None) -> byt
     # Clean old files
     for file in glob.glob(f"{temporary_directory}*.mp3"):
         if os.path.isfile(file) and time.time() - os.path.getmtime(file) > 24 * 60 * 60:
-            os.remove(file)
+            try:
+                os.remove(file)
+            except OSError as e:
+                logger.warning(f"Could not remove old temp file {file}: {e}")
+
 
     return temporary_file.name, transcript
 
@@ -224,59 +294,112 @@ allowed_extensions = [
 ]
 
 # ----
-# EXAMPLES SECTION: Put your example files in an "examples" folder.
-# Each example is [files (list of paths), language, openai_api_key, openai_base_url]
-# If you want to leave the API key and base_url blank, set to "".
-# Make sure these files exist or adjust paths accordingly.
+# EXAMPLES SECTION: Format: [input_method, files, input_text, language, openai_api_key]
+# Use None or "" for unused fields (files when input_method is text, input_text when method is files).
+# Leave openai_api_key as None to use environment variable or prompt user.
+# Ensure example files exist in the "examples" directory.
+examples_dir = Path("examples")
 examples = [
     [
-        ["examples/Intangible cultural heritage item.pdf"], "English"
+        "Upload Files", [str(examples_dir / "Intangible cultural heritage item.pdf")], None, "English", None
     ],
     [
-        ["examples/JUPAS_Guide.jpg"], "Traditional Chinese"
+        "Upload Files", [str(examples_dir / "JUPAS_Guide.jpg")], None, "Traditional Chinese", None
     ],
     [
-        ["examples/AI_To_Replace_Doctors_Teachers.txt"], "English"
+        "Upload Files", [str(examples_dir / "AI_To_Replace_Doctors_Teachers.txt")], None, "English", None
     ],
-    # You can add more examples as needed
+    [
+        "Enter Text", None, "Artificial intelligence (AI) refers to the simulation of human intelligence processes by computer systems. These processes include learning, reasoning, and self-correction.", "English", None
+    ],
 ]
 # ----
 
-demo = gr.Interface(
-    title="Mr.🆖 PodcastAI 🎙️🎧",
-    theme="ocean",
-    description=Path("description.md").read_text(),
-    article=Path("footer.md").read_text(),
-    fn=generate_audio,
-    submit_btn="✨ Generate Podcast",  # Change the wording here
-    examples=examples,  # <-- ADD THIS LINE
-    inputs=[
-        gr.Files(
-            label="TXT, PDF, or Image",
+# Gradio Interface using Blocks for dynamic UI
+with gr.Blocks(theme="ocean") as demo:
+    gr.Markdown(Path("description.md").read_text())
+
+    with gr.Row():
+        input_method_radio = gr.Radio(
+            ["Upload Files", "Enter Text"],
+            label="Choose Input Method",
+            value="Upload Files" # Default selection
+        )
+
+    with gr.Column(visible=True) as file_upload_ui: # Initially visible
+         file_input = gr.Files(
+            label="Upload TXT, PDF, or Image Files",
             file_types=allowed_extensions,
             file_count="multiple",
-        ),
-        gr.Radio(
+        )
+
+    with gr.Column(visible=False) as text_input_ui: # Initially hidden
+        text_input = gr.Textbox(
+            label="Enter Text",
+            lines=10,
+            placeholder="Paste or type your text here..."
+        )
+
+    lang_input = gr.Radio(
             label="Podcast Language",
             choices=["English", "Traditional Chinese"],
-            value="English",  # Default value
-        ),
-        gr.Textbox(
-            label="OpenAI API Key",
-            visible=not os.getenv("OPENAI_API_KEY"),
-        ),
-    ],
-    outputs=[
-        gr.Audio(label="Audio", format="mp3"),
-        gr.Textbox(label="Transcript"),
-    ],
-    flagging_mode="never",
-    clear_btn=None,
-    head=os.getenv("HEAD", "") + Path("head.html").read_text(),
-    cache_examples=True,
-    api_name=False,
-)
+            value="English",
+        )
 
+    api_key_input = gr.Textbox(
+            label="OpenAI API Key",
+            type="password",
+            placeholder="Enter your OpenAI API key here",
+            visible=not os.getenv("OPENAI_API_KEY"), # Only show if not in env
+        )
+
+    submit_button = gr.Button("✨ Generate Podcast")
+
+    with gr.Row():
+        audio_output = gr.Audio(label="Podcast Audio", format="mp3")
+        transcript_output = gr.Textbox(label="Transcript", lines=15)
+
+    # Dynamic UI Logic
+    def switch_input_method(choice):
+        if choice == "Upload Files":
+            return {file_upload_ui: gr.update(visible=True), text_input_ui: gr.update(visible=False)}
+        else: # Enter Text
+            return {file_upload_ui: gr.update(visible=False), text_input_ui: gr.update(visible=True)}
+
+    input_method_radio.change(
+        fn=switch_input_method,
+        inputs=input_method_radio,
+        outputs=[file_upload_ui, text_input_ui]
+    )
+
+    # Connect button click to the main function
+    submit_button.click(
+        fn=generate_audio,
+        inputs=[
+            input_method_radio,
+            file_input,
+            text_input,
+            lang_input,
+            api_key_input
+        ],
+        outputs=[audio_output, transcript_output],
+        api_name=False # Keep API disabled if not needed
+    )
+
+    gr.Examples(
+        examples=examples,
+        inputs=[input_method_radio, file_input, text_input, lang_input, api_key_input], # Ensure order matches function signature
+        outputs=[audio_output, transcript_output],
+        fn=generate_audio, # Make examples clickable
+        cache_examples=True,
+    )
+
+    gr.Markdown(Path("footer.md").read_text())
+    demo.head = os.getenv("HEAD", "") + Path("head.html").read_text()
+    demo.flagging_mode="never"
+
+
+# Queue and Mount
 demo = demo.queue(
     max_size=20,
     default_concurrency_limit=20,
@@ -285,4 +408,11 @@ demo = demo.queue(
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
+    # Ensure examples directory exists for file uploads
+    examples_dir.mkdir(exist_ok=True)
+    # Add dummy files if they don't exist, to prevent errors on startup if examples are missing
+    if not (examples_dir / "Intangible cultural heritage item.pdf").exists(): (examples_dir / "Intangible cultural heritage item.pdf").touch()
+    if not (examples_dir / "JUPAS_Guide.jpg").exists(): (examples_dir / "JUPAS_Guide.jpg").touch()
+    if not (examples_dir / "AI_To_Replace_Doctors_Teachers.txt").exists(): (examples_dir / "AI_To_Replace_Doctors_Teachers.txt").touch()
+
     demo.launch(show_api=False)
