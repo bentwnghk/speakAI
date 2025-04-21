@@ -468,7 +468,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
         api_key_input = gr.Textbox(
                 label="Mr.🆖 AI Hub API Key",
                 type="password",
-                placeholder="Enter your API Key obtained from Mr.🆖 AI Hub, in the format sk-xxxx",
+                placeholder="Enter your own API Key obtained from Mr.🆖 AI Hub, in the format sk-xxxx",
                 # Removed visible toggle, user can always enter if needed
         )
 
@@ -478,20 +478,32 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
         audio_output = gr.Audio(label="Podcast Audio", type="filepath") # Use filepath for consistency
         transcript_output = gr.Textbox(label="Transcript", lines=15, show_copy_button=True)
 
-    # Dynamic UI Logic
+    # Dynamic UI Logic - **FIXED** to avoid gr.UNCHANGED
     def switch_input_method(choice):
-        is_upload = choice == "Upload Files"
-        return {
-            file_upload_group: gr.update(visible=is_upload),
-            text_input_group: gr.update(visible=not is_upload),
-            # Clear the *other* input type when switching
-            text_input: gr.update(value="" if is_upload else gr.UNCHANGED),
-            file_input: gr.update(value=None if not is_upload else gr.UNCHANGED)
-        }
+        """Updates visibility and clears the inactive input field."""
+        if choice == "Upload Files":
+            # Show Files, Hide Text
+            # Clear Text Input, Keep File Input (implicitly unchanged)
+            return {
+                file_upload_group: gr.update(visible=True),
+                text_input_group: gr.update(visible=False),
+                text_input: gr.update(value=""), # Clear text
+                file_input: gr.update() # No change to value (keeps existing files)
+            }
+        else: # Enter Text
+            # Hide Files, Show Text
+            # Clear File Input, Keep Text Input (implicitly unchanged)
+            return {
+                file_upload_group: gr.update(visible=False),
+                text_input_group: gr.update(visible=True),
+                text_input: gr.update(), # No change to value (keeps existing text)
+                file_input: gr.update(value=None) # Clear files
+            }
 
     input_method_radio.change(
         fn=switch_input_method,
         inputs=input_method_radio,
+        # Update the visibility groups and the specific input components that need clearing
         outputs=[file_upload_group, text_input_group, text_input, file_input]
     )
 
@@ -521,7 +533,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
     )
 
     gr.Markdown(footer_md)
-    # demo.head = os.getenv("HEAD", "") + head_html # Combine env var and file content
+    demo.head = os.getenv("HEAD", "") + head_html # Combine env var and file content
 
 # --- App Setup & Launch ---
 
