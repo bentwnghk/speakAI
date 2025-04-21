@@ -164,7 +164,9 @@ def generate_audio(
             if not file_path:
                 logger.warning("Received an empty file path in the list, skipping.")
                 continue
-            file_path_obj = Path(file_path)
+            # Gradio >= 4 often returns temp file objects, get the path using .name
+            actual_file_path = file_path.name if hasattr(file_path, 'name') else file_path
+            file_path_obj = Path(actual_file_path)
             logger.info(f"Processing file: {file_path_obj.name}")
             if is_pdf(str(file_path_obj)):
                 try:
@@ -190,17 +192,28 @@ def generate_audio(
                     raise gr.Error(f"Error extracting text from image: {file_path_obj.name}. Check API key, file format, and OpenAI status. Error: {e}")
             elif is_text(str(file_path_obj)):
                 try:
-                    with open(file_path_obj, "r", encoding="utf-8") as f:
+                    # Use open(actual_file_path...) instead of file_path_obj.open()
+                    # as file_path_obj might refer to the TempPath object not the name string
+                    with open(actual_file_path, "r", encoding="utf-8") as f:
                         text = f.read()
                 except Exception as e:
                     logger.error(f"Error reading text file {file_path_obj.name}: {e}")
                     raise gr.Error(f"Error reading text file: {file_path_obj.name}. Check encoding. Error: {e}")
             else:
-                if file_path_obj.stat().st_size > 0 :
-                    raise gr.Error(f"Unsupported file type: {file_path_obj.name}. Please upload TXT, PDF, or image file (JPG, JPEG, PNG).")
-                else:
-                     logger.warning(f"Skipping empty or placeholder file: {file_path_obj.name}")
-                     text = ""
+                try:
+                   f_size = file_path_obj.stat().st_size
+                   if f_size > 0:
+                       raise gr.Error(f"Unsupported file type: {file_path_obj.name}. Please upload TXT, PDF, or image file (JPG, JPEG, PNG).")
+                   else:
+                       logger.warning(f"Skipping empty or placeholder file: {file_path_obj.name}")
+                       text = ""
+                except FileNotFoundError:
+                    # This might happen if the temp file was cleaned up prematurely
+                    logger.warning(f"File not found during processing, likely a temporary file issue: {actual_file_path}")
+                    text = ""
+                except Exception as e:
+                     logger.error(f"Error checking file status for {file_path_obj.name}: {e}")
+                     raise gr.Error(f"Error accessing file: {file_path_obj.name}.")
             texts.append(text)
         full_text = "\n\n".join(filter(None, texts))
         if not full_text.strip():
@@ -366,15 +379,24 @@ def generate_audio(
 
     # Use a more robust way to get a temporary file path
     try:
+        # Changed NamedTemporaryFile to save with a context manager
+        # but get the name for returning to Gradio *after* it's closed
+        # (otherwise Gradio might not be able to access it on some OS)
+        temp_file_path = None
         with NamedTemporaryFile(
             dir=temporary_directory,
             delete=False, # Keep file for Gradio
             suffix=".mp3",
             prefix="podcast_audio_"
         ) as temp_file:
-            temp_file.write(audio)
-            temp_file_path = temp_file.name
-        logger.info(f"Audio saved to temporary file: {temp_file_path}")
+             temp_file.write(audio)
+             temp_file_path = temp_file.name # Get the name while file is open
+
+        if temp_file_path:
+             logger.info(f"Audio saved to temporary file: {temp_file_path}")
+        else:
+             raise IOError("Temporary file path was not obtained.")
+
     except Exception as e:
         logger.error(f"Failed to write temporary audio file: {e}")
         raise gr.Error("Failed to save the generated audio file.")
@@ -384,10 +406,13 @@ def generate_audio(
     try:
         for file in glob.glob(f"{temporary_directory}podcast_audio_*.mp3"):
             if os.path.isfile(file) and time.time() - os.path.getmtime(file) > 24 * 60 * 60: # Older than 1 day
-                os.remove(file)
-                logger.debug(f"Removed old temp file: {file}")
-    except OSError as e:
-        logger.warning(f"Could not remove old temp file {file}: {e}")
+                try:
+                    os.remove(file)
+                    logger.debug(f"Removed old temp file: {file}")
+                except OSError as e_rem:
+                     logger.warning(f"Could not remove old temp file {file}: {e_rem}") # Log specific file error
+    except Exception as e: # Catch broader errors during glob/check
+        logger.warning(f"Error during old temp file cleanup: {e}")
 
     total_duration = time.time() - start_time
     gr.Info(f"Podcast generation complete! Total time: {total_duration:.2f} seconds.")
@@ -419,10 +444,14 @@ examples = [
 # Ensure description/footer/head files exist or handle absence gracefully
 def read_file_content(filepath: str, default: str = "") -> str:
     try:
-        return Path(filepath).read_text()
+        return Path(filepath).read_text(encoding='utf-8') # Specify encoding
     except FileNotFoundError:
         logger.warning(f"{filepath} not found, using default content.")
         return default
+    except Exception as e:
+         logger.error(f"Error reading file {filepath}: {e}. Using default.")
+         return default
+
 
 description_md = read_file_content("description.md", "Generate a podcast from text or documents.")
 footer_md = read_file_content("footer.md", "")
@@ -439,23 +468,24 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
             value="Upload Files"
         )
 
+    # --- **REVISED UI STRUCTURE** ---
     # Group UI elements for better conditional visibility control
-    with gr.Group() as file_upload_group:
-        with gr.Column(visible=True) as file_upload_ui: # Start visible
-             file_input = gr.Files(
-                label="Upload TXT, PDF, or Image Files",
-                file_types=allowed_extensions,
-                file_count="multiple",
-                # type="filepath" # Ensure it returns file paths
-            )
+    # Set initial visibility directly on the group
+    with gr.Group(visible=True) as file_upload_group:
+        file_input = gr.Files(
+            label="Upload TXT, PDF, or Image Files",
+            file_types=allowed_extensions,
+            file_count="multiple",
+            # type="filepath" # Commented out: default usually returns temp file objects
+        )
 
-    with gr.Group() as text_input_group:
-        with gr.Column(visible=False) as text_input_ui: # Start hidden
-            text_input = gr.Textbox(
-                label="Enter Text",
-                lines=10,
-                placeholder="Paste or type your text here..."
-            )
+    with gr.Group(visible=False) as text_input_group: # Start hidden
+        text_input = gr.Textbox(
+            label="Enter Text",
+            lines=10,
+            placeholder="Paste or type your text here..."
+        )
+    # --- **END REVISED UI STRUCTURE** ---
 
     lang_input = gr.Radio(
             label="Podcast Language",
@@ -468,8 +498,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
         api_key_input = gr.Textbox(
                 label="Mr.🆖 AI Hub API Key",
                 type="password",
-                placeholder="Enter your own API Key obtained from Mr.🆖 AI Hub, in the format sk-xxxx",
-                # Removed visible toggle, user can always enter if needed
+                placeholder="Enter your own API Key obtained from Mr.🆖 AI Hub, in the format: sk-xxx",
         )
 
     submit_button = gr.Button("✨ Generate Podcast", variant="primary")
@@ -478,34 +507,33 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
         audio_output = gr.Audio(label="Podcast Audio", type="filepath") # Use filepath for consistency
         transcript_output = gr.Textbox(label="Transcript", lines=15, show_copy_button=True)
 
-    # Dynamic UI Logic - **FIXED** to avoid gr.UNCHANGED
+    # --- **REVISED DYNAMIC UI LOGIC** ---
     def switch_input_method(choice):
         """Updates visibility and clears the inactive input field."""
-        if choice == "Upload Files":
-            # Show Files, Hide Text
-            # Clear Text Input, Keep File Input (implicitly unchanged)
-            return {
-                file_upload_group: gr.update(visible=True),
-                text_input_group: gr.update(visible=False),
-                text_input: gr.update(value=""), # Clear text
-                file_input: gr.update() # No change to value (keeps existing files)
-            }
-        else: # Enter Text
-            # Hide Files, Show Text
-            # Clear File Input, Keep Text Input (implicitly unchanged)
-            return {
-                file_upload_group: gr.update(visible=False),
-                text_input_group: gr.update(visible=True),
-                text_input: gr.update(), # No change to value (keeps existing text)
-                file_input: gr.update(value=None) # Clear files
-            }
+        is_upload = choice == "Upload Files"
+        # Determine updates for visibility based on the choice
+        file_vis = is_upload
+        text_vis = not is_upload
+        # Determine updates for values: clear the field being hidden
+        # Use gr.update() for no change, specific value for clearing
+        text_val_update = gr.update(value="") if is_upload else gr.update()
+        file_val_update = gr.update(value=None) if not is_upload else gr.update()
+
+        # Return dictionary mapping components to their updates
+        return {
+            file_upload_group: gr.update(visible=file_vis),
+            text_input_group: gr.update(visible=text_vis),
+            text_input: text_val_update,
+            file_input: file_val_update
+        }
 
     input_method_radio.change(
         fn=switch_input_method,
         inputs=input_method_radio,
-        # Update the visibility groups and the specific input components that need clearing
+        # Outputs list includes the groups for visibility and the inputs for clearing
         outputs=[file_upload_group, text_input_group, text_input, file_input]
     )
+    # --- **END REVISED DYNAMIC UI LOGIC** ---
 
     # Connect button click
     submit_button.click(
@@ -518,7 +546,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
             api_key_input
         ],
         outputs=[audio_output, transcript_output],
-        api_name=False
+        api_name="generate_podcast" # Assign API name for potential external calls
     )
 
     # Configure Examples
@@ -527,22 +555,24 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
         inputs=[input_method_radio, file_input, text_input, lang_input, api_key_input],
         outputs=[audio_output, transcript_output],
         fn=generate_audio,
-        cache_examples=True, # Consider disabling if examples process large files/cause issues
+        cache_examples=True, # Use lazy caching or True/False
         run_on_click=True,
         label="Examples (Click to Run)"
     )
 
     gr.Markdown(footer_md)
-    demo.head = os.getenv("HEAD", "") + head_html # Combine env var and file content
+    # Combine env var and file content for head (handle potential None env var)
+    demo.head = (os.getenv("HEAD", "") or "") + head_html
 
 # --- App Setup & Launch ---
 
 # Queue and Mount
 demo = demo.queue(
     max_size=20,
-    default_concurrency_limit=5, # Limit concurrent TTS/LLM calls
+    default_concurrency_limit=5, # Limit concurrent TTS/LLM calls - Consider adjusting based on resources
 )
 
+# Mount the Gradio app to the FastAPI app
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
@@ -567,6 +597,14 @@ if __name__ == "__main__":
     # Ensure temp dir exists
     os.makedirs("./gradio_cached_files/tmp/", exist_ok=True)
 
-    logger.info("Starting Gradio application...")
-    # Consider adding share=True for temporary public link if needed for testing
-    demo.launch(show_api=False)
+    logger.info("Starting Gradio application via Uvicorn...")
+    # Launch using Uvicorn for better control if needed, or use demo.launch()
+    # Note: demo.launch() is simpler for basic cases. Uvicorn is needed if embedding in a larger FastAPI app structure.
+    # Since we already have FastAPI app (`app`), using uvicorn is appropriate here.
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000) # Or use 127.0.0.1 for local only
+
+    # Alternatively, for simple launch:
+    # logger.info("Starting Gradio application...")
+    # demo.launch(show_api=False, server_name="0.0.0.0") # Use 0.0.0.0 to be accessible on network
+
