@@ -1,4 +1,4 @@
-<p style="text-align:center; font-size: 3em;">
+<p style="text-align:center; font-size: 2.5em;">
   <strong>Mr.🆖 PodcastAI 🎙️🎧</strong>
 </p>
 <p style="text-align:center; font-size: 1em;">
