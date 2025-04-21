@@ -431,7 +431,7 @@ examples = [
         "Upload Files", [str(examples_dir / "Intangible cultural heritage item.pdf")], None, "English", None
     ],
     [
-        "Upload Files", [str(examples_dir / "JUPAS_Guide.jpg")], None, "Traditional Chinese", None
+        "Upload Files", [str(examples_dir / "JUPAS_Guide.jpg")], None, "Cantonese", None
     ],
     [
         "Upload Files", [str(examples_dir / "AI_To_Replace_Doctors_Teachers.txt")], None, "English", None
