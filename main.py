@@ -148,11 +148,11 @@ def generate_audio(
     """Generates podcast audio from either uploaded files or direct text input."""
     start_time = time.time()
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
-        raise gr.Error("OpenAI API key is required")
+        raise gr.Error("Mr.🆖 AI Hub API Key is required")
 
     # Resolve API key and Base URL once
     resolved_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
-    resolved_base_url = os.getenv("OPENAI_BASE_URL") # Can be None if using default OpenAI
+    resolved_base_url = os.getenv("OPENAI_BASE_URL")
 
     full_text = ""
     gr.Info("Processing input...")
@@ -288,9 +288,9 @@ def generate_audio(
         logger.error(f"Error during dialogue generation: {e}")
         error_str = str(e).lower()
         if "authentication" in error_str:
-             raise gr.Error("Authentication error with OpenAI API. Please check your API key.")
+             raise gr.Error("Authentication error with API. Please check your API key.")
         elif "rate limit" in error_str:
-             raise gr.Error("OpenAI API rate limit exceeded. Please wait and try again, or check your usage tier.")
+             raise gr.Error("API rate limit exceeded. Please wait and try again, or check your usage tier.")
         elif "base_url" in error_str or "connection" in error_str:
              base_url = resolved_base_url or 'the configured OpenAI endpoint'
              raise gr.Error(f"Could not connect to {base_url}. Please check the URL and network connection.")
@@ -364,9 +364,9 @@ def generate_audio(
 
     if not final_audio_chunks:
         if any("[TTS Error" in line for line in final_transcript_lines):
-             raise gr.Error("Failed to generate audio for all lines. Please check the transcript for details and review OpenAI API key/status.")
+             raise gr.Error("Failed to generate audio for all lines. Please check the transcript for details and review API key/status.")
         else:
-             raise gr.Error("Failed to generate any audio, although dialogue script was created. Check OpenAI TTS service status or API key.")
+             raise gr.Error("Failed to generate any audio, although dialogue script was created. Check TTS service status or API key.")
 
     audio = b"".join(final_audio_chunks)
     transcript = "\n\n".join(final_transcript_lines)
@@ -498,12 +498,12 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
     API_KEY_URL = "https://api.mr5ai.com"
     with gr.Accordion("Advanced Settings", open=False):
         gr.Markdown(
-            f"Get your Mr.🆖 AI Hub API Key [here]({API_KEY_URL})"
+            f"💡 Get your Mr.🆖 AI Hub API Key [here]({API_KEY_URL})"
         )
         api_key_input = gr.Textbox(
                 label="Mr.🆖 AI Hub API Key",
                 type="password",
-                placeholder="Enter your own API Key obtained from Mr.🆖 AI Hub, in the format: sk-xxx",
+                placeholder="Enter your API Key obtained from Mr.🆖 AI Hub, in the format: sk-xxx",
         )
 
     submit_button = gr.Button("✨ Generate Podcast", variant="primary")
@@ -562,7 +562,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
         fn=generate_audio,
         cache_examples=True, # Use lazy caching or True/False
         run_on_click=True,
-        label="Examples (Click to Run)"
+        label="Examples (Click for Demo)"
     )
 
     gr.Markdown(footer_md)
