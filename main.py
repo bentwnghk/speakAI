@@ -464,7 +464,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
     with gr.Row():
         input_method_radio = gr.Radio(
             ["Upload Files", "Enter Text"],
-            label="Input Method",
+            label="📁 Input Method",
             value="Upload Files"
         )
 
@@ -481,14 +481,14 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
 
     with gr.Group(visible=False) as text_input_group: # Start hidden
         text_input = gr.Textbox(
-            label="Enter Text",
+            label="✍️ Enter Text",
             lines=10,
             placeholder="Paste or type your text here..."
         )
     # --- **END REVISED UI STRUCTURE** ---
 
     lang_input = gr.Radio(
-            label="Podcast Language",
+            label="🌐 Podcast Language",
             choices=["English", "Chinese"],
             value="English",
         )
@@ -496,7 +496,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
     # Use an Accordion for optional settings like API key
     # Define the URL for the API key page
     API_KEY_URL = "https://api.mr5ai.com"
-    with gr.Accordion("Advanced Settings", open=False):
+    with gr.Accordion("⚙️ Advanced Settings", open=False):
         gr.Markdown(
             f"💡 Get your Mr.🆖 AI Hub API Key [here]({API_KEY_URL})"
         )
@@ -510,7 +510,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
 
     with gr.Column(): # Outputs vertically
         audio_output = gr.Audio(label="Podcast Audio", type="filepath") # Use filepath for consistency
-        transcript_output = gr.Textbox(label="Transcript", lines=15, show_copy_button=True)
+        transcript_output = gr.Textbox(label="📃 Transcript", lines=15, show_copy_button=True)
 
     # --- **REVISED DYNAMIC UI LOGIC** ---
     def switch_input_method(choice):
