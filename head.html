@@ -47,3 +47,8 @@
   content="document to podcast, audio conversion, podcast creation, accessible content"
 />
 <link rel="icon" href="/static/icon.png" type="image/png" />
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/static/service-worker.js");
+  }
+</script>
