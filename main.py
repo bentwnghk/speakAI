@@ -494,7 +494,12 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
         )
 
     # Use an Accordion for optional settings like API key
+    # Define the URL for the API key page
+    API_KEY_URL = "https://api.mr5ai.com"
     with gr.Accordion("Advanced Settings", open=False):
+        gr.Markdown(
+            f"Get your Mr.🆖 AI Hub API Key [here]({API_KEY_URL})"
+        )
         api_key_input = gr.Textbox(
                 label="Mr.🆖 AI Hub API Key",
                 type="password",
