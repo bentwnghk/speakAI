@@ -30,21 +30,31 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class DialogueItem(BaseModel):
     text: str
-    speaker: Literal["female-1", "male-1", "female-2", "male-2"]
+    speaker: Literal["speaker-1", "speaker-2", "speaker-3"]
 
-    @property
-    def voice(self):
-        return {
-            "female-1": "nova",
-            "male-1": "alloy",
-            "female-2": "shimmer",
-            "male-2": "echo",
-        }[self.speaker]
+    # Note: The voice property is removed here as the voice selection
+    # will now happen dynamically based on language in the main function.
 
 
 class Dialogue(BaseModel):
     scratchpad: str
     dialogue: List[DialogueItem]
+
+
+# --- Voice Mappings ---
+ENGLISH_VOICE_MAP = {
+    "speaker-1": "nova",
+    "speaker-2": "alloy",
+    "speaker-3": "shimmer",
+}
+
+CHINESE_VOICE_MAP = {
+    "speaker-1": "echo",
+    "speaker-2": "fable",
+    "speaker-3": "onyx",
+    # Note: OpenAI TTS currently has limited official support for Chinese voices.
+    # 'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer' are the main voices.
+}
 
 
 # Add retry mechanism to TTS calls for resilience
@@ -142,7 +152,7 @@ def generate_audio(
     input_method: str,
     files: Optional[List[str]],
     input_text: Optional[str],
-    language: str = "English",
+    language: str = "English", # Language is now a key parameter
     openai_api_key: str = None,
 ) -> (str, str):
     """Generates podcast audio from either uploaded files or direct text input."""
@@ -227,6 +237,7 @@ def generate_audio(
         raise gr.Error("Invalid input method selected.")
 
     logger.info(f"Total input text length: {len(full_text)} characters.")
+    logger.info(f"Selected podcast language: {language}")
 
     # LLM Call needs Pydantic Models defined in scope
     # Add retry logic to LLM call as well
@@ -242,7 +253,7 @@ def generate_audio(
         """
         Your task is to take the input text provided and turn it into an engaging, informative podcast dialogue. The input text may be messy or unstructured, as it could come from a variety of sources like PDFs or web pages. Don't worry about the formatting issues or any irrelevant information; your goal is to extract the key points and interesting facts that could be discussed in a podcast.
 
-        Important: The ENTIRE podcast dialogue (including brainstorming, scratchpad, and actual dialogue) should be written in {language}. If 'Chinese', use correct idiomatic Traditional Chinese (繁體中文) suitable for a Taiwanese audience.
+        Important: The ENTIRE podcast dialogue (including brainstorming, scratchpad, and actual dialogue) should be written in {language}. If 'Cantonese', use correct idiomatic Cantonese (廣東話) suitable for a Hong Kong audience.
 
         Here is the input text you will be working with:
 
@@ -265,18 +276,20 @@ def generate_audio(
         Now that you have brainstormed ideas and created a rough outline, it's time to write the actual podcast dialogue. Aim for a natural, conversational flow between the host and any guest speakers. Incorporate the best ideas from your brainstorming session and make sure to explain any complex topics in an easy-to-understand way.
 
         <podcast_dialogue>
-        Write your engaging, informative podcast dialogue here, based on the key points and creative ideas you came up with during the brainstorming session. Use a conversational tone and include any necessary context or explanations to make the content accessible to a general audience. Use made-up names for the hosts and guests to create a more engaging and immersive experience for listeners. Do not include any bracketed placeholders like [Host] or [Guest]. Design your output to be read aloud -- it will be directly converted into audio. Assign appropriate speakers (female-1, male-1, female-2, male-2) to each line, varying them for a natural conversation. Ensure the output strictly adheres to the required format: a list of objects, each with 'text' and 'speaker' fields.
+        Write your engaging, informative podcast dialogue here, based on the key points and creative ideas you came up with during the brainstorming session. Use a conversational tone and include any necessary context or explanations to make the content accessible to a general audience. Use made-up names for the host and guests to create a more engaging and immersive experience for listeners. Do not include any bracketed placeholders like [Host] or [Guest]. Design your output to be read aloud -- it will be directly converted into audio. Assign appropriate speakers (speaker-1, speaker-2, speaker-3) to each line, varying them for a natural conversation. Ensure the output strictly adheres to the required format: a list of objects, each with 'text' and 'speaker' fields.
 
         Make the dialogue as long and detailed as possible, while still staying on topic and maintaining an engaging flow. Aim to use your full output capacity to create the longest podcast episode you can, while still communicating the key information from the input text in an entertaining way.
 
         At the end of the dialogue, have the host and guest speakers naturally summarize the main insights and takeaways from their discussion. This should flow organically from the conversation, reiterating the key points in a casual, conversational manner. Avoid making it sound like an obvious recap - the goal is to reinforce the central ideas one last time before signing off.
         </podcast_dialogue>
         """
+        pass # The decorator handles the actual call and parsing
 
     try:
-        gr.Info("Generating dialogue script with AI...")
+        gr.Info(f"Generating dialogue script with AI in {language}...")
         llm_start_time = time.time()
-        llm_output = generate_dialogue(full_text, language)
+        # Pass the language explicitly to the LLM function wrapper
+        llm_output: Dialogue = generate_dialogue(full_text, language)
         logger.info(f"Dialogue generation took {time.time() - llm_start_time:.2f} seconds.")
 
     except ValidationError as e:
@@ -305,34 +318,61 @@ def generate_audio(
     # --- Audio Generation (Order-Preserving) ---
     characters = 0
     total_lines = len(llm_output.dialogue)
-    logger.info(f"Starting TTS generation for {total_lines} dialogue lines.")
+    logger.info(f"Starting TTS generation for {total_lines} dialogue lines in {language}.")
     gr.Info(f"Generating audio for {total_lines} dialogue lines... (this may take a while)")
+
+    # Select the correct voice map based on language
+    voice_map = CHINESE_VOICE_MAP if language == "Chinese" else ENGLISH_VOICE_MAP
+    logger.debug(f"Using voice map for {language}: {voice_map}")
 
     # List to store results in order: [(transcript_line, audio_chunk_bytes | error_message), ...]
     results = [None] * total_lines
 
     with cf.ThreadPoolExecutor(max_workers=10) as executor: # Adjust max_workers as needed
-        future_to_index = {
-            executor.submit(get_mp3, line.text, line.voice, resolved_api_key): i
-            for i, line in enumerate(llm_output.dialogue) if line.text.strip() # Only submit non-empty lines
-        }
-        # Also track characters for non-empty lines submitted
-        for line in llm_output.dialogue:
-            if line.text.strip():
-                characters += len(line.text)
+        future_to_index = {}
+        for i, line in enumerate(llm_output.dialogue):
+            if line.text.strip(): # Only submit non-empty lines
+                try:
+                    # Determine the correct voice using direct dictionary access.
+                    # This relies on Pydantic validation ensuring line.speaker is always a valid key
+                    # and that both voice maps contain all keys from the Literal definition.
+                    voice_to_use = voice_map[line.speaker]
+                    logger.debug(f"Line {i+1}: Speaker '{line.speaker}', Language '{language}', Selected Voice '{voice_to_use}'")
+
+                    future = executor.submit(get_mp3, line.text, voice_to_use, resolved_api_key)
+                    future_to_index[future] = i
+                    characters += len(line.text) # Track characters for non-empty lines submitted
+                except KeyError:
+                    # This *shouldn't* happen if Pydantic validation worked and maps are correct.
+                    # But if it does, log it clearly and mark the line as failed.
+                    logger.error(f"Critical Error: Speaker key '{line.speaker}' not found in '{language}' voice map. Skipping TTS for line {i+1}.")
+                    transcript_line = f"{line.speaker}: {line.text}"
+                    error_msg = f"[Config Error: Invalid speaker '{line.speaker}' for {language} TTS - line {i+1}]"
+                    results[i] = (transcript_line, error_msg) # Store error marker immediately
+                except Exception as e:
+                    # Catch other potential errors during submission (though less likely)
+                    logger.error(f"Error submitting TTS task for line {i+1}: {e}")
+                    transcript_line = f"{line.speaker}: {line.text}"
+                    error_msg = f"[Error Submitting TTS Task for line {i+1}: {e}]"
+                    results[i] = (transcript_line, error_msg)
 
         processed_count = 0
         tts_start_time = time.time()
         for future in cf.as_completed(future_to_index):
             index = future_to_index[future]
+            # Skip processing if an error was already recorded during submission (e.g., KeyError)
+            if results[index] is not None and isinstance(results[index][1], str) and "[Error" in results[index][1]:
+                 continue
+
             line_obj = llm_output.dialogue[index]
             transcript_line = f"{line_obj.speaker}: {line_obj.text}"
             try:
                 audio_chunk = future.result()
                 results[index] = (transcript_line, audio_chunk)
                 processed_count += 1
-                if processed_count % 10 == 0 or processed_count == total_lines: # Update progress periodically
-                     gr.Info(f"Generated audio for {processed_count}/{total_lines} lines...")
+                if processed_count % 10 == 0 or processed_count == len(future_to_index): # Update progress periodically
+                     # Make sure len(future_to_index) is accurate (it is, represents submitted tasks)
+                     gr.Info(f"Generated audio for {processed_count}/{len(future_to_index)} lines...")
             except Exception as exc:
                  logger.error(f'TTS generation failed for line {index+1} after retries: {exc}')
                  error_msg = f"[TTS Error: Failed audio for line {index+1}]"
@@ -363,15 +403,16 @@ def generate_audio(
         # If audio_part is the error string, it's already included in the transcript_part for that line
 
     if not final_audio_chunks:
+        # Check if any TTS errors were logged in the transcript
         if any("[TTS Error" in line for line in final_transcript_lines):
-             raise gr.Error("Failed to generate audio for all lines. Please check the transcript for details and review API key/status.")
+             raise gr.Error("Failed to generate audio for all lines. Please check the transcript for details and review API key/status/voice selection.")
         else:
              raise gr.Error("Failed to generate any audio, although dialogue script was created. Check TTS service status or API key.")
 
     audio = b"".join(final_audio_chunks)
     transcript = "\n\n".join(final_transcript_lines)
 
-    logger.info(f"Successfully generated audio for {successful_lines}/{total_lines} lines.")
+    logger.info(f"Successfully generated audio for {successful_lines}/{len(future_to_index)} non-empty lines.") # Log based on submitted lines
 
     # --- Save and Clean Up ---
     temporary_directory = "./gradio_cached_files/tmp/" # Changed directory slightly
@@ -431,7 +472,7 @@ examples = [
         "Upload Files", [str(examples_dir / "Intangible cultural heritage item.pdf")], None, "English", None
     ],
     [
-        "Upload Files", [str(examples_dir / "JUPAS_Guide.jpg")], None, "Chinese", None
+        "Upload Files", [str(examples_dir / "JUPAS_Guide.jpg")], None, "Cantonese", None
     ],
     [
         "Upload Files", [str(examples_dir / "AI_To_Replace_Doctors_Teachers.txt")], None, "English", None
@@ -489,7 +530,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
 
     lang_input = gr.Radio(
             label="🌐 Podcast Language",
-            choices=["English", "Chinese"],
+            choices=["English", "Cantonese"],
             value="English",
         )
 
@@ -612,4 +653,3 @@ if __name__ == "__main__":
     # Alternatively, for simple launch:
     # logger.info("Starting Gradio application...")
     # demo.launch(show_api=False, server_name="0.0.0.0") # Use 0.0.0.0 to be accessible on network
-
