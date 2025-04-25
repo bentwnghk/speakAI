@@ -35,10 +35,10 @@ class DialogueItem(BaseModel):
     @property
     def voice(self):
         return {
-            "female-1": "coral",
-            "male-1": "ash",
-            "female-2": "sage",
-            "male-2": "ballad",
+            "female-1": "nova",
+            "male-1": "alloy",
+            "female-2": "shimmer",
+            "male-2": "echo",
         }[self.speaker]
 
 
@@ -60,10 +60,9 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
     try:
         # Use the non-streaming version for simplicity within retry logic
         response = client.audio.speech.create(
-            model="gpt-4o-mini-tts", # Consider tts-1-hd for higher quality if needed
+            model="tts-1", # Consider tts-1-hd for higher quality if needed
             voice=voice,
             input=text,
-            instructions="Speak in a warm, inviting, clear, and confident tone that mimics natural speech without sounding overly formal or scripted; at a moderate pace that allows listeners to absorb information comfortably without feeling rushed or bored, adjusting pacing to highlight key points — slowing down for important information or speeding up slightly during exciting moments to build energy; with a genuine, authentic, and engaging emotion that matches the subject matter — enthusiastic for exciting news, empathetic for sensitive topics, humorous when lighthearted, etc; with a pronunciation that is clear, precise, and steady, ensuring the information conveyed is easily understood while maintaining a natural, conversational flow.",
             response_format="mp3"
         )
         logger.debug(f"TTS generation successful for voice '{voice}', text: '{text[:50]}...'")
@@ -119,7 +118,7 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None):
                     },
                     {
                         "type": "text",
-                        "text": "Extract all the computer-readable text from this image as accurately as possible. Preserve line breaks where appropriate. Avoid commentary, return only the extracted text."
+                        "text": "Extract all the computer-readable text from this image as accurately as possible. Avoid commentary, return only the extracted text."
                     },
                 ]
             }
@@ -128,7 +127,7 @@ def extract_text_from_image_via_vision(image_file, openai_api_key=None):
         response = client.chat.completions.create(
             model="gpt-4.1-mini", # Ensure this model supports vision
             messages=messages,
-            max_tokens=8192,
+            max_tokens=32768,
             temperature=0,
         )
         extracted_text = response.choices[0].message.content.strip()
@@ -237,7 +236,7 @@ def generate_audio(
         api_key=resolved_api_key,
         base_url=resolved_base_url,
         temperature=0.5, # Slightly increased temperature for potentially more engaging dialogue
-        max_tokens=8192 # Explicitly set max_tokens for dialogue generation
+        max_tokens=16384 # Explicitly set max_tokens for dialogue generation, max = 32768
     )
     def generate_dialogue(text: str, language: str) -> Dialogue:
         """
@@ -511,7 +510,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
 
     with gr.Column(): # Outputs vertically
         audio_output = gr.Audio(label="Podcast Audio", type="filepath") # Use filepath for consistency
-        transcript_output = gr.Textbox(label="📃 Transcript", lines=15, show_copy_button=True)
+        transcript_output = gr.Textbox(label="📃 Transcript", lines=15, show_copy_button=True, autoscroll=False)
 
     # --- **REVISED DYNAMIC UI LOGIC** ---
     def switch_input_method(choice):
