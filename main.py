@@ -20,6 +20,7 @@ from pydantic import BaseModel, ValidationError
 from pypdf import PdfReader
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 from mimetypes import guess_type
+import docx # Added for DOCX support
 
 if sentry_dsn := os.getenv("SENTRY_DSN"):
     sentry_sdk.init(sentry_dsn)
@@ -74,19 +75,28 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
 def is_pdf(filename):
     if not filename: return False
     t, _ = guess_type(filename)
+    # Check extension and guessed MIME type
     return filename.lower().endswith(".pdf") or (t or "").endswith("pdf")
 
 def is_image(filename):
     if not filename: return False
     t, _ = guess_type(filename)
     image_exts = (".jpg", ".jpeg", ".png")
+    # Check extension and guessed MIME type
     return filename.lower().endswith(image_exts) or (t or "").startswith("image")
 
 def is_text(filename):
     if not filename: return False
     t, _ = guess_type(filename)
+    # Check extension and guessed MIME type
     return filename.lower().endswith(".txt") or (t or "") == "text/plain"
 
+def is_docx(filename):
+    if not filename: return False
+    t, _ = guess_type(filename)
+    docx_mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    # Check extension and guessed MIME type
+    return filename.lower().endswith(".docx") or (t or "") == docx_mime
 
 # Add retry mechanism to Vision calls
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), retry=retry_if_exception_type(Exception))
@@ -168,6 +178,8 @@ def generate_audio(
             actual_file_path = file_path.name if hasattr(file_path, 'name') else file_path
             file_path_obj = Path(actual_file_path)
             logger.info(f"Processing file: {file_path_obj.name}")
+            text = "" # Initialize text for the current file
+
             if is_pdf(str(file_path_obj)):
                 try:
                     with file_path_obj.open("rb") as f:
@@ -193,22 +205,37 @@ def generate_audio(
             elif is_text(str(file_path_obj)):
                 try:
                     # Use open(actual_file_path...) instead of file_path_obj.open()
-                    # as file_path_obj might refer to the TempPath object not the name string
-                    with open(actual_file_path, "r", encoding="utf-8") as f:
+                    with open(actual_file_path, "r", encoding="utf-8", errors='ignore') as f: # Add errors='ignore' for resilience
                         text = f.read()
                 except Exception as e:
                     logger.error(f"Error reading text file {file_path_obj.name}: {e}")
                     raise gr.Error(f"Error reading text file: {file_path_obj.name}. Check encoding. Error: {e}")
+            elif is_docx(str(file_path_obj)):
+                try:
+                    doc = docx.Document(actual_file_path)
+                    paragraphs = [p.text for p in doc.paragraphs if p.text]
+                    text = "\n\n".join(paragraphs)
+                    if not text: logger.warning(f"No text extracted from DOCX: {file_path_obj.name}")
+                except Exception as e:
+                    logger.error(f"Error reading DOCX file {file_path_obj.name}: {e}")
+                    # python-docx raises PackageNotFoundError if file is not a valid zip/docx
+                    if "PackageNotFoundError" in str(type(e)):
+                        raise gr.Error(f"Error reading DOCX file: {file_path_obj.name}. It might be corrupted, not a valid DOCX format, or password-protected.")
+                    else:
+                        raise gr.Error(f"Error processing DOCX file: {file_path_obj.name}.")
+            # Note: .doc files are not supported by python-docx. Handling them would require
+            # external dependencies like libreoffice or antiword, which is complex in a web app.
+            # Inform the user if they upload an unsupported type.
             else:
                 try:
                    f_size = file_path_obj.stat().st_size
                    if f_size > 0:
-                       raise gr.Error(f"Unsupported file type: {file_path_obj.name}. Please upload TXT, PDF, or image file (JPG, JPEG, PNG).")
+                       # Updated error message to include DOCX
+                       raise gr.Error(f"Unsupported file type: {file_path_obj.name}. Please upload TXT, PDF, DOCX, or image file (JPG, JPEG, PNG). Note: Older .doc format is not supported.")
                    else:
                        logger.warning(f"Skipping empty or placeholder file: {file_path_obj.name}")
                        text = ""
                 except FileNotFoundError:
-                    # This might happen if the temp file was cleaned up prematurely
                     logger.warning(f"File not found during processing, likely a temporary file issue: {actual_file_path}")
                     text = ""
                 except Exception as e:
@@ -422,7 +449,7 @@ def generate_audio(
 # --- Gradio UI Definition ---
 
 allowed_extensions = [
-    ".txt", ".pdf", ".jpg", ".jpeg", ".png"
+    ".txt", ".pdf", ".docx", ".jpg", ".jpeg", ".png" # Added .docx
 ]
 
 examples_dir = Path("examples")
@@ -473,7 +500,8 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
     # Set initial visibility directly on the group
     with gr.Group(visible=True) as file_upload_group:
         file_input = gr.Files(
-            label="Upload TXT, PDF, or Image Files",
+            # Updated label to include DOCX
+            label="Upload TXT, PDF, DOCX, or Image Files",
             file_types=allowed_extensions,
             file_count="multiple",
             # type="filepath" # Commented out: default usually returns temp file objects
@@ -612,4 +640,3 @@ if __name__ == "__main__":
     # Alternatively, for simple launch:
     # logger.info("Starting Gradio application...")
     # demo.launch(show_api=False, server_name="0.0.0.0") # Use 0.0.0.0 to be accessible on network
-
