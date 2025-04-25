@@ -35,10 +35,10 @@ class DialogueItem(BaseModel):
     @property
     def voice(self):
         return {
-            "female-1": "nova",
-            "male-1": "alloy",
-            "female-2": "shimmer",
-            "male-2": "echo",
+            "female-1": "coral",
+            "male-1": "ash",
+            "female-2": "sage",
+            "male-2": "ballad",
         }[self.speaker]
 
 
@@ -60,7 +60,7 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
     try:
         # Use the non-streaming version for simplicity within retry logic
         response = client.audio.speech.create(
-            model="tts-1", # Consider tts-1-hd for higher quality if needed
+            model="gpt-4o-mini-tts", # Consider tts-1-hd for higher quality if needed
             voice=voice,
             input=text,
             response_format="mp3"
