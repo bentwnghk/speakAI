@@ -2,5 +2,5 @@
   <strong>Mr.🆖 PodcastAI 🎙️🎧</strong>
 </p>
 <p style="text-align:center; font-size: 1em;">
-  <strong>🪄 Transform documents (text, Word, PDF) and images into professional podcasts instantly ✨ Turn your content into engaging audio stories that capture and hold attention, while preserving every key insight 💡 Great for converting lengthy articles and educational content into captivating podcasts for auditory learning</strong>
+  <strong>🪄 Turn documents (text, Word, PDF, image) and websites into professional podcasts with one click ✨ Convert your content into engaging audio discussions that capture and hold attention, while preserving every key insight 💡 Great for transforming lengthy articles and educational content into podcast-like conversations for auditory learning on the go</strong>
 </p>
