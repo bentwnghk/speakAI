@@ -225,7 +225,7 @@ def generate_audio(
     url_input: Optional[str], # Added url_input
     language: str = "English",
     openai_api_key: str = None,
-) -> (str, str):
+) -> (str, str, str): # Added str for JS trigger
     """Generates podcast audio from uploaded files, direct text input, or URL."""
     start_time = time.time()
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
@@ -237,18 +237,22 @@ def generate_audio(
 
     full_text = ""
     gr.Info("Processing input...")
+    podcast_title_base = "Podcast" # Default title base
+
     if input_method == "Upload Files":
         if not files:
             raise gr.Error("Please upload at least one file or switch to another input method.")
         texts = []
+        file_names = []
         for file_path in files:
             if not file_path:
                 logger.warning("Received an empty file path in the list, skipping.")
                 continue
             actual_file_path = file_path.name if hasattr(file_path, 'name') else file_path
             file_path_obj = Path(actual_file_path)
+            file_names.append(file_path_obj.stem)
             logger.info(f"Processing file: {file_path_obj.name}")
-            text = "" 
+            text = ""
 
             if is_pdf(str(file_path_obj)):
                 try:
@@ -309,12 +313,16 @@ def generate_audio(
         full_text = "\n\n".join(filter(None, texts))
         if not full_text.strip():
              raise gr.Error("Could not extract any text from the uploaded file(s). Please check the files or try different ones.")
+        if file_names:
+            podcast_title_base = file_names[0] if len(file_names) == 1 else f"{len(file_names)} Files"
+
 
     elif input_method == "Enter Text":
         if not input_text or not input_text.strip():
             raise gr.Error("Please enter text or switch to another input method.")
         full_text = input_text
-    
+        podcast_title_base = "Pasted Text"
+
     elif input_method == "URL": # New block for URL input
         if not url_input or not url_input.strip():
             raise gr.Error("Please enter a URL or switch to another input method.")
@@ -322,12 +330,13 @@ def generate_audio(
             full_text = extract_text_from_url(url_input)
             if not full_text.strip():
                 raise gr.Error(f"Could not extract any meaningful text from the URL: {url_input}. The page might be empty, primarily image-based without OCR, or protected.")
+            podcast_title_base = url_input.split('//')[-1].split('/')[0] # Domain as base title
         except gr.Error as e: # Catch Gradio errors from extract_text_from_url
             raise e # Re-raise to display in UI
         except Exception as e: # Catch any other unexpected errors
             logger.error(f"Unexpected error during URL processing for {url_input}: {e}")
             raise gr.Error(f"An unexpected error occurred while processing the URL: {url_input}. Please try again or use a different URL.")
-            
+
     else:
         raise gr.Error("Invalid input method selected.")
 
@@ -507,7 +516,44 @@ def generate_audio(
 
     total_duration = time.time() - start_time
     gr.Info(f"Podcast generation complete! Total time: {total_duration:.2f} seconds.")
-    return temp_file_path, transcript
+
+    # Prepare podcast title for history
+    final_podcast_title = f"{podcast_title_base} - {time.strftime('%Y-%m-%d %H:%M')}"
+    
+    # Escape transcript for JavaScript string literal
+    escaped_transcript = transcript.replace('\\', '\\\\').replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
+
+    # Create JavaScript to call the save function in head.html
+    # The audio file path needs to be accessible by the client's browser.
+    # Gradio serves files from a temporary location. We need to ensure this path is correct.
+    # If temp_file_path is absolute, we might need to make it relative or ensure it's served.
+    # For Gradio, files in `file_output` are typically served under `/file=...`
+    # We assume `temp_file_path` as returned by `gr.Audio` is directly fetchable.
+    
+    # The audio_output component in Gradio will have a URL like /file=/path/to/temp_file.mp3
+    # We need to pass this server-relative path to the JS function.
+    # `temp_file_path` is the absolute path on the server.
+    # Gradio's `gr.Audio(type="filepath")` returns the absolute path.
+    # When this path is set as the value of an `gr.Audio` output, Gradio makes it accessible via a `/file=` URL.
+    # The JS in `head.html` will fetch this URL.
+
+    js_trigger_script = f"""
+    <script>
+        console.log("Python backend triggering saveNewPodcastToHistory for: {final_podcast_title}");
+        if (typeof saveNewPodcastToHistory === 'function') {{
+            // We need to ensure the audioFileServerPath is the one Gradio exposes,
+            // not the raw server filepath if they differ.
+            // For a gr.Audio(type="filepath") output, the value IS the server path,
+            // and Gradio handles serving it. So temp_file_path should be correct.
+            saveNewPodcastToHistory('{final_podcast_title.replace("'", "\\'")}', '{temp_file_path}', '{escaped_transcript}');
+        }} else {{
+            console.error('saveNewPodcastToHistory function not found. Was head.html loaded correctly?');
+        }}
+        // Optionally, clear this script after execution to prevent re-triggering on UI updates
+        // setTimeout(() => {{ this.innerHTML = ''; }}, 100); // 'this' might not work here.
+    </script>
+    """
+    return temp_file_path, transcript, js_trigger_script
 
 
 # --- Gradio UI Definition ---
@@ -602,9 +648,16 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
 
     submit_button = gr.Button("✨ Generate Podcast", variant="primary")
 
-    with gr.Column(): 
-        audio_output = gr.Audio(label="Podcast Audio", type="filepath") 
-        transcript_output = gr.Textbox(label="📃 Transcript", lines=15, show_copy_button=True, autoscroll=False)
+    with gr.Column():
+        audio_output = gr.Audio(label="Podcast Audio", type="filepath", elem_id="podcast_audio_player") # Keep existing elem_id
+        transcript_output = gr.Textbox(label="📃 Transcript", lines=15, show_copy_button=True, autoscroll=False, elem_id="podcast_transcript_display") # Keep existing elem_id
+
+    with gr.Accordion("📜 Podcast History (Stored in your browser)", open=True): # Keep existing Accordion
+        # This HTML component will be populated by JavaScript from head.html
+        podcast_history_display = gr.HTML("<ul id='podcastHistoryList' style='list-style-type: none; padding: 0;'><li>Loading history...</li></ul>") # Keep existing HTML
+        # Hidden HTML component to receive JavaScript trigger from Python
+        js_trigger_html = gr.HTML(visible=False) # Keep existing hidden HTML
+
 
     def switch_input_method(choice):
         """Updates visibility and clears the inactive input fields."""
@@ -655,8 +708,8 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
             lang_input,
             api_key_input
         ],
-        outputs=[audio_output, transcript_output],
-        api_name="generate_podcast" 
+        outputs=[audio_output, transcript_output, js_trigger_html], # Keep existing outputs
+        api_name="generate_podcast"
     )
 
     gr.Examples(
@@ -669,9 +722,11 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
             lang_input, 
             api_key_input
         ],
-        outputs=[audio_output, transcript_output],
+        # Examples won't trigger the history save directly unless we adapt the example fn or outputs
+        # For now, history save is only for manual generation.
+        outputs=[audio_output, transcript_output, js_trigger_html], # Keep existing outputs
         fn=generate_audio,
-        cache_examples=True, 
+        cache_examples=True,
         run_on_click=True,
         label="Examples (Click for Demo)"
     )
