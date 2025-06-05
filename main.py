@@ -537,20 +537,23 @@ def generate_audio(
     # When this path is set as the value of an `gr.Audio` output, Gradio makes it accessible via a `/file=` URL.
     # The JS in `head.html` will fetch this URL.
 
+    # Construct the web-accessible URL for the temporary file
+    # Gradio serves files from gr.Audio(type="filepath") via /file=<path>
+    # Ensure the path is properly URL encoded if it contains special characters, though Gradio might handle this.
+    # For simplicity, we'll assume basic paths for now. If issues persist, URL encoding might be needed.
+    gradio_file_url = f"/file={temp_file_path}"
+
     js_trigger_script = f"""
     <script>
         console.log("Python backend triggering saveNewPodcastToHistory for: {final_podcast_title}");
+        console.log("Audio file server path for JS: {gradio_file_url}");
         if (typeof saveNewPodcastToHistory === 'function') {{
-            // We need to ensure the audioFileServerPath is the one Gradio exposes,
-            // not the raw server filepath if they differ.
-            // For a gr.Audio(type="filepath") output, the value IS the server path,
-            // and Gradio handles serving it. So temp_file_path should be correct.
-            saveNewPodcastToHistory('{final_podcast_title.replace("'", "\\'")}', '{temp_file_path}', '{escaped_transcript}');
+            saveNewPodcastToHistory('{final_podcast_title.replace("'", "\\'")}', '{gradio_file_url}', '{escaped_transcript}');
         }} else {{
             console.error('saveNewPodcastToHistory function not found. Was head.html loaded correctly?');
         }}
         // Optionally, clear this script after execution to prevent re-triggering on UI updates
-        // setTimeout(() => {{ this.innerHTML = ''; }}, 100); // 'this' might not work here.
+        // setTimeout(() => {{ const elem = document.currentScript; if (elem) elem.remove(); }}, 100);
     </script>
     """
     return temp_file_path, transcript, js_trigger_script
