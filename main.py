@@ -519,7 +519,7 @@ def generate_audio(
     gr.Info(f"Podcast generation complete! Total time: {total_duration:.2f} seconds.")
 
     # Prepare podcast title for history
-    final_podcast_title = f"{podcast_title_base} - {time.strftime('%Y-%m-%d %H:%M')}"
+    final_podcast_title = f"{podcast_title_base} - {time.strftime('%Y-%m-%d')}"
     
     # Escape transcript for JavaScript string literal
     escaped_transcript = transcript.replace('\\', '\\\\').replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
