@@ -16,170 +16,40 @@
 <link rel="icon" href="/static/icon.png" type="image/png" />
 
 <script>
-  // Global Error Handler
-  window.onerror = function(message, source, lineno, colno, error) {
-    console.error("[GLOBAL_ERROR] Uncaught Exception:", {
-      message: message,
-      source: source,
-      lineno: lineno,
-      colno: colno,
-      error: error ? error.stack : 'No error object'
+  // Test Script for DOMContentLoaded
+  console.log("[HEAD_SCRIPT_TEST] Script block parsing started.");
+
+  try {
+    window.onerror = function(message, source, lineno, colno, error) {
+      console.error("[GLOBAL_ERROR_TEST] Uncaught Exception:", { message, source, lineno, colno, error: error ? error.stack : 'No error object' });
+      return true;
+    };
+    console.log("[HEAD_SCRIPT_TEST] Global error handler set.");
+  } catch (e) {
+    console.error("[HEAD_SCRIPT_TEST] FAILED to set global error handler:", e);
+  }
+
+  try {
+    console.log("[HEAD_SCRIPT_TEST] Setting up DOMContentLoaded listener.");
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log("[HEAD_SCRIPT_TEST] DOMContentLoaded event FIRED!");
+      alert("HEAD.HTML DOMContentLoaded event FIRED!");
+      try {
+        // Try to access an element that should exist if Gradio UI is there
+        const appElement = document.querySelector('.gradio-container'); // Common Gradio wrapper
+        if (appElement) {
+          console.log("[HEAD_SCRIPT_TEST] Gradio container element found after DOMContentLoaded.", appElement);
+        } else {
+          console.warn("[HEAD_SCRIPT_TEST] Gradio container element NOT found after DOMContentLoaded.");
+        }
+      } catch(e_dom_access) {
+        console.error("[HEAD_SCRIPT_TEST] Error accessing Gradio element after DOMContentLoaded:", e_dom_access);
+      }
     });
-    return true; // Prevents default browser error handling
-  };
-
-  console.log("[HEAD_SCRIPT] Initializing script. Global error handler set.");
-
-  const PODCAST_HISTORY_KEY = 'gradioPdfToPodcastHistory';
-  console.log("[HEAD_SCRIPT] PODCAST_HISTORY_KEY set.");
-
-  function getPodcastHistory() {
-    // console.log("[GET_HISTORY] Attempting to get history from localStorage.");
-    try {
-        const history = localStorage.getItem(PODCAST_HISTORY_KEY);
-        // console.log("[GET_HISTORY] Raw history from localStorage:", history);
-        return history ? JSON.parse(history) : [];
-    } catch (e) {
-        console.error("[GET_HISTORY] Error reading podcast history from localStorage:", e);
-        return [];
-    }
+    console.log("[HEAD_SCRIPT_TEST] DOMContentLoaded listener SET.");
+  } catch (e_listener) {
+    console.error("[HEAD_SCRIPT_TEST] FAILED to set DOMContentLoaded listener:", e_listener);
   }
 
-  function savePodcastHistory(history) {
-    // console.log("[SAVE_HISTORY] Attempting to save history to localStorage:", history);
-    try {
-        localStorage.setItem(PODCAST_HISTORY_KEY, JSON.stringify(history));
-        // console.log("[SAVE_HISTORY] History saved successfully.");
-    } catch (e) {
-        console.error("[SAVE_HISTORY] Error saving podcast history to localStorage:", e);
-        alert("Could not save podcast history. Storage might be full.");
-    }
-  }
-
-  function renderPodcastHistory() {
-    console.log("[RENDER_HISTORY] Attempting to render podcast history.");
-    const listContainer = document.getElementById('podcastHistoryList');
-    if (!listContainer) {
-        console.warn("[RENDER_HISTORY] Podcast history list container ('podcastHistoryList') not found in DOM yet.");
-        return;
-    }
-    console.log("[RENDER_HISTORY] List container found. Clearing and populating.");
-    listContainer.innerHTML = ''; // Clear existing items
-    const history = getPodcastHistory();
-    console.log(`[RENDER_HISTORY] Found ${history.length} items in history.`);
-
-    if (history.length === 0) {
-        const emptyMsg = document.createElement('li');
-        emptyMsg.textContent = 'No podcasts in history.';
-        emptyMsg.style.padding = '10px';
-        emptyMsg.style.textAlign = 'center';
-        listContainer.appendChild(emptyMsg);
-        console.log("[RENDER_HISTORY] Displayed 'No podcasts in history.'");
-        return;
-    }
-
-    history.forEach(podcast => {
-        const item = document.createElement('li');
-        item.style.marginBottom = '10px';
-        item.style.padding = '10px';
-        item.style.border = '1px solid #e0e0e0';
-        item.style.borderRadius = '4px';
-        item.style.display = 'flex';
-        item.style.flexDirection = 'column';
-
-        const titleSpan = document.createElement('span');
-        titleSpan.textContent = `${podcast.title}`;
-        titleSpan.style.fontWeight = 'bold';
-        titleSpan.style.marginBottom = '5px';
-
-        const dateSpan = document.createElement('span');
-        dateSpan.textContent = `Saved: ${new Date(podcast.savedAt).toLocaleString()}`;
-        dateSpan.style.fontSize = '0.9em';
-        dateSpan.style.color = '#666';
-        dateSpan.style.marginBottom = '8px';
-        
-        const buttonContainer = document.createElement('div');
-
-        const loadButton = document.createElement('button');
-        loadButton.textContent = 'Load';
-        loadButton.className = 'gr-button gr-button-sm gr-button-secondary';
-        loadButton.onclick = () => {
-            console.log(`[RENDER_HISTORY] Load button clicked for podcast ID: ${podcast.id}`);
-            // loadPodcastFromHistory(podcast.id); // Temporarily disabled
-        };
-        loadButton.style.marginRight = '5px';
-        
-        const deleteButton = document.createElement('button');
-        deleteButton.textContent = 'Delete';
-        deleteButton.className = 'gr-button gr-button-sm gr-button-stop';
-        deleteButton.onclick = () => {
-            console.log(`[RENDER_HISTORY] Delete button clicked for podcast ID: ${podcast.id}`);
-            // deletePodcastFromHistory(podcast.id); // Temporarily disabled
-        };
-
-        item.appendChild(titleSpan);
-        item.appendChild(dateSpan);
-        buttonContainer.appendChild(loadButton);
-        buttonContainer.appendChild(deleteButton);
-        item.appendChild(buttonContainer);
-        listContainer.appendChild(item);
-    });
-    console.log("[RENDER_HISTORY] Finished rendering history items.");
-  }
-
-  function initializePodcastHistoryFeature() {
-    console.log("[INIT_HISTORY_FEATURE_TEST] Function successfully CALLED AND ENTERED.");
-    // All original content of this function is temporarily commented out for this test.
-    // let attempts = 0;
-    // const maxAttempts = 60; // 6 seconds
-    // const interval = setInterval(() => {
-    //     const listContainer = document.getElementById('podcastHistoryList');
-    //     if (listContainer) {
-    //         clearInterval(interval);
-    //         console.log("[INIT_HISTORY_FEATURE] Podcast history list container found. Rendering history.");
-    //         renderPodcastHistory();
-    //     } else {
-    //         attempts++;
-    //         if (attempts % 10 === 0) {
-    //              console.log(`[INIT_HISTORY_FEATURE] Waiting for list container... attempt ${attempts}`);
-    //         }
-    //         if (attempts >= maxAttempts) {
-    //             clearInterval(interval);
-    //             console.warn("[INIT_HISTORY_FEATURE] Podcast history list container ('podcastHistoryList') NOT FOUND after multiple attempts.");
-    //         }
-    //     }
-    // }, 100);
-  }
-
-  // Wait for Gradio to be ready or use DOMContentLoaded
-  document.addEventListener('DOMContentLoaded', () => {
-    console.log("[DOM_CONTENT_LOADED] DOM fully loaded and parsed. Attempting to initialize features.");
-    try {
-      console.log("[DOM_CONTENT_LOADED] Calling initializePodcastHistoryFeature().");
-      initializePodcastHistoryFeature();
-      console.log("[DOM_CONTENT_LOADED] initializePodcastHistoryFeature() call completed.");
-    } catch (e) {
-      console.error("[DOM_CONTENT_LOADED] Error calling initializePodcastHistoryFeature():", e);
-    }
-
-    try {
-      console.log("[DOM_CONTENT_LOADED] Setting up delayed renderPodcastHistory().");
-      // Additional call to render history after a short delay, as a fallback
-      setTimeout(() => {
-          console.log("[DOM_CONTENT_LOADED_TIMEOUT] Delayed attempt to render history (2s).");
-          try {
-            renderPodcastHistory();
-            console.log("[DOM_CONTENT_LOADED_TIMEOUT] Delayed renderPodcastHistory() call completed.");
-          } catch (e_timeout) {
-            console.error("[DOM_CONTENT_LOADED_TIMEOUT] Error in delayed renderPodcastHistory():", e_timeout);
-          }
-      }, 2000);
-      console.log("[DOM_CONTENT_LOADED] Delayed renderPodcastHistory() setup completed.");
-    } catch (e_settimeout) {
-      console.error("[DOM_CONTENT_LOADED] Error setting up setTimeout for delayed render:", e_settimeout);
-    }
-  });
-
-  console.log("[HEAD_SCRIPT] Script basic structure loaded. DOMContentLoaded listener set.");
-
+  console.log("[HEAD_SCRIPT_TEST] Script block parsing finished.");
 </script>
