@@ -110,13 +110,12 @@ function savePodcastHistory(history) {
 }
 
 async function saveNewPodcastToHistory(title, audioFileServerPath, transcriptText) {
-    console.log("Attempting to save podcast to history:", title, audioFileServerPath);
+    console.log("[SAVE_NEW] Attempting to save podcast:", { title, audioFileServerPath, transcriptLength: transcriptText?.length });
     if (!audioFileServerPath || typeof transcriptText === 'undefined') {
-        console.error("Audio path or transcript is missing for saving to history.");
+        console.error("[SAVE_NEW] Audio path or transcript is missing.");
         return;
     }
 
-    // Show a visual cue to the user that saving is in progress.
     const historyListElem = document.getElementById('podcastHistoryList');
     let savingMsgElem = document.getElementById('podcastSavingMessage');
     if (!savingMsgElem && historyListElem) {
@@ -124,21 +123,37 @@ async function saveNewPodcastToHistory(title, audioFileServerPath, transcriptTex
         savingMsgElem.id = 'podcastSavingMessage';
         savingMsgElem.textContent = 'Saving current podcast to history...';
         savingMsgElem.style.fontStyle = 'italic';
+        savingMsgElem.style.padding = '10px';
+        savingMsgElem.style.textAlign = 'center';
         historyListElem.prepend(savingMsgElem);
+    } else if (savingMsgElem) {
+        savingMsgElem.textContent = 'Saving current podcast to history...'; // Update if already exists
     }
 
-
     try {
+        console.log(`[SAVE_NEW] Fetching audio from: ${audioFileServerPath}`);
         const response = await fetch(audioFileServerPath);
+        console.log(`[SAVE_NEW] Fetch response status: ${response.status}`);
         if (!response.ok) {
-            throw new Error(`Failed to fetch audio file: ${response.status} ${response.statusText}`);
+            throw new Error(`Failed to fetch audio file: ${response.status} ${response.statusText} from ${audioFileServerPath}`);
         }
         const audioBlob = await response.blob();
+        console.log(`[SAVE_NEW] Audio blob received, size: ${audioBlob.size}`);
         
         const reader = new FileReader();
-        reader.readAsDataURL(audioBlob);
+        reader.onloadstart = () => console.log("[SAVE_NEW] FileReader: onloadstart");
+        reader.onprogress = (event) => console.log(`[SAVE_NEW] FileReader: onprogress - Loaded ${event.loaded} of ${event.total}`);
+        reader.onload = () => console.log("[SAVE_NEW] FileReader: onload (about to call onloadend logic)");
         reader.onloadend = function() {
+            console.log("[SAVE_NEW] FileReader: onloadend - Conversion to base64 complete.");
             const base64Audio = reader.result;
+            if (!base64Audio || !base64Audio.startsWith('data:')) {
+                console.error("[SAVE_NEW] FileReader: Base64 audio data is invalid or empty.", base64Audio ? base64Audio.substring(0,100) : "undefined");
+                if (savingMsgElem) savingMsgElem.textContent = 'Error: Could not process audio data.';
+                setTimeout(() => { if (savingMsgElem) savingMsgElem.remove(); }, 3000);
+                return;
+            }
+            console.log(`[SAVE_NEW] Base64 audio data length: ${base64Audio.length}`);
             const history = getPodcastHistory();
             const newPodcast = {
                 id: 'podcast-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
@@ -148,33 +163,39 @@ async function saveNewPodcastToHistory(title, audioFileServerPath, transcriptTex
                 savedAt: new Date().toISOString()
             };
             history.unshift(newPodcast);
-            // Optional: Limit history size, e.g., to 20 items
-            // if (history.length > 20) { history.pop(); }
             savePodcastHistory(history);
             if (savingMsgElem) savingMsgElem.remove();
+            console.log("[SAVE_NEW] Podcast saved to browser history. Rendering history...");
             renderPodcastHistory();
-            console.log("Podcast saved to browser history!");
         }
-        reader.onerror = function() {
-            console.error("Error converting audio blob to base64 for history.");
+        reader.onerror = function(error) {
+            console.error("[SAVE_NEW] FileReader: onerror - Error converting audio blob to base64:", error);
             if (savingMsgElem) savingMsgElem.textContent = 'Error processing audio for history.';
             setTimeout(() => { if (savingMsgElem) savingMsgElem.remove(); }, 3000);
         }
+        reader.onabort = () => console.error("[SAVE_NEW] FileReader: onabort - Reading aborted.");
+
+        console.log("[SAVE_NEW] FileReader: Calling readAsDataURL...");
+        reader.readAsDataURL(audioBlob);
+
     } catch (error) {
-        console.error("Error saving podcast to history:", error);
-        if (savingMsgElem) savingMsgElem.textContent = `Error saving to history: ${error.message}`;
-        setTimeout(() => { if (savingMsgElem) savingMsgElem.remove(); }, 3000);
+        console.error("[SAVE_NEW] Error during saveNewPodcastToHistory (fetch or setup):", error);
+        if (savingMsgElem) savingMsgElem.textContent = `Error saving: ${error.message}`;
+        setTimeout(() => { if (savingMsgElem) savingMsgElem.remove(); }, 5000);
     }
 }
 
 function renderPodcastHistory() {
-    const history = getPodcastHistory();
+    console.log("[RENDER_HISTORY] Attempting to render podcast history.");
     const listContainer = document.getElementById('podcastHistoryList');
     if (!listContainer) {
-        console.warn("Podcast history list container ('podcastHistoryList') not found in DOM yet.");
+        console.warn("[RENDER_HISTORY] Podcast history list container ('podcastHistoryList') not found in DOM yet.");
         return;
     }
+    console.log("[RENDER_HISTORY] List container found. Clearing and populating.");
     listContainer.innerHTML = ''; // Clear existing items
+    const history = getPodcastHistory();
+    console.log(`[RENDER_HISTORY] Found ${history.length} items in history.`);
 
     if (history.length === 0) {
         const emptyMsg = document.createElement('li');
@@ -273,18 +294,22 @@ function deletePodcastFromHistory(podcastId) {
 
 function initializePodcastHistoryFeature() {
     let attempts = 0;
-    const maxAttempts = 50; // 5 seconds
+    const maxAttempts = 60; // Increased to 6 seconds
+    console.log("[INIT_HISTORY_FEATURE] Initializing. Waiting for list container...");
     const interval = setInterval(() => {
         const listContainer = document.getElementById('podcastHistoryList');
         if (listContainer) {
             clearInterval(interval);
-            console.log("Podcast history list container found. Rendering history.");
+            console.log("[INIT_HISTORY_FEATURE] Podcast history list container found. Rendering history.");
             renderPodcastHistory();
         } else {
             attempts++;
+            if (attempts % 10 === 0) { // Log every second
+                 console.log(`[INIT_HISTORY_FEATURE] Waiting for list container... attempt ${attempts}`);
+            }
             if (attempts >= maxAttempts) {
                 clearInterval(interval);
-                console.warn("Podcast history list container ('podcastHistoryList') not found after multiple attempts.");
+                console.warn("[INIT_HISTORY_FEATURE] Podcast history list container ('podcastHistoryList') NOT FOUND after multiple attempts.");
             }
         }
     }, 100);
@@ -292,66 +317,92 @@ function initializePodcastHistoryFeature() {
 
 function initializeJsTriggerObserver() {
     const targetNodeId = 'js_trigger_data_textbox';
-    let targetNode = null;
-    let inputElement = null; // The actual <input> or <textarea>
+    let inputElement = null;
     let attempts = 0;
-    const maxAttempts = 50; // Try for 5 seconds
+    const maxAttempts = 60; // 6 seconds
+    let lastProcessedValue = null; // To prevent reprocessing the same data
 
-    console.log('Attempting to set up JS Trigger Observer...');
+    console.log('[INIT_TRIGGER_OBSERVER] Attempting to set up JS Trigger Observer...');
 
     const findInputElementInterval = setInterval(() => {
         attempts++;
-        // Gradio Textbox with elem_id often results in the id on a wrapper div.
-        // The actual input/textarea is inside.
         const wrapperDiv = document.getElementById(targetNodeId);
         if (wrapperDiv) {
-            inputElement = wrapperDiv.querySelector('textarea'); // Gradio Textbox usually uses textarea
+            // Gradio's Textbox component usually renders a <textarea> inside a div that has the elem_id.
+            inputElement = wrapperDiv.querySelector('textarea');
             if (!inputElement) {
-                inputElement = wrapperDiv.querySelector('input[type="text"]'); // Fallback for some cases
+                 inputElement = wrapperDiv.querySelector('input[type="text"]'); // Fallback
+                 if(inputElement) console.log("[INIT_TRIGGER_OBSERVER] Found input[type='text'] as target.");
+            } else {
+                 console.log("[INIT_TRIGGER_OBSERVER] Found textarea as target.");
             }
+        } else {
+            if (attempts % 10 === 0) console.log(`[INIT_TRIGGER_OBSERVER] Wrapper div #${targetNodeId} not found yet. Attempt: ${attempts}`);
         }
 
         if (inputElement) {
             clearInterval(findInputElementInterval);
-            console.log('JS Trigger Textbox input element found:', inputElement);
-            targetNode = inputElement; // Observe the input element directly for value changes
+            console.log('[INIT_TRIGGER_OBSERVER] JS Trigger Textbox input element found:', inputElement);
 
-            const observer = new MutationObserver((mutationsList, observer) => {
-                for(const mutation of mutationsList) {
-                    // Check if the mutation is relevant (e.g. value change)
-                    // For <input type="text">, value attribute changes.
-                    // For <textarea>, its .value property changes. Gradio might update an attribute or the text node.
-                    // We'll directly read .value as it's generally more reliable.
-                    const rawJsonData = targetNode.value;
-                    // Check if the value actually changed to avoid processing empty/initial states multiple times
-                    if (mutation.oldValue !== rawJsonData && rawJsonData) { // mutation.oldValue might not always be available
-                        console.log('MutationObserver detected change in js_trigger_data_textbox value:', rawJsonData);
-                        try {
-                            const data = JSON.parse(rawJsonData);
-                            if (data && data.title && data.audio_url && typeof data.transcript !== 'undefined') {
-                                saveNewPodcastToHistory(data.title, data.audio_url, data.transcript);
-                                // Clear the textbox value after processing to prevent re-triggering if the same data is set again.
-                                // However, Gradio might re-populate it. This needs careful handling.
-                                // For now, we rely on new distinct data for new podcasts.
-                            } else {
-                                console.error("Parsed data from trigger textbox is incomplete:", data);
-                            }
-                        } catch (e) {
-                            console.error("Error parsing JSON from js_trigger_data_textbox:", e, "Raw data:", rawJsonData);
+            const observer = new MutationObserver((mutationsList) => {
+                // We are observing the input/textarea itself. Gradio changes its 'value' property.
+                // The 'attributes' filter with 'value' might not always catch programmatic .value changes for textarea.
+                // A more direct way is to just check the value if any mutation occurs on the element.
+                // However, Gradio might also replace the element or its parent, so observing the wrapper might be safer if issues persist.
+                // For now, let's assume the inputElement itself is stable and its value property is updated.
+                
+                const currentValue = inputElement.value; // Read current value directly
+                
+                // Check if there's new, non-empty data and it's different from the last processed one
+                if (currentValue && currentValue !== lastProcessedValue) {
+                    console.log('[TRIGGER_OBSERVER] MutationObserver detected potential change. Current value:', currentValue.substring(0, 100) + "...");
+                    lastProcessedValue = currentValue; // Update last processed value immediately
+                    try {
+                        const data = JSON.parse(currentValue);
+                        if (data && data.title && data.audio_url && typeof data.transcript !== 'undefined') {
+                            console.log('[TRIGGER_OBSERVER] Parsed data successfully. Calling saveNewPodcastToHistory.', data);
+                            saveNewPodcastToHistory(data.title, data.audio_url, data.transcript);
+                        } else {
+                            console.error("[TRIGGER_OBSERVER] Parsed data from trigger textbox is incomplete or malformed:", data);
                         }
+                    } catch (e) {
+                        console.error("[TRIGGER_OBSERVER] Error parsing JSON from js_trigger_data_textbox:", e, "Raw data:", currentValue);
                     }
+                } else if (currentValue === lastProcessedValue && currentValue) {
+                    // console.log('[TRIGGER_OBSERVER] Value is same as last processed. Ignoring.');
                 }
             });
+            
+            // Observe the input/textarea element for changes to its properties or content.
+            // 'subtree' and 'childList' are more relevant for textareas if Gradio modifies the text node directly.
+            // 'attributes' is good for input elements if 'value' attribute is set.
+            // 'characterData' for direct text changes within.
+            // A combination is safest.
+            observer.observe(inputElement, { attributes: true, childList: true, subtree: true, characterData: true });
+            console.log('[INIT_TRIGGER_OBSERVER] MutationObserver is now observing the input/textarea element.');
 
-            // For textboxes, observing 'value' attribute changes is key.
-            // For textareas, observing childList/characterData for the text node, or relying on input/change events handled by Gradio is better.
-            // Since Gradio updates the .value property, we can observe attributes and check .value.
-            observer.observe(targetNode, { attributes: true, attributeOldValue: true }); // Observe attributes of the input/textarea itself
-            console.log('MutationObserver is now observing js_trigger_data_textbox.');
+            // Also, Gradio might trigger 'input' or 'change' events when it sets the value.
+            // Listening to these can be an alternative or supplement to MutationObserver.
+            inputElement.addEventListener('input', () => {
+                const currentValue = inputElement.value;
+                if (currentValue && currentValue !== lastProcessedValue) {
+                    console.log('[TRIGGER_OBSERVER] "input" event detected. Current value:', currentValue.substring(0, 100) + "...");
+                    // Logic is same as in MutationObserver, could be refactored
+                    lastProcessedValue = currentValue;
+                    try {
+                        const data = JSON.parse(currentValue);
+                        if (data && data.title && data.audio_url && typeof data.transcript !== 'undefined') {
+                            saveNewPodcastToHistory(data.title, data.audio_url, data.transcript);
+                        } else { console.error("[TRIGGER_OBSERVER] 'input' event: Parsed data incomplete."); }
+                    } catch (e) { console.error("[TRIGGER_OBSERVER] 'input' event: Error parsing JSON:", e); }
+                }
+            });
+             console.log('[INIT_TRIGGER_OBSERVER] Added "input" event listener to the input/textarea element.');
+
 
         } else if (attempts >= maxAttempts) {
             clearInterval(findInputElementInterval);
-            console.warn(`JS Trigger Textbox with ID "${targetNodeId}" (or its input element) not found after ${maxAttempts} attempts.`);
+            console.warn(`[INIT_TRIGGER_OBSERVER] JS Trigger Textbox with ID "${targetNodeId}" (or its input element) NOT FOUND after ${maxAttempts} attempts.`);
         }
     }, 100);
 }
@@ -359,6 +410,7 @@ function initializeJsTriggerObserver() {
 
 // Wait for Gradio to be ready or use DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("[DOM_CONTENT_LOADED] DOM fully loaded and parsed.");
     initializePodcastHistoryFeature();
     initializeJsTriggerObserver();
 });
