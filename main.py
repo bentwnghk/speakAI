@@ -574,9 +574,9 @@ def generate_audio(
         temp_file_path_for_hidden_file_comp = temp_file_path
         logger.debug(f"History save TRIGGERED. JS trigger data: {json_data_string_for_js_trigger[:200]}..., Hidden file path: {temp_file_path_for_hidden_file_comp}")
     else:
-        logger.debug("History save SKIPPED for example run. Sending NO_HISTORY_SAVE signal.")
-        json_data_string_for_js_trigger = "NO_HISTORY_SAVE" # Explicit signal
-        temp_file_path_for_hidden_file_comp = None # Ensure hidden file component is also cleared/nulled
+        logger.debug("History save SKIPPED for this run (e.g., example). JS trigger data will be None. Hidden file path will be None.")
+        json_data_string_for_js_trigger = None # Explicitly None, Gradio Textbox should get ""
+        temp_file_path_for_hidden_file_comp = None
 
     return temp_file_path, transcript, json_data_string_for_js_trigger, temp_file_path_for_hidden_file_comp
 
@@ -750,10 +750,11 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo: # 
             url_input=url_input_ex,
             language=language_ex,
             openai_api_key=openai_api_key_ex,
-            trigger_history_save=False
+            trigger_history_save=False # This ensures the above logic sets json_data_string to None
         )
-        # Explicitly return empty/None for the trigger outputs for examples
-        return audio_path, transcript, "", None
+        # The main generate_audio function already returns None for the 3rd and 4th elements
+        # when trigger_history_save is False. So, just return its result.
+        return audio_path, transcript, _json_trigger_data, _hidden_file_path
 
     gr.Examples(
         examples=examples,

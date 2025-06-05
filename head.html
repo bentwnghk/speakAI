@@ -322,24 +322,33 @@
                 const processData = (currentVal, source) => {
                     console.log(`[PROCESS_DATA] Called from ${source}. CurrentVal (type: ${typeof currentVal}, value: '${currentVal}') Last processed: '${lastProcessedValue}'`);
 
-                    const effectiveCurrentVal = (currentVal === null || typeof currentVal === 'undefined') ? "" : String(currentVal).trim();
-
-                    if (effectiveCurrentVal === "NO_HISTORY_SAVE") {
-                        console.log("[PROCESS_DATA] Received 'NO_HISTORY_SAVE' signal. Skipping history save. Updating lastProcessedValue.");
-                        lastProcessedValue = effectiveCurrentVal; // Update to prevent reprocessing if it's sent again
-                        return;
+                    let effectiveCurrentVal = "";
+                    if (currentVal !== null && typeof currentVal !== 'undefined') {
+                        effectiveCurrentVal = String(currentVal).trim();
                     }
 
-                    if (effectiveCurrentVal && effectiveCurrentVal !== lastProcessedValue) {
-                        console.log('[PROCESS_DATA] Value is new, non-empty, and not NO_HISTORY_SAVE. Processing:', effectiveCurrentVal.substring(0, 100) + "...");
-                        lastProcessedValue = effectiveCurrentVal;
+                    // If effectiveCurrentVal is empty, it's a "do not save" signal (e.g. from example run)
+                    if (effectiveCurrentVal === "") {
+                        if (lastProcessedValue !== "") { // Only log and update if it's a change to empty
+                            console.log("[PROCESS_DATA] Received empty value. Assuming no history save. Updating lastProcessedValue.");
+                        } else {
+                            // console.log("[PROCESS_DATA] Received empty value, and last was also empty. Ignoring.");
+                        }
+                        lastProcessedValue = ""; // Always update to current empty state
+                        return; // Stop processing for empty signals
+                    }
+                    
+                    // Proceed only if the value is new (and non-empty, checked above)
+                    if (effectiveCurrentVal !== lastProcessedValue) {
+                        console.log('[PROCESS_DATA] Value is new and non-empty. Processing:', effectiveCurrentVal.substring(0, 100) + "...");
+                        lastProcessedValue = effectiveCurrentVal; 
                         try {
-                            const data = JSON.parse(effectiveCurrentVal);
+                            const data = JSON.parse(effectiveCurrentVal); // This should now only parse actual JSON
                             if (data && data.title && data.audio_file_component_id && typeof data.transcript !== 'undefined') {
                                 console.log('[PROCESS_DATA] Parsed data successfully. Attempting to get audio URL from component:', data.audio_file_component_id);
                                 const audioFileComponentWrapper = document.getElementById(data.audio_file_component_id);
                                 if (audioFileComponentWrapper) {
-                                    setTimeout(() => {
+                                    setTimeout(() => { 
                                         const downloadLink = audioFileComponentWrapper.querySelector('a[href]');
                                         if (downloadLink && downloadLink.href) {
                                             const audioUrlFromComponent = downloadLink.href;
@@ -348,23 +357,18 @@
                                         } else {
                                             console.error(`[PROCESS_DATA] Could not find a download link with href inside component #${data.audio_file_component_id} after delay.`);
                                         }
-                                    }, 300);
+                                    }, 300); 
                                 } else {
                                     console.error(`[PROCESS_DATA] Could not find audio file component wrapper with ID: #${data.audio_file_component_id}`);
                                 }
-                            } else {
-                                console.warn("[PROCESS_DATA] Parsed JSON, but it's missing expected fields. Ignoring. Data:", data);
+                            } else { 
+                                console.warn("[PROCESS_DATA] Parsed JSON, but it's missing expected fields (title, audio_file_component_id, transcript). Ignoring. Data:", data);
                             }
-                        } catch (e) {
-                            console.warn("[PROCESS_DATA] Error parsing JSON. This might be an unexpected value. Message:", e.message, "Raw data was:", effectiveCurrentVal);
+                        } catch (e) { 
+                            console.warn("[PROCESS_DATA] Error parsing JSON. This implies an unexpected non-empty, non-JSON value was received. Message:", e.message, "Raw data was:", effectiveCurrentVal);
                         }
-                    } else if (!effectiveCurrentVal && lastProcessedValue !== "") {
-                        console.log("[PROCESS_DATA] Value is now effectively empty, was previously processed. Updating lastProcessedValue.");
-                        lastProcessedValue = effectiveCurrentVal;
-                    } else if (effectiveCurrentVal === lastProcessedValue) {
-                        // console.log("[PROCESS_DATA] Value is same as last processed. Ignoring.");
                     } else {
-                         console.log("[PROCESS_DATA] Value is effectively empty and was already empty. Ignoring.");
+                        // console.log("[PROCESS_DATA] Value is same as last processed. Ignoring.");
                     }
                 };
 
@@ -375,7 +379,7 @@
                 console.log('[INIT_TRIGGER_OBSERVER] "input" event listener attached.');
 
                 const observer = new MutationObserver(() => {
-                     // console.log('[MUTATION_OBSERVER] Mutation detected on trigger textbox.'); // Can be noisy
+                    // console.log('[MUTATION_OBSERVER] Mutation detected on trigger textbox.'); // Can be noisy
                     processData(inputElement.value, "MutationObserver");
                 });
                 observer.observe(inputElement, { attributes: true, childList: true, subtree: true, characterData: true });
