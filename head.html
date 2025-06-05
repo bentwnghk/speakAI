@@ -49,38 +49,74 @@
 <link rel="icon" href="/static/icon.png" type="image/png" />
 
 <script>
-  document.addEventListener('DOMContentLoaded', (event) => {
-    // Use a more specific selector if Gradio doesn't directly use the elem_id on the input
-    // This attempts to find the input within the div that Gradio creates for the Textbox
-    const apiKeyInputContainer = document.getElementById('mr_ng_ai_hub_api_key_input');
-    let apiKeyInput = null;
-
-    if (apiKeyInputContainer) {
-        apiKeyInput = apiKeyInputContainer.querySelector('input[type="password"]');
-    } else {
-        // Fallback for older Gradio versions or if ID is directly on input
-        apiKeyInput = document.getElementById('mr_ng_ai_hub_api_key_input');
-    }
-    
+  function setupApiKeyStorage() {
+    const apiKeyElementId = 'mr_ng_ai_hub_api_key_input';
     const apiKeyStorageKey = 'mrNgAiHubApiKey';
+    let apiKeyInput = null;
+    let attempts = 0;
+    const maxAttempts = 50; // Try for 5 seconds (50 * 100ms)
 
-    // Load API key from localStorage
-    if (apiKeyInput) {
-      const storedApiKey = localStorage.getItem(apiKeyStorageKey);
-      if (storedApiKey) {
-        apiKeyInput.value = storedApiKey;
-        // Dispatch an input event to ensure Gradio recognizes the change
-        apiKeyInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-        // Gradio might also need a 'change' event for some components
-        apiKeyInput.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+    console.log('Attempting to set up API key storage...');
+
+    const intervalId = setInterval(() => {
+      attempts++;
+      const apiKeyInputContainer = document.getElementById(apiKeyElementId);
+      
+      if (apiKeyInputContainer) {
+        // Gradio often wraps inputs. The ID might be on a div.
+        let potentialInput = apiKeyInputContainer.querySelector('input[type="password"]');
+        if (potentialInput) {
+            apiKeyInput = potentialInput;
+        } else if (apiKeyInputContainer.tagName === 'INPUT' && apiKeyInputContainer.type === 'password') {
+            // Or the ID is directly on the input element
+            apiKeyInput = apiKeyInputContainer;
+        }
+      } else {
+         // Fallback if ID is directly on the input and not a container
+         apiKeyInput = document.getElementById(apiKeyElementId);
       }
 
-      // Save API key to localStorage on input
-      apiKeyInput.addEventListener('input', () => {
-        localStorage.setItem(apiKeyStorageKey, apiKeyInput.value);
-      });
-    } else {
-      console.warn('API key input field with ID "mr_ng_ai_hub_api_key_input" or its container not found. Storage functionality will not work.');
-    }
-  });
+      if (apiKeyInput) {
+        clearInterval(intervalId);
+        console.log('API key input field found:', apiKeyInput);
+
+        // Load API key from localStorage
+        try {
+          const storedApiKey = localStorage.getItem(apiKeyStorageKey);
+          if (storedApiKey) {
+            console.log('Stored API key found:', storedApiKey);
+            apiKeyInput.value = storedApiKey;
+            // Dispatch events to ensure Gradio recognizes the change
+            apiKeyInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+            apiKeyInput.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+            console.log('API key loaded into input field.');
+          } else {
+            console.log('No API key found in localStorage.');
+          }
+        } catch (e) {
+          console.error('Error reading from localStorage:', e);
+        }
+
+        // Save API key to localStorage on input
+        apiKeyInput.addEventListener('input', () => {
+          try {
+            localStorage.setItem(apiKeyStorageKey, apiKeyInput.value);
+            console.log('API key saved to localStorage:', apiKeyInput.value);
+          } catch (e) {
+            console.error('Error writing to localStorage:', e);
+          }
+        });
+      } else if (attempts >= maxAttempts) {
+        clearInterval(intervalId);
+        console.warn(`API key input field with ID "${apiKeyElementId}" (or a password input within it) not found after ${maxAttempts} attempts. Storage functionality will not work.`);
+      }
+    }, 100); // Check every 100ms
+  }
+
+  // Wait for the full page to load, as Gradio might initialize late
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    setupApiKeyStorage();
+  } else {
+    window.addEventListener('load', setupApiKeyStorage);
+  }
 </script>
