@@ -16,6 +16,21 @@
 <link rel="icon" href="/static/icon.png" type="image/png" />
 
 <script>
+  // Global Error Handler
+  window.onerror = function(message, source, lineno, colno, error) {
+    console.error("[GLOBAL_ERROR] Uncaught Exception:", {
+      message: message,
+      source: source,
+      lineno: lineno,
+      colno: colno,
+      error: error ? error.stack : 'No error object'
+    });
+    // Optionally, display a user-friendly message or send to a logging service
+    // const errorDisplay = document.getElementById('js-error-display'); // Assuming you add such an element
+    // if (errorDisplay) errorDisplay.textContent = "A JavaScript error occurred. Please check the console.";
+    return true; // Prevents default browser error handling (e.g., stopping script execution)
+  };
+
   function setupApiKeyStorage() {
     const apiKeyElementId = 'mr_ng_ai_hub_api_key_input';
     const apiKeyStorageKey = 'mrNgAiHubApiKey';
@@ -132,6 +147,12 @@ async function saveNewPodcastToHistory(title, audioFileServerPath, transcriptTex
 
     try {
         console.log(`[SAVE_NEW] Fetching audio from: ${audioFileServerPath}`);
+        if (!audioFileServerPath || !audioFileServerPath.startsWith('/file=')) {
+            console.error(`[SAVE_NEW] Invalid audioFileServerPath format: ${audioFileServerPath}. Expected to start with /file=`);
+            if (savingMsgElem) savingMsgElem.textContent = 'Error: Invalid audio file path for history.';
+            setTimeout(() => { if (savingMsgElem) savingMsgElem.remove(); }, 3000);
+            return;
+        }
         const response = await fetch(audioFileServerPath);
         console.log(`[SAVE_NEW] Fetch response status: ${response.status}`);
         if (!response.ok) {
@@ -328,76 +349,58 @@ function initializeJsTriggerObserver() {
         attempts++;
         const wrapperDiv = document.getElementById(targetNodeId);
         if (wrapperDiv) {
-            // Gradio's Textbox component usually renders a <textarea> inside a div that has the elem_id.
             inputElement = wrapperDiv.querySelector('textarea');
-            if (!inputElement) {
-                 inputElement = wrapperDiv.querySelector('input[type="text"]'); // Fallback
-                 if(inputElement) console.log("[INIT_TRIGGER_OBSERVER] Found input[type='text'] as target.");
-            } else {
-                 console.log("[INIT_TRIGGER_OBSERVER] Found textarea as target.");
-            }
+            if (!inputElement) inputElement = wrapperDiv.querySelector('input[type="text"]');
+            
+            if(inputElement) console.log("[INIT_TRIGGER_OBSERVER] Found trigger input/textarea element:", inputElement.tagName);
         } else {
             if (attempts % 10 === 0) console.log(`[INIT_TRIGGER_OBSERVER] Wrapper div #${targetNodeId} not found yet. Attempt: ${attempts}`);
         }
 
         if (inputElement) {
             clearInterval(findInputElementInterval);
-            console.log('[INIT_TRIGGER_OBSERVER] JS Trigger Textbox input element found:', inputElement);
+            console.log('[INIT_TRIGGER_OBSERVER] JS Trigger Textbox input element found and listener will be attached.');
 
-            const observer = new MutationObserver((mutationsList) => {
-                // We are observing the input/textarea itself. Gradio changes its 'value' property.
-                // The 'attributes' filter with 'value' might not always catch programmatic .value changes for textarea.
-                // A more direct way is to just check the value if any mutation occurs on the element.
-                // However, Gradio might also replace the element or its parent, so observing the wrapper might be safer if issues persist.
-                // For now, let's assume the inputElement itself is stable and its value property is updated.
-                
-                const currentValue = inputElement.value; // Read current value directly
-                
-                // Check if there's new, non-empty data and it's different from the last processed one
-                if (currentValue && currentValue !== lastProcessedValue) {
-                    console.log('[TRIGGER_OBSERVER] MutationObserver detected potential change. Current value:', currentValue.substring(0, 100) + "...");
-                    lastProcessedValue = currentValue; // Update last processed value immediately
+            const processData = (currentVal) => {
+                if (currentVal && currentVal !== lastProcessedValue) {
+                    console.log('[TRIGGER_PROCESSOR] Processing value:', currentVal.substring(0, 100) + "...");
+                    lastProcessedValue = currentVal;
                     try {
-                        const data = JSON.parse(currentValue);
+                        const data = JSON.parse(currentVal);
                         if (data && data.title && data.audio_url && typeof data.transcript !== 'undefined') {
-                            console.log('[TRIGGER_OBSERVER] Parsed data successfully. Calling saveNewPodcastToHistory.', data);
+                            console.log('[TRIGGER_PROCESSOR] Parsed data successfully. Calling saveNewPodcastToHistory.', data);
                             saveNewPodcastToHistory(data.title, data.audio_url, data.transcript);
                         } else {
-                            console.error("[TRIGGER_OBSERVER] Parsed data from trigger textbox is incomplete or malformed:", data);
+                            console.error("[TRIGGER_PROCESSOR] Parsed data from trigger textbox is incomplete or malformed:", data);
                         }
                     } catch (e) {
-                        console.error("[TRIGGER_OBSERVER] Error parsing JSON from js_trigger_data_textbox:", e, "Raw data:", currentValue);
+                        console.error("[TRIGGER_PROCESSOR] Error parsing JSON:", e, "Raw data:", currentVal);
                     }
-                } else if (currentValue === lastProcessedValue && currentValue) {
-                    // console.log('[TRIGGER_OBSERVER] Value is same as last processed. Ignoring.');
+                } else if (currentVal === lastProcessedValue && currentVal) {
+                    // console.log('[TRIGGER_PROCESSOR] Value is same as last processed. Ignoring.');
                 }
-            });
-            
-            // Observe the input/textarea element for changes to its properties or content.
-            // 'subtree' and 'childList' are more relevant for textareas if Gradio modifies the text node directly.
-            // 'attributes' is good for input elements if 'value' attribute is set.
-            // 'characterData' for direct text changes within.
-            // A combination is safest.
-            observer.observe(inputElement, { attributes: true, childList: true, subtree: true, characterData: true });
-            console.log('[INIT_TRIGGER_OBSERVER] MutationObserver is now observing the input/textarea element.');
+            };
 
-            // Also, Gradio might trigger 'input' or 'change' events when it sets the value.
-            // Listening to these can be an alternative or supplement to MutationObserver.
-            inputElement.addEventListener('input', () => {
-                const currentValue = inputElement.value;
-                if (currentValue && currentValue !== lastProcessedValue) {
-                    console.log('[TRIGGER_OBSERVER] "input" event detected. Current value:', currentValue.substring(0, 100) + "...");
-                    // Logic is same as in MutationObserver, could be refactored
-                    lastProcessedValue = currentValue;
-                    try {
-                        const data = JSON.parse(currentValue);
-                        if (data && data.title && data.audio_url && typeof data.transcript !== 'undefined') {
-                            saveNewPodcastToHistory(data.title, data.audio_url, data.transcript);
-                        } else { console.error("[TRIGGER_OBSERVER] 'input' event: Parsed data incomplete."); }
-                    } catch (e) { console.error("[TRIGGER_OBSERVER] 'input' event: Error parsing JSON:", e); }
-                }
+            // Attach 'input' event listener
+            inputElement.addEventListener('input', (event) => {
+                console.log('[TRIGGER_OBSERVER] "input" event detected on trigger textbox.');
+                processData(event.target.value);
             });
-             console.log('[INIT_TRIGGER_OBSERVER] Added "input" event listener to the input/textarea element.');
+            console.log('[INIT_TRIGGER_OBSERVER] Added "input" event listener to the trigger textbox.');
+
+            // Initial check: if the textbox already has a value when the listener is attached
+            if (inputElement.value) {
+                console.log('[INIT_TRIGGER_OBSERVER] Trigger textbox has initial value. Processing it:', inputElement.value.substring(0,100) + "...");
+                processData(inputElement.value);
+            }
+
+            // MutationObserver as a fallback/secondary check - might be redundant if 'input' event is reliable
+            const observer = new MutationObserver(() => {
+                 // console.log('[TRIGGER_OBSERVER] MutationObserver fired for trigger textbox.');
+                 processData(inputElement.value); // Process current value on any mutation
+            });
+            observer.observe(inputElement, { attributes: true, childList: true, subtree: true, characterData: true });
+            console.log('[INIT_TRIGGER_OBSERVER] MutationObserver is also observing the trigger textbox.');
 
 
         } else if (attempts >= maxAttempts) {
@@ -410,9 +413,15 @@ function initializeJsTriggerObserver() {
 
 // Wait for Gradio to be ready or use DOMContentLoaded
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("[DOM_CONTENT_LOADED] DOM fully loaded and parsed.");
+    console.log("[DOM_CONTENT_LOADED] DOM fully loaded and parsed. Initializing features.");
     initializePodcastHistoryFeature();
     initializeJsTriggerObserver();
+
+    // Additional call to render history after a short delay, as a fallback
+    setTimeout(() => {
+        console.log("[DOM_CONTENT_LOADED] Delayed attempt to render history (2s).");
+        renderPodcastHistory();
+    }, 2000);
 });
 
 </script>
