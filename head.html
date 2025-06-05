@@ -84,7 +84,7 @@
         try {
           const storedApiKey = localStorage.getItem(apiKeyStorageKey);
           if (storedApiKey) {
-            console.log('Stored API key found:', storedApiKey);
+            console.log('Stored API key found.');
             apiKeyInput.value = storedApiKey;
             // Dispatch events to ensure Gradio recognizes the change
             apiKeyInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
@@ -101,7 +101,7 @@
         apiKeyInput.addEventListener('input', () => {
           try {
             localStorage.setItem(apiKeyStorageKey, apiKeyInput.value);
-            console.log('API key saved to localStorage:', apiKeyInput.value);
+            console.log('API key saved to localStorage.');
           } catch (e) {
             console.error('Error writing to localStorage:', e);
           }
