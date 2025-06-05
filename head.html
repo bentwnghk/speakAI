@@ -156,11 +156,40 @@
                         lastProcessedValue = currentVal; // Update last processed value
                         try {
                             const data = JSON.parse(currentVal);
-                            if (data && data.title && data.audio_url && typeof data.transcript !== 'undefined') {
-                                console.log('[PROCESS_DATA] Parsed data successfully. Calling saveNewPodcastToHistory.');
-                                saveNewPodcastToHistory(data.title, data.audio_url, data.transcript);
+                            // EXPECTED data: { title: "...", audio_file_component_id: "...", transcript: "..." }
+                            if (data && data.title && data.audio_file_component_id && typeof data.transcript !== 'undefined') {
+                                console.log('[PROCESS_DATA] Parsed data successfully. Attempting to get audio URL from component:', data.audio_file_component_id);
+                                
+                                const audioFileComponentWrapper = document.getElementById(data.audio_file_component_id);
+                                if (audioFileComponentWrapper) {
+                                    // Gradio gr.File output usually has an <a> tag with class 'gr-file-name' or similar,
+                                    // or it might be a list of files if file_count="multiple" (not our case here).
+                                    // Let's look for the first <a> tag with an href inside the component.
+                                    const downloadLink = audioFileComponentWrapper.querySelector('a[href]');
+                                    
+                                    if (downloadLink && downloadLink.href) {
+                                        const audioUrlFromComponent = downloadLink.href;
+                                        console.log('[PROCESS_DATA] Found audio URL from component:', audioUrlFromComponent);
+                                        saveNewPodcastToHistory(data.title, audioUrlFromComponent, data.transcript);
+                                    } else {
+                                        console.error(`[PROCESS_DATA] Could not find a download link with href inside component #${data.audio_file_component_id}. Structure might have changed or file not ready.`);
+                                        // Fallback or error handling: maybe try again after a short delay?
+                                        // For now, log error. If this happens, the timing of Gradio updating the gr.File component vs. this script running is an issue.
+                                        setTimeout(() => { // Retry once after a short delay
+                                            const updatedLink = document.getElementById(data.audio_file_component_id)?.querySelector('a[href]');
+                                            if (updatedLink && updatedLink.href) {
+                                                console.log('[PROCESS_DATA] Retry: Found audio URL from component:', updatedLink.href);
+                                                saveNewPodcastToHistory(data.title, updatedLink.href, data.transcript);
+                                            } else {
+                                                console.error(`[PROCESS_DATA] Retry: Still could not find download link in component #${data.audio_file_component_id}.`);
+                                            }
+                                        }, 1000); // 1 second delay
+                                    }
+                                } else {
+                                    console.error(`[PROCESS_DATA] Could not find audio file component wrapper with ID: #${data.audio_file_component_id}`);
+                                }
                             } else {
-                                console.error("[PROCESS_DATA] Parsed data from trigger textbox is incomplete or malformed:", data);
+                                console.error("[PROCESS_DATA] Parsed data from trigger textbox is incomplete or malformed (missing title, audio_file_component_id, or transcript):", data);
                             }
                         } catch (e) {
                             console.error("[PROCESS_DATA] Error parsing JSON:", e, "Raw data:", currentVal);
@@ -181,19 +210,11 @@
 
                 // MutationObserver as a more general detection mechanism
                 const observer = new MutationObserver((mutationsList) => {
-                    // console.log('[MUTATION_OBSERVER] Mutation detected on trigger textbox wrapper or its children.');
-                    // We are interested in the value of the inputElement itself.
+                     console.log('[MUTATION_OBSERVER] Mutation detected on trigger textbox wrapper or its children.');
                     processData(inputElement.value, "MutationObserver");
                 });
                 
-                // Observe the inputElement itself for attribute changes (like 'value' for input)
-                // and childList/characterData for textarea content changes.
-                observer.observe(inputElement, {
-                    attributes: true,
-                    childList: true,
-                    subtree: true, // For text nodes within textarea
-                    characterData: true
-                });
+                observer.observe(inputElement, { attributes: true, childList: true, subtree: true, characterData: true });
                 console.log('[INIT_TRIGGER_OBSERVER] MutationObserver attached to observe the input/textarea element directly.');
 
                 // Initial check in case Gradio set the value before listeners were attached

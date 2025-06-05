@@ -226,7 +226,7 @@ def generate_audio(
     url_input: Optional[str], # Added url_input
     language: str = "English",
     openai_api_key: str = None,
-) -> (str, str, str): # Added str for JS trigger
+) -> (str, str, str, str): # Added 4th str for the hidden gr.File component
     """Generates podcast audio from uploaded files, direct text input, or URL."""
     start_time = time.time()
     if not (os.getenv("OPENAI_API_KEY") or openai_api_key):
@@ -557,16 +557,20 @@ def generate_audio(
         logger.warning(f"Could not make path relative to CWD ('{app_root}'). Using absolute path for gradio_file_url: {gradio_file_url}")
 
 
+    # The audio_url will now be fetched by JS from a hidden gr.File component
+    # We pass the raw temp_file_path to that component.
+    # The JSON will just contain a marker or the title to correlate.
     data_to_send = {
         "title": final_podcast_title,
-        "audio_url": gradio_file_url, # Use the potentially relative URL
-        "transcript": transcript # Use original transcript, JSON dumps will handle escaping
+        # "audio_url": gradio_file_url, # REMOVED - JS will get this from hidden gr.File
+        "audio_file_component_id": "temp_audio_file_url_holder", # ID of the hidden gr.File
+        "transcript": transcript
     }
     json_data_string = json.dumps(data_to_send)
     
-    logger.debug(f"Returning JSON data for JS trigger (audio_url: {gradio_file_url}): {json_data_string[:200]}...")
+    logger.debug(f"Returning JSON data for JS trigger (no audio_url, JS will fetch from component): {json_data_string[:200]}...")
 
-    return temp_file_path, transcript, json_data_string
+    return temp_file_path, transcript, json_data_string, temp_file_path # 4th item for hidden gr.File
 
 
 # --- Gradio UI Definition ---
@@ -610,7 +614,7 @@ footer_md = read_file_content("footer.md", "")
 head_html = read_file_content("head.html", "")
 
 
-with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧", allowed_paths=["./gradio_cached_files", "gradio_cached_files"]) as demo: # Added allowed_paths
+with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo: # Reverted allowed_paths
     gr.Markdown(description_md)
 
     with gr.Row():
@@ -670,6 +674,8 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧", allowed_pat
         podcast_history_display = gr.HTML("<ul id='podcastHistoryList' style='list-style-type: none; padding: 0;'><li>Loading history...</li></ul>")
         # Hidden Textbox component to pass JSON data to JavaScript
         js_trigger_data_textbox = gr.Textbox(label="JS Trigger Data", visible=False, elem_id="js_trigger_data_textbox")
+        # Hidden File component to get a Gradio-served URL for the audio
+        temp_audio_file_output_for_url = gr.File(label="Temp Audio File URL Holder", visible=False, elem_id="temp_audio_file_url_holder")
 
 
     def switch_input_method(choice):
@@ -721,7 +727,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧", allowed_pat
             lang_input,
             api_key_input
         ],
-        outputs=[audio_output, transcript_output, js_trigger_data_textbox], # Changed js_trigger_html to js_trigger_data_textbox
+        outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url], # Added temp_audio_file_output_for_url
         api_name="generate_podcast"
     )
 
@@ -737,7 +743,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧", allowed_pat
         ],
         # Examples won't trigger the history save directly unless we adapt the example fn or outputs
         # For now, history save is only for manual generation.
-        outputs=[audio_output, transcript_output, js_trigger_data_textbox], # Changed js_trigger_html to js_trigger_data_textbox
+        outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url], # Added temp_audio_file_output_for_url
         fn=generate_audio,
         cache_examples=True,
         run_on_click=True,
