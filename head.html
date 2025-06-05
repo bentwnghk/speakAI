@@ -128,27 +128,27 @@
   }
 
   function initializePodcastHistoryFeature() {
-    console.log("[INIT_HISTORY_FEATURE] Function called. Starting attempts to find list container."); // MOVED LOG TO VERY TOP
-    let attempts = 0;
-    const maxAttempts = 60; // 6 seconds
-    // console.log("[INIT_HISTORY_FEATURE] Initializing. Waiting for list container..."); // Original position
-    const interval = setInterval(() => {
-        const listContainer = document.getElementById('podcastHistoryList');
-        if (listContainer) {
-            clearInterval(interval);
-            console.log("[INIT_HISTORY_FEATURE] Podcast history list container found. Rendering history.");
-            renderPodcastHistory();
-        } else {
-            attempts++;
-            if (attempts % 10 === 0) {
-                 console.log(`[INIT_HISTORY_FEATURE] Waiting for list container... attempt ${attempts}`);
-            }
-            if (attempts >= maxAttempts) {
-                clearInterval(interval);
-                console.warn("[INIT_HISTORY_FEATURE] Podcast history list container ('podcastHistoryList') NOT FOUND after multiple attempts.");
-            }
-        }
-    }, 100);
+    console.log("[INIT_HISTORY_FEATURE_TEST] Function successfully CALLED AND ENTERED.");
+    // All original content of this function is temporarily commented out for this test.
+    // let attempts = 0;
+    // const maxAttempts = 60; // 6 seconds
+    // const interval = setInterval(() => {
+    //     const listContainer = document.getElementById('podcastHistoryList');
+    //     if (listContainer) {
+    //         clearInterval(interval);
+    //         console.log("[INIT_HISTORY_FEATURE] Podcast history list container found. Rendering history.");
+    //         renderPodcastHistory();
+    //     } else {
+    //         attempts++;
+    //         if (attempts % 10 === 0) {
+    //              console.log(`[INIT_HISTORY_FEATURE] Waiting for list container... attempt ${attempts}`);
+    //         }
+    //         if (attempts >= maxAttempts) {
+    //             clearInterval(interval);
+    //             console.warn("[INIT_HISTORY_FEATURE] Podcast history list container ('podcastHistoryList') NOT FOUND after multiple attempts.");
+    //         }
+    //     }
+    // }, 100);
   }
 
   // Wait for Gradio to be ready or use DOMContentLoaded
