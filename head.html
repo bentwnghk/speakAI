@@ -119,20 +119,34 @@
         const history = getPodcastHistory();
         const podcast = history.find(p => p.id === podcastId);
         if (podcast) {
-            const audioPlayerElement = document.querySelector('#podcast_audio_player audio');
+            const audioWrapper = document.getElementById('podcast_audio_player');
             const transcriptDisplayElement = document.querySelector('#podcast_transcript_display textarea');
+            let audioPlayerElement = null;
+
+            if (audioWrapper) {
+                audioPlayerElement = audioWrapper.querySelector('audio');
+            }
 
             if (audioPlayerElement) {
-                // Use podcast.audioUrl which stores the direct servable URL
-                audioPlayerElement.src = podcast.audioUrl; 
-                const audioWrapper = audioPlayerElement.closest('.gr-audio');
-                if (audioWrapper) audioWrapper.style.display = 'block';
-                 console.log(`[LOAD_HISTORY] Audio player src set to ${podcast.audioUrl} for ${podcast.title}`);
+                console.log(`[LOAD_HISTORY] Found audio element. Setting src to: ${podcast.audioUrl}`);
+                audioPlayerElement.src = podcast.audioUrl; // Use the stored URL
+                // Ensure the parent gr.Audio component wrapper is visible if Gradio hides it when value is null initially
+                if (audioWrapper) { // audioWrapper is the div with id='podcast_audio_player'
+                    // Gradio's gr-audio class is usually on the wrapper.
+                    // If it's hidden by Gradio (e.g. display: none), this might make it appear.
+                    audioWrapper.style.display = 'block';
+                    // Also, ensure any inner container that Gradio might use is also visible.
+                    // This is speculative, depends on Gradio's exact structure for gr.Audio.
+                    const innerContainer = audioWrapper.querySelector('.player'); // Common class for audio players
+                    if (innerContainer) innerContainer.style.display = 'block';
+                }
+                 console.log(`[LOAD_HISTORY] Audio player src set for ${podcast.title}`);
             } else {
-                console.error("[LOAD_HISTORY] Audio player element ('#podcast_audio_player audio') not found.");
-                alert("Could not find audio player to load podcast.");
+                console.error("[LOAD_HISTORY] Audio player HTML element (<audio>) not found within wrapper #podcast_audio_player.");
+                alert("Could not find the HTML audio player element to load the podcast.");
                 return;
             }
+
             if (transcriptDisplayElement) {
                 transcriptDisplayElement.value = podcast.transcript;
                 const inputEvent = new Event('input', { bubbles: true, cancelable: true });
