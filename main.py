@@ -561,25 +561,22 @@ def generate_audio(
     # The audio_url will now be fetched by JS from a hidden gr.File component
     # We pass the raw temp_file_path to that component.
     # The JSON will just contain a marker or the title to correlate.
-    json_data_string_for_js_trigger = None # Initialize to None
-    temp_file_path_for_hidden_file_comp = None # Initialize to None
+    json_data_string_for_js_trigger = None
+    temp_file_path_for_hidden_file_comp = None
 
     if trigger_history_save:
         data_to_send_to_js = {
             "title": final_podcast_title,
             "audio_file_component_id": "temp_audio_file_url_holder",
             "transcript": transcript
-            # No need to send transcript in this JSON if it's large and already in IndexedDB.
-            # However, the current JS saveNewPodcastToHistory expects it.
-            # For now, keeping it to match JS. Can optimize later.
         }
         json_data_string_for_js_trigger = json.dumps(data_to_send_to_js)
         temp_file_path_for_hidden_file_comp = temp_file_path
         logger.debug(f"History save TRIGGERED. JS trigger data: {json_data_string_for_js_trigger[:200]}..., Hidden file path: {temp_file_path_for_hidden_file_comp}")
     else:
-        logger.debug("History save SKIPPED for this run (e.g., example run). JS trigger data and hidden file path will be None.")
-        # json_data_string_for_js_trigger remains None
-        # temp_file_path_for_hidden_file_comp remains None
+        logger.debug("History save SKIPPED for example run. Sending NO_HISTORY_SAVE signal.")
+        json_data_string_for_js_trigger = "NO_HISTORY_SAVE" # Explicit signal
+        temp_file_path_for_hidden_file_comp = None # Ensure hidden file component is also cleared/nulled
 
     return temp_file_path, transcript, json_data_string_for_js_trigger, temp_file_path_for_hidden_file_comp
 

@@ -320,26 +320,26 @@
                 console.log('[INIT_TRIGGER_OBSERVER] Trigger element found:', inputElement.tagName);
                 
                 const processData = (currentVal, source) => {
-                    console.log(`[PROCESS_DATA] Called from ${source}. CurrentVal (type: ${typeof currentVal}, value first 50: '${currentVal ? String(currentVal).substring(0,50) : currentVal}') Last processed (first 50: '${lastProcessedValue ? String(lastProcessedValue).substring(0,50) : lastProcessedValue}')`);
-                    
+                    console.log(`[PROCESS_DATA] Called from ${source}. CurrentVal (type: ${typeof currentVal}, value: '${currentVal}') Last processed: '${lastProcessedValue}'`);
+
                     const effectiveCurrentVal = (currentVal === null || typeof currentVal === 'undefined') ? "" : String(currentVal).trim();
 
-                    if (effectiveCurrentVal === "" && lastProcessedValue !== "") {
-                        console.log("[PROCESS_DATA] Received empty value (likely from example run or clear). Updating lastProcessedValue and ignoring.");
-                        lastProcessedValue = effectiveCurrentVal; // Acknowledge the empty state
+                    if (effectiveCurrentVal === "NO_HISTORY_SAVE") {
+                        console.log("[PROCESS_DATA] Received 'NO_HISTORY_SAVE' signal. Skipping history save. Updating lastProcessedValue.");
+                        lastProcessedValue = effectiveCurrentVal; // Update to prevent reprocessing if it's sent again
                         return;
                     }
-                    
+
                     if (effectiveCurrentVal && effectiveCurrentVal !== lastProcessedValue) {
-                        console.log('[PROCESS_DATA] Value is new and non-empty. Processing:', effectiveCurrentVal.substring(0, 100) + "...");
-                        lastProcessedValue = effectiveCurrentVal; 
+                        console.log('[PROCESS_DATA] Value is new, non-empty, and not NO_HISTORY_SAVE. Processing:', effectiveCurrentVal.substring(0, 100) + "...");
+                        lastProcessedValue = effectiveCurrentVal;
                         try {
                             const data = JSON.parse(effectiveCurrentVal);
                             if (data && data.title && data.audio_file_component_id && typeof data.transcript !== 'undefined') {
                                 console.log('[PROCESS_DATA] Parsed data successfully. Attempting to get audio URL from component:', data.audio_file_component_id);
                                 const audioFileComponentWrapper = document.getElementById(data.audio_file_component_id);
                                 if (audioFileComponentWrapper) {
-                                    setTimeout(() => { // Add delay for gr.File to update
+                                    setTimeout(() => {
                                         const downloadLink = audioFileComponentWrapper.querySelector('a[href]');
                                         if (downloadLink && downloadLink.href) {
                                             const audioUrlFromComponent = downloadLink.href;
@@ -348,25 +348,23 @@
                                         } else {
                                             console.error(`[PROCESS_DATA] Could not find a download link with href inside component #${data.audio_file_component_id} after delay.`);
                                         }
-                                    }, 300); // Increased delay slightly
+                                    }, 300);
                                 } else {
                                     console.error(`[PROCESS_DATA] Could not find audio file component wrapper with ID: #${data.audio_file_component_id}`);
                                 }
-                            } else { 
-                                console.warn("[PROCESS_DATA] Parsed JSON, but it's missing expected fields (title, audio_file_component_id, transcript). Ignoring. Data:", data);
+                            } else {
+                                console.warn("[PROCESS_DATA] Parsed JSON, but it's missing expected fields. Ignoring. Data:", data);
                             }
-                        } catch (e) { 
-                            console.warn("[PROCESS_DATA] Error parsing JSON (this is expected if no history save was triggered by Python, e.g. example run sending empty/null). Message:", e.message, "Raw data was:", effectiveCurrentVal);
+                        } catch (e) {
+                            console.warn("[PROCESS_DATA] Error parsing JSON. This might be an unexpected value. Message:", e.message, "Raw data was:", effectiveCurrentVal);
                         }
                     } else if (!effectiveCurrentVal && lastProcessedValue !== "") {
-                        // This case handles when currentVal is empty, and lastProcessedValue was not empty.
-                        // This means it's a legitimate "clear" or "no data" signal.
                         console.log("[PROCESS_DATA] Value is now effectively empty, was previously processed. Updating lastProcessedValue.");
                         lastProcessedValue = effectiveCurrentVal;
                     } else if (effectiveCurrentVal === lastProcessedValue) {
                         // console.log("[PROCESS_DATA] Value is same as last processed. Ignoring.");
                     } else {
-                         console.log("[PROCESS_DATA] Value is empty and was already empty. Ignoring.");
+                         console.log("[PROCESS_DATA] Value is effectively empty and was already empty. Ignoring.");
                     }
                 };
 
