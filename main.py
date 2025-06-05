@@ -542,16 +542,29 @@ def generate_audio(
     # Gradio serves files from gr.Audio(type="filepath") via /file=<path>
     # Ensure the path is properly URL encoded if it contains special characters, though Gradio might handle this.
     # For simplicity, we'll assume basic paths for now. If issues persist, URL encoding might be needed.
-    gradio_file_url = f"/file={temp_file_path}"
+    # gradio_file_url = f"/file={temp_file_path}" # Original absolute path approach
+
+    temp_file_path_obj = Path(temp_file_path)
+    try:
+        # Path.cwd() in the context of the uvicorn server (likely /app in Docker)
+        app_root = Path.cwd()
+        relative_temp_path = temp_file_path_obj.relative_to(app_root)
+        gradio_file_url = f"/file={relative_temp_path}"
+        logger.info(f"Constructed relative gradio_file_url: {gradio_file_url}")
+    except ValueError:
+        # Fallback if relative_to fails (e.g. different drives or not a subpath)
+        gradio_file_url = f"/file={temp_file_path}" # Keep the absolute path
+        logger.warning(f"Could not make path relative to CWD ('{app_root}'). Using absolute path for gradio_file_url: {gradio_file_url}")
+
 
     data_to_send = {
         "title": final_podcast_title,
-        "audio_url": gradio_file_url,
+        "audio_url": gradio_file_url, # Use the potentially relative URL
         "transcript": transcript # Use original transcript, JSON dumps will handle escaping
     }
     json_data_string = json.dumps(data_to_send)
     
-    logger.debug(f"Returning JSON data for JS trigger: {json_data_string[:200]}...") # Log snippet
+    logger.debug(f"Returning JSON data for JS trigger (audio_url: {gradio_file_url}): {json_data_string[:200]}...")
 
     return temp_file_path, transcript, json_data_string
 
