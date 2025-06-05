@@ -119,33 +119,58 @@
         const history = getPodcastHistory();
         const podcast = history.find(p => p.id === podcastId);
         if (podcast) {
-            const audioWrapper = document.getElementById('podcast_audio_player');
+            const audioWrapper = document.getElementById('podcast_audio_player'); // This is the div Gradio creates with the elem_id
             const transcriptDisplayElement = document.querySelector('#podcast_transcript_display textarea');
             let audioPlayerElement = null;
 
-            if (audioWrapper) {
-                audioPlayerElement = audioWrapper.querySelector('audio');
-            }
-
-            if (audioPlayerElement) {
-                console.log(`[LOAD_HISTORY] Found audio element. Setting src to: ${podcast.audioUrl}`);
-                audioPlayerElement.src = podcast.audioUrl; // Use the stored URL
-                // Ensure the parent gr.Audio component wrapper is visible if Gradio hides it when value is null initially
-                if (audioWrapper) { // audioWrapper is the div with id='podcast_audio_player'
-                    // Gradio's gr-audio class is usually on the wrapper.
-                    // If it's hidden by Gradio (e.g. display: none), this might make it appear.
-                    audioWrapper.style.display = 'block';
-                    // Also, ensure any inner container that Gradio might use is also visible.
-                    // This is speculative, depends on Gradio's exact structure for gr.Audio.
-                    const innerContainer = audioWrapper.querySelector('.player'); // Common class for audio players
-                    if (innerContainer) innerContainer.style.display = 'block';
-                }
-                 console.log(`[LOAD_HISTORY] Audio player src set for ${podcast.title}`);
-            } else {
-                console.error("[LOAD_HISTORY] Audio player HTML element (<audio>) not found within wrapper #podcast_audio_player.");
-                alert("Could not find the HTML audio player element to load the podcast.");
+            if (!audioWrapper) {
+                console.error("[LOAD_HISTORY] Audio player WRAPPER ('#podcast_audio_player') not found.");
+                alert("Could not find the audio player component to load the podcast.");
                 return;
             }
+
+            audioPlayerElement = audioWrapper.querySelector('audio');
+
+            if (!audioPlayerElement) {
+                console.warn("[LOAD_HISTORY] HTML <audio> element not initially found. Attempting to create or find a suitable container.");
+                // Gradio's gr.Audio often has a structure like:
+                // <div id="podcast_audio_player" class="gr-audio ...">
+                //   <div class="player ..."> <!-- Or similar class -->
+                //     <!-- <audio> tag would be here -->
+                //   </div>
+                // </div>
+                // Or sometimes the <audio> tag is directly inside the #podcast_audio_player div.
+
+                let playerContainer = audioWrapper.querySelector('.player'); // A common class Gradio might use
+                if (!playerContainer) { // If no specific '.player' div, use the wrapper itself as container
+                    playerContainer = audioWrapper;
+                    console.log("[LOAD_HISTORY] No '.player' div found, will attempt to append <audio> to the main wrapper.");
+                } else {
+                    console.log("[LOAD_HISTORY] Found '.player' div, will attempt to append <audio> there.");
+                }
+                
+                // Clear out any placeholder content in the player container if it exists
+                // playerContainer.innerHTML = ''; // Be cautious with this, might remove other Gradio elements
+
+                audioPlayerElement = document.createElement('audio');
+                audioPlayerElement.setAttribute('controls', '');
+                // Common styles Gradio might apply, or use defaults
+                audioPlayerElement.style.width = '100%';
+                playerContainer.appendChild(audioPlayerElement);
+                console.log("[LOAD_HISTORY] Created and appended a new <audio> element.");
+            }
+            
+            // At this point, audioPlayerElement should exist (either found or created)
+            console.log(`[LOAD_HISTORY] Using audio element. Setting src to: ${podcast.audioUrl}`);
+            audioPlayerElement.src = podcast.audioUrl;
+            audioPlayerElement.load(); // Explicitly call load after setting new src
+
+            // Ensure the main wrapper is visible
+            audioWrapper.style.display = 'block';
+            const innerContainer = audioWrapper.querySelector('.player');
+            if (innerContainer) innerContainer.style.display = 'block';
+            
+            console.log(`[LOAD_HISTORY] Audio player src set for ${podcast.title}`);
 
             if (transcriptDisplayElement) {
                 transcriptDisplayElement.value = podcast.transcript;
