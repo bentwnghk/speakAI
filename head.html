@@ -247,6 +247,18 @@
             console.error(`[SAVE_NEW] Invalid or empty audioFileUrlFromComponent: '${audioFileUrlFromComponent}'`); return;
         }
         console.log(`[SAVE_NEW] Valid audioFileUrlFromComponent for fetch: ${audioFileUrlFromComponent}`);
+
+        // Check for existing title
+        const currentHistoryMetadata = getPodcastMetadataHistory();
+        const existingPodcast = currentHistoryMetadata.find(podcast => podcast.title === title);
+        if (existingPodcast) {
+            console.warn(`[SAVE_NEW] Podcast with title "${title}" already exists in history. Skipping save.`);
+            alert(`A podcast with the title "${title}" already exists in your history and will not be added again.`);
+            // Optionally remove any "saving..." message if it was added
+            const savingMsgElemForSkip = document.getElementById('podcastSavingMessage');
+            if (savingMsgElemForSkip) savingMsgElemForSkip.remove();
+            return;
+        }
         
         const historyListElem = document.getElementById('podcastHistoryList');
         let savingMsgElem = document.getElementById('podcastSavingMessage');
@@ -285,7 +297,7 @@
             request.onsuccess = () => {
                 console.log(`[SAVE_NEW] Podcast data (with blob) saved to IndexedDB with ID: ${podcastId}`);
                 // Now save metadata to localStorage
-                const historyMetadata = getPodcastMetadataHistory();
+                const historyMetadata = getPodcastMetadataHistory(); // Re-fetch in case of concurrent ops, though unlikely here
                 historyMetadata.unshift({
                     id: podcastId, // Use the same ID
                     title: title,
@@ -303,7 +315,7 @@
                 if(savingMsgElem) savingMsgElem.textContent = `DB Save Error: ${event.target.error.name}`;
             };
 
-        } catch (error) { 
+        } catch (error) {
             console.error("[SAVE_NEW] Error fetching audio or during DB operation setup:", error);
             if(savingMsgElem) savingMsgElem.textContent = `Error: ${error.message}`;
         }
