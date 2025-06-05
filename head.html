@@ -47,3 +47,40 @@
   content="document to podcast, website to podcast, audio conversion, podcast creation, accessible content"
 />
 <link rel="icon" href="/static/icon.png" type="image/png" />
+
+<script>
+  document.addEventListener('DOMContentLoaded', (event) => {
+    // Use a more specific selector if Gradio doesn't directly use the elem_id on the input
+    // This attempts to find the input within the div that Gradio creates for the Textbox
+    const apiKeyInputContainer = document.getElementById('mr_ng_ai_hub_api_key_input');
+    let apiKeyInput = null;
+
+    if (apiKeyInputContainer) {
+        apiKeyInput = apiKeyInputContainer.querySelector('input[type="password"]');
+    } else {
+        // Fallback for older Gradio versions or if ID is directly on input
+        apiKeyInput = document.getElementById('mr_ng_ai_hub_api_key_input');
+    }
+    
+    const apiKeyStorageKey = 'mrNgAiHubApiKey';
+
+    // Load API key from localStorage
+    if (apiKeyInput) {
+      const storedApiKey = localStorage.getItem(apiKeyStorageKey);
+      if (storedApiKey) {
+        apiKeyInput.value = storedApiKey;
+        // Dispatch an input event to ensure Gradio recognizes the change
+        apiKeyInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+        // Gradio might also need a 'change' event for some components
+        apiKeyInput.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+      }
+
+      // Save API key to localStorage on input
+      apiKeyInput.addEventListener('input', () => {
+        localStorage.setItem(apiKeyStorageKey, apiKeyInput.value);
+      });
+    } else {
+      console.warn('API key input field with ID "mr_ng_ai_hub_api_key_input" or its container not found. Storage functionality will not work.');
+    }
+  });
+</script>

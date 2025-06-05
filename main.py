@@ -597,6 +597,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
                 label="Mr.🆖 AI Hub API Key",
                 type="password",
                 placeholder="Enter your API Key obtained from Mr.🆖 AI Hub, in the format: sk-xxx",
+                elem_id="mr_ng_ai_hub_api_key_input" # Added elem_id
         )
 
     submit_button = gr.Button("✨ Generate Podcast", variant="primary")
