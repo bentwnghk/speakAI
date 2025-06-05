@@ -132,11 +132,12 @@
         const targetNodeId = 'js_trigger_data_textbox';
         let inputElement = null;
         let attempts = 0;
-        const maxAttemptsObserver = 20; // 2 seconds for this specific element
-        let lastProcessedValue = null;
-        console.log('[INIT_TRIGGER_OBSERVER] Setting up observer...');
+        const maxAttemptsObserver = 30; // 3 seconds for this specific element
+        let lastProcessedValue = "INITIAL_NULL_VALUE_NEVER_TO_BE_REPEATED"; // Initialize to a unique string
+        console.log('[INIT_TRIGGER_OBSERVER] Setting up trigger detection...');
 
         const findAndObserveInterval = setInterval(() => {
+            attempts++;
             const wrapperDiv = document.getElementById(targetNodeId);
             if (wrapperDiv) {
                 inputElement = wrapperDiv.querySelector('textarea');
@@ -145,29 +146,71 @@
 
             if (inputElement) {
                 clearInterval(findAndObserveInterval);
-                console.log('[INIT_TRIGGER_OBSERVER] Trigger element found. Attaching input listener.');
+                console.log('[INIT_TRIGGER_OBSERVER] Trigger input/textarea element found:', inputElement.tagName);
                 
-                const processData = (currentVal) => {
+                const processData = (currentVal, source) => {
+                    console.log(`[PROCESS_DATA] Called from ${source}. CurrentVal (first 50 chars):`, currentVal ? currentVal.substring(0,50) : "undefined/empty", "Last processed:", lastProcessedValue ? lastProcessedValue.substring(0,50) : "undefined/empty");
+                    // Process if currentVal is not empty AND it's different from the last processed value
                     if (currentVal && currentVal !== lastProcessedValue) {
-                        console.log('[TRIGGER_PROCESSOR] Processing value:', currentVal.substring(0, 50) + "...");
-                        lastProcessedValue = currentVal;
+                        console.log('[PROCESS_DATA] Value is new and non-empty. Processing:', currentVal.substring(0, 100) + "...");
+                        lastProcessedValue = currentVal; // Update last processed value
                         try {
                             const data = JSON.parse(currentVal);
                             if (data && data.title && data.audio_url && typeof data.transcript !== 'undefined') {
+                                console.log('[PROCESS_DATA] Parsed data successfully. Calling saveNewPodcastToHistory.');
                                 saveNewPodcastToHistory(data.title, data.audio_url, data.transcript);
-                            } else { console.error("[TRIGGER_PROCESSOR] Parsed data incomplete."); }
-                        } catch (e) { console.error("[TRIGGER_PROCESSOR] Error parsing JSON:", e); }
+                            } else {
+                                console.error("[PROCESS_DATA] Parsed data from trigger textbox is incomplete or malformed:", data);
+                            }
+                        } catch (e) {
+                            console.error("[PROCESS_DATA] Error parsing JSON:", e, "Raw data:", currentVal);
+                        }
+                    } else if (!currentVal) {
+                        console.log("[PROCESS_DATA] Value is empty. Ignoring.");
+                    } else {
+                        console.log("[PROCESS_DATA] Value is same as last processed. Ignoring.");
                     }
                 };
-                inputElement.addEventListener('input', (event) => processData(event.target.value));
-                if (inputElement.value) processData(inputElement.value); // Initial check
-                console.log('[INIT_TRIGGER_OBSERVER] Input listener attached.');
-                return; // Exit interval
+
+                // Listener for 'input' event
+                inputElement.addEventListener('input', (event) => {
+                    console.log('[EVENT_LISTENER] "input" event fired on trigger textbox.');
+                    processData(event.target.value, "input event");
+                });
+                console.log('[INIT_TRIGGER_OBSERVER] "input" event listener attached.');
+
+                // MutationObserver as a more general detection mechanism
+                const observer = new MutationObserver((mutationsList) => {
+                    // console.log('[MUTATION_OBSERVER] Mutation detected on trigger textbox wrapper or its children.');
+                    // We are interested in the value of the inputElement itself.
+                    processData(inputElement.value, "MutationObserver");
+                });
+                
+                // Observe the inputElement itself for attribute changes (like 'value' for input)
+                // and childList/characterData for textarea content changes.
+                observer.observe(inputElement, {
+                    attributes: true,
+                    childList: true,
+                    subtree: true, // For text nodes within textarea
+                    characterData: true
+                });
+                console.log('[INIT_TRIGGER_OBSERVER] MutationObserver attached to observe the input/textarea element directly.');
+
+                // Initial check in case Gradio set the value before listeners were attached
+                if (inputElement.value) {
+                    console.log('[INIT_TRIGGER_OBSERVER] Trigger textbox has an initial value. Processing it.');
+                    processData(inputElement.value, "initial check");
+                } else {
+                    console.log('[INIT_TRIGGER_OBSERVER] Trigger textbox has no initial value.');
+                }
+                return; // Exit interval once element is found and listeners are set
             }
-            attempts++;
+            
+            if (attempts % 10 === 0) console.log(`[INIT_TRIGGER_OBSERVER] Waiting for trigger element #${targetNodeId}... Attempt ${attempts}`);
+
             if (attempts >= maxAttemptsObserver) {
                 clearInterval(findAndObserveInterval);
-                console.warn(`[INIT_TRIGGER_OBSERVER] Trigger element #${targetNodeId} not found after ${maxAttemptsObserver} attempts.`);
+                console.warn(`[INIT_TRIGGER_OBSERVER] Trigger element #${targetNodeId} (textarea/input) NOT FOUND after ${maxAttemptsObserver} attempts.`);
             }
         }, 100);
     };
