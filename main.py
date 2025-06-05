@@ -226,6 +226,7 @@ def generate_audio(
     url_input: Optional[str], # Added url_input
     language: str = "English",
     openai_api_key: str = None,
+    trigger_history_save: bool = True, # New parameter
 ) -> (str, str, str, str): # Added 4th str for the hidden gr.File component
     """Generates podcast audio from uploaded files, direct text input, or URL."""
     start_time = time.time()
@@ -560,17 +561,25 @@ def generate_audio(
     # The audio_url will now be fetched by JS from a hidden gr.File component
     # We pass the raw temp_file_path to that component.
     # The JSON will just contain a marker or the title to correlate.
-    data_to_send = {
-        "title": final_podcast_title,
-        # "audio_url": gradio_file_url, # REMOVED - JS will get this from hidden gr.File
-        "audio_file_component_id": "temp_audio_file_url_holder", # ID of the hidden gr.File
-        "transcript": transcript
-    }
-    json_data_string = json.dumps(data_to_send)
-    
-    logger.debug(f"Returning JSON data for JS trigger (no audio_url, JS will fetch from component): {json_data_string[:200]}...")
+    json_data_string = None
+    temp_file_path_for_hidden_component = None
 
-    return temp_file_path, transcript, json_data_string, temp_file_path # 4th item for hidden gr.File
+    if trigger_history_save:
+        data_to_send = {
+            "title": final_podcast_title,
+            "audio_file_component_id": "temp_audio_file_url_holder", # ID of the hidden gr.File
+            "transcript": transcript
+        }
+        json_data_string = json.dumps(data_to_send)
+        temp_file_path_for_hidden_component = temp_file_path # Populate hidden file only if saving history
+        logger.debug(f"History save TRIGGERED. Returning JSON data: {json_data_string[:200]}...")
+    else:
+        logger.debug("History save SKIPPED for this run (e.g., example run).")
+        json_data_string = "" # Send empty string to JS, which should ignore it
+        temp_file_path_for_hidden_component = None
+
+
+    return temp_file_path, transcript, json_data_string, temp_file_path_for_hidden_component
 
 
 # --- Gradio UI Definition ---
@@ -727,24 +736,35 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo: # 
             lang_input,
             api_key_input
         ],
-        outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url], # Added temp_audio_file_output_for_url
+        outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url],
         api_name="generate_podcast"
     )
 
+    # Wrapper function for examples to disable history save
+    def generate_audio_for_example(input_method_ex, files_ex, input_text_ex, url_input_ex, language_ex, openai_api_key_ex):
+        logger.info("Running generate_audio via example click.")
+        return generate_audio(
+            input_method=input_method_ex,
+            files=files_ex,
+            input_text=input_text_ex,
+            url_input=url_input_ex,
+            language=language_ex,
+            openai_api_key=openai_api_key_ex,
+            trigger_history_save=False # Explicitly disable history save for examples
+        )
+
     gr.Examples(
         examples=examples,
-        inputs=[ # Ensure order matches generate_audio parameters for examples
-            input_method_radio, 
-            file_input, 
-            text_input, 
-            url_input_field, # Added url_input_field
-            lang_input, 
+        inputs=[
+            input_method_radio,
+            file_input,
+            text_input,
+            url_input_field,
+            lang_input,
             api_key_input
         ],
-        # Examples won't trigger the history save directly unless we adapt the example fn or outputs
-        # For now, history save is only for manual generation.
-        outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url], # Added temp_audio_file_output_for_url
-        fn=generate_audio,
+        outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url],
+        fn=generate_audio_for_example, # Use the wrapper function
         cache_examples=True,
         run_on_click=True,
         label="Examples (Click for Demo)"
