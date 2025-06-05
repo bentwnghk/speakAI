@@ -16,40 +16,201 @@
 <link rel="icon" href="/static/icon.png" type="image/png" />
 
 <script>
-  // Test Script for DOMContentLoaded
-  console.log("[HEAD_SCRIPT_TEST] Script block parsing started.");
+  console.log("[HEAD_SCRIPT] Script block parsing started.");
 
-  try {
-    window.onerror = function(message, source, lineno, colno, error) {
-      console.error("[GLOBAL_ERROR_TEST] Uncaught Exception:", { message, source, lineno, colno, error: error ? error.stack : 'No error object' });
-      return true;
-    };
-    console.log("[HEAD_SCRIPT_TEST] Global error handler set.");
-  } catch (e) {
-    console.error("[HEAD_SCRIPT_TEST] FAILED to set global error handler:", e);
+  window.onerror = function(message, source, lineno, colno, error) {
+    console.error("[GLOBAL_ERROR] Uncaught Exception:", { message, source, lineno, colno, error: error ? error.stack : 'No error object' });
+    return true;
+  };
+  console.log("[HEAD_SCRIPT] Global error handler set.");
+
+  const PODCAST_HISTORY_KEY = 'gradioPdfToPodcastHistory';
+
+  function getPodcastHistory() {
+    try {
+        const history = localStorage.getItem(PODCAST_HISTORY_KEY);
+        return history ? JSON.parse(history) : [];
+    } catch (e) {
+        console.error("[GET_HISTORY] Error reading:", e);
+        return [];
+    }
   }
 
-  try {
-    console.log("[HEAD_SCRIPT_TEST] Setting up DOMContentLoaded listener.");
-    document.addEventListener('DOMContentLoaded', () => {
-      console.log("[HEAD_SCRIPT_TEST] DOMContentLoaded event FIRED!");
-      alert("HEAD.HTML DOMContentLoaded event FIRED!");
-      try {
-        // Try to access an element that should exist if Gradio UI is there
-        const appElement = document.querySelector('.gradio-container'); // Common Gradio wrapper
-        if (appElement) {
-          console.log("[HEAD_SCRIPT_TEST] Gradio container element found after DOMContentLoaded.", appElement);
-        } else {
-          console.warn("[HEAD_SCRIPT_TEST] Gradio container element NOT found after DOMContentLoaded.");
+  function savePodcastHistory(history) {
+    try {
+        localStorage.setItem(PODCAST_HISTORY_KEY, JSON.stringify(history));
+    } catch (e) {
+        console.error("[SAVE_HISTORY] Error saving:", e);
+        alert("Could not save podcast history. Storage might be full.");
+    }
+  }
+
+  function renderPodcastHistory() {
+    console.log("[RENDER_HISTORY] Attempting to render.");
+    const listContainer = document.getElementById('podcastHistoryList');
+    if (!listContainer) {
+        console.warn("[RENDER_HISTORY] 'podcastHistoryList' element NOT FOUND.");
+        // Update the placeholder directly if it's the initial "Loading history..."
+        const accordionContent = document.querySelector('#podcastHistoryList'); // Re-query, Gradio might replace it
+        if (accordionContent && accordionContent.innerHTML.includes('Loading history...')) {
+            accordionContent.innerHTML = '<li style="padding: 10px; text-align: center;">History element not found by JS yet.</li>';
         }
-      } catch(e_dom_access) {
-        console.error("[HEAD_SCRIPT_TEST] Error accessing Gradio element after DOMContentLoaded:", e_dom_access);
-      }
-    });
-    console.log("[HEAD_SCRIPT_TEST] DOMContentLoaded listener SET.");
-  } catch (e_listener) {
-    console.error("[HEAD_SCRIPT_TEST] FAILED to set DOMContentLoaded listener:", e_listener);
+        return;
+    }
+    listContainer.innerHTML = ''; // Clear
+    const history = getPodcastHistory();
+    if (history.length === 0) {
+        listContainer.innerHTML = '<li style="padding: 10px; text-align: center;">No podcasts in history.</li>';
+    } else {
+        // Simplified rendering for now
+        history.forEach(p => {
+            const item = document.createElement('li');
+            item.textContent = p.title;
+            listContainer.appendChild(item);
+        });
+    }
+    console.log(`[RENDER_HISTORY] Rendered ${history.length} items.`);
   }
 
-  console.log("[HEAD_SCRIPT_TEST] Script block parsing finished.");
+  // Functions to be initialized later
+  let initializeJsTriggerObserver = function() { console.warn("initializeJsTriggerObserver called before definition (should be redefined by waitForGradioElements)."); };
+  let saveNewPodcastToHistory = async function() { console.warn("saveNewPodcastToHistory called before definition."); };
+
+
+  function actualInitialization() {
+    console.log("[ACTUAL_INIT] All necessary Gradio elements presumed available. Initializing features.");
+    
+    // Redefine more complex functions now
+    saveNewPodcastToHistory = async function(title, audioFileServerPath, transcriptText) {
+        console.log("[SAVE_NEW] Attempting to save podcast:", { title, audioFileServerPath, transcriptLength: transcriptText?.length });
+        if (!audioFileServerPath || typeof transcriptText === 'undefined') {
+            console.error("[SAVE_NEW] Audio path or transcript is missing."); return;
+        }
+        if (!audioFileServerPath.startsWith('/file=')) {
+            console.error(`[SAVE_NEW] Invalid audioFileServerPath format: ${audioFileServerPath}.`); return;
+        }
+        const historyListElem = document.getElementById('podcastHistoryList'); // For saving message
+        let savingMsgElem = document.getElementById('podcastSavingMessage');
+        if (!savingMsgElem && historyListElem) {
+            savingMsgElem = document.createElement('li');
+            savingMsgElem.id = 'podcastSavingMessage';
+            savingMsgElem.textContent = 'Saving...';
+            savingMsgElem.style.fontStyle = 'italic'; historyListElem.prepend(savingMsgElem);
+        } else if (savingMsgElem) { savingMsgElem.textContent = 'Saving...';}
+
+        try {
+            const response = await fetch(audioFileServerPath);
+            if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+            const audioBlob = await response.blob();
+            const reader = new FileReader();
+            reader.onloadend = function() {
+                const base64Audio = reader.result;
+                if (!base64Audio || !base64Audio.startsWith('data:')) {
+                    console.error("[SAVE_NEW] FileReader: Base64 audio data invalid.");
+                    if(savingMsgElem) savingMsgElem.textContent = 'Error processing audio.';
+                    setTimeout(() => { if (savingMsgElem) savingMsgElem.remove(); }, 3000);
+                    return;
+                }
+                const history = getPodcastHistory();
+                history.unshift({
+                    id: 'podcast-' + Date.now(), title, audioDataUrl: base64Audio, transcript: transcriptText, savedAt: new Date().toISOString()
+                });
+                savePodcastHistory(history);
+                if (savingMsgElem) savingMsgElem.remove();
+                renderPodcastHistory();
+                console.log("[SAVE_NEW] Podcast saved and history rendered.");
+            };
+            reader.onerror = () => { console.error("[SAVE_NEW] FileReader error."); if(savingMsgElem) savingMsgElem.textContent = 'File reader error.';};
+            reader.readAsDataURL(audioBlob);
+        } catch (error) {
+            console.error("[SAVE_NEW] Error in saveNewPodcastToHistory:", error);
+            if(savingMsgElem) savingMsgElem.textContent = `Save error: ${error.message}`;
+        }
+    };
+
+    initializeJsTriggerObserver = function() {
+        const targetNodeId = 'js_trigger_data_textbox';
+        let inputElement = null;
+        let attempts = 0;
+        const maxAttemptsObserver = 20; // 2 seconds for this specific element
+        let lastProcessedValue = null;
+        console.log('[INIT_TRIGGER_OBSERVER] Setting up observer...');
+
+        const findAndObserveInterval = setInterval(() => {
+            const wrapperDiv = document.getElementById(targetNodeId);
+            if (wrapperDiv) {
+                inputElement = wrapperDiv.querySelector('textarea');
+                if (!inputElement) inputElement = wrapperDiv.querySelector('input[type="text"]');
+            }
+
+            if (inputElement) {
+                clearInterval(findAndObserveInterval);
+                console.log('[INIT_TRIGGER_OBSERVER] Trigger element found. Attaching input listener.');
+                
+                const processData = (currentVal) => {
+                    if (currentVal && currentVal !== lastProcessedValue) {
+                        console.log('[TRIGGER_PROCESSOR] Processing value:', currentVal.substring(0, 50) + "...");
+                        lastProcessedValue = currentVal;
+                        try {
+                            const data = JSON.parse(currentVal);
+                            if (data && data.title && data.audio_url && typeof data.transcript !== 'undefined') {
+                                saveNewPodcastToHistory(data.title, data.audio_url, data.transcript);
+                            } else { console.error("[TRIGGER_PROCESSOR] Parsed data incomplete."); }
+                        } catch (e) { console.error("[TRIGGER_PROCESSOR] Error parsing JSON:", e); }
+                    }
+                };
+                inputElement.addEventListener('input', (event) => processData(event.target.value));
+                if (inputElement.value) processData(inputElement.value); // Initial check
+                console.log('[INIT_TRIGGER_OBSERVER] Input listener attached.');
+                return; // Exit interval
+            }
+            attempts++;
+            if (attempts >= maxAttemptsObserver) {
+                clearInterval(findAndObserveInterval);
+                console.warn(`[INIT_TRIGGER_OBSERVER] Trigger element #${targetNodeId} not found after ${maxAttemptsObserver} attempts.`);
+            }
+        }, 100);
+    };
+
+    // Call initializations
+    renderPodcastHistory(); // Initial render
+    initializeJsTriggerObserver();
+  }
+
+  function waitForGradioElements() {
+    console.log("[WAIT_FOR_GRADIO] Starting to wait for key Gradio elements.");
+    let attempts = 0;
+    const maxAttempts = 100; // Wait for up to 10 seconds
+    // Key elements we need for the history UI and trigger
+    const keyElementIds = ['podcastHistoryList', 'js_trigger_data_textbox', 'podcast_audio_player', 'podcast_transcript_display'];
+    
+    const intervalId = setInterval(() => {
+        attempts++;
+        let allFound = true;
+        for (const id of keyElementIds) {
+            const el = document.getElementById(id);
+            if (!el) {
+                allFound = false;
+                if (attempts % 10 === 0) console.log(`[WAIT_FOR_GRADIO] Waiting for element: #${id} (Attempt: ${attempts})`);
+                break;
+            }
+        }
+
+        if (allFound) {
+            clearInterval(intervalId);
+            console.log("[WAIT_FOR_GRADIO] All key Gradio elements found!");
+            actualInitialization();
+        } else if (attempts >= maxAttempts) {
+            clearInterval(intervalId);
+            console.warn("[WAIT_FOR_GRADIO] Timed out waiting for all key Gradio elements. Some features might not work.");
+            // Still try to initialize what we can, renderPodcastHistory might partially work if its container is there
+            actualInitialization(); 
+        }
+    }, 100); // Check every 100ms
+  }
+
+  // Start the process
+  waitForGradioElements();
+
+  console.log("[HEAD_SCRIPT] Script block parsing finished. Polling for Gradio elements initiated.");
 </script>
