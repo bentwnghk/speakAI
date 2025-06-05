@@ -768,7 +768,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo: # 
         ],
         outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url],
         fn=generate_audio_for_example, # Use the wrapper function
-        cache_examples=True,
+        cache_examples=False, # Disable caching for examples
         run_on_click=True,
         label="Examples (Click for Demo)"
     )
