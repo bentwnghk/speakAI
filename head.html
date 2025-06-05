@@ -272,13 +272,95 @@ function deletePodcastFromHistory(podcastId) {
 }
 
 function initializePodcastHistoryFeature() {
-    // This function is called once the DOM is ready.
-    // The container for the history list should be defined in main.py's Gradio layout.
-    // We just call renderPodcastHistory to populate it.
-    renderPodcastHistory();
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds
+    const interval = setInterval(() => {
+        const listContainer = document.getElementById('podcastHistoryList');
+        if (listContainer) {
+            clearInterval(interval);
+            console.log("Podcast history list container found. Rendering history.");
+            renderPodcastHistory();
+        } else {
+            attempts++;
+            if (attempts >= maxAttempts) {
+                clearInterval(interval);
+                console.warn("Podcast history list container ('podcastHistoryList') not found after multiple attempts.");
+            }
+        }
+    }, 100);
 }
 
+function initializeJsTriggerObserver() {
+    const targetNodeId = 'js_trigger_data_textbox';
+    let targetNode = null;
+    let inputElement = null; // The actual <input> or <textarea>
+    let attempts = 0;
+    const maxAttempts = 50; // Try for 5 seconds
+
+    console.log('Attempting to set up JS Trigger Observer...');
+
+    const findInputElementInterval = setInterval(() => {
+        attempts++;
+        // Gradio Textbox with elem_id often results in the id on a wrapper div.
+        // The actual input/textarea is inside.
+        const wrapperDiv = document.getElementById(targetNodeId);
+        if (wrapperDiv) {
+            inputElement = wrapperDiv.querySelector('textarea'); // Gradio Textbox usually uses textarea
+            if (!inputElement) {
+                inputElement = wrapperDiv.querySelector('input[type="text"]'); // Fallback for some cases
+            }
+        }
+
+        if (inputElement) {
+            clearInterval(findInputElementInterval);
+            console.log('JS Trigger Textbox input element found:', inputElement);
+            targetNode = inputElement; // Observe the input element directly for value changes
+
+            const observer = new MutationObserver((mutationsList, observer) => {
+                for(const mutation of mutationsList) {
+                    // Check if the mutation is relevant (e.g. value change)
+                    // For <input type="text">, value attribute changes.
+                    // For <textarea>, its .value property changes. Gradio might update an attribute or the text node.
+                    // We'll directly read .value as it's generally more reliable.
+                    const rawJsonData = targetNode.value;
+                    // Check if the value actually changed to avoid processing empty/initial states multiple times
+                    if (mutation.oldValue !== rawJsonData && rawJsonData) { // mutation.oldValue might not always be available
+                        console.log('MutationObserver detected change in js_trigger_data_textbox value:', rawJsonData);
+                        try {
+                            const data = JSON.parse(rawJsonData);
+                            if (data && data.title && data.audio_url && typeof data.transcript !== 'undefined') {
+                                saveNewPodcastToHistory(data.title, data.audio_url, data.transcript);
+                                // Clear the textbox value after processing to prevent re-triggering if the same data is set again.
+                                // However, Gradio might re-populate it. This needs careful handling.
+                                // For now, we rely on new distinct data for new podcasts.
+                            } else {
+                                console.error("Parsed data from trigger textbox is incomplete:", data);
+                            }
+                        } catch (e) {
+                            console.error("Error parsing JSON from js_trigger_data_textbox:", e, "Raw data:", rawJsonData);
+                        }
+                    }
+                }
+            });
+
+            // For textboxes, observing 'value' attribute changes is key.
+            // For textareas, observing childList/characterData for the text node, or relying on input/change events handled by Gradio is better.
+            // Since Gradio updates the .value property, we can observe attributes and check .value.
+            observer.observe(targetNode, { attributes: true, attributeOldValue: true }); // Observe attributes of the input/textarea itself
+            console.log('MutationObserver is now observing js_trigger_data_textbox.');
+
+        } else if (attempts >= maxAttempts) {
+            clearInterval(findInputElementInterval);
+            console.warn(`JS Trigger Textbox with ID "${targetNodeId}" (or its input element) not found after ${maxAttempts} attempts.`);
+        }
+    }, 100);
+}
+
+
 // Wait for Gradio to be ready or use DOMContentLoaded
-document.addEventListener('DOMContentLoaded', initializePodcastHistoryFeature);
+document.addEventListener('DOMContentLoaded', () => {
+    initializePodcastHistoryFeature();
+    initializeJsTriggerObserver();
+});
 
 </script>

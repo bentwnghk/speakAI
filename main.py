@@ -8,6 +8,7 @@ import base64
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import List, Literal, Optional, Dict, Any
+import json
 
 import gradio as gr
 import sentry_sdk
@@ -543,20 +544,16 @@ def generate_audio(
     # For simplicity, we'll assume basic paths for now. If issues persist, URL encoding might be needed.
     gradio_file_url = f"/file={temp_file_path}"
 
-    js_trigger_script = f"""
-    <script>
-        console.log("Python backend triggering saveNewPodcastToHistory for: {final_podcast_title}");
-        console.log("Audio file server path for JS: {gradio_file_url}");
-        if (typeof saveNewPodcastToHistory === 'function') {{
-            saveNewPodcastToHistory('{final_podcast_title.replace("'", "\\'")}', '{gradio_file_url}', '{escaped_transcript}');
-        }} else {{
-            console.error('saveNewPodcastToHistory function not found. Was head.html loaded correctly?');
-        }}
-        // Optionally, clear this script after execution to prevent re-triggering on UI updates
-        // setTimeout(() => {{ const elem = document.currentScript; if (elem) elem.remove(); }}, 100);
-    </script>
-    """
-    return temp_file_path, transcript, js_trigger_script
+    data_to_send = {
+        "title": final_podcast_title,
+        "audio_url": gradio_file_url,
+        "transcript": transcript # Use original transcript, JSON dumps will handle escaping
+    }
+    json_data_string = json.dumps(data_to_send)
+    
+    logger.debug(f"Returning JSON data for JS trigger: {json_data_string[:200]}...") # Log snippet
+
+    return temp_file_path, transcript, json_data_string
 
 
 # --- Gradio UI Definition ---
@@ -657,9 +654,9 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
 
     with gr.Accordion("📜 Podcast History (Stored in your browser)", open=True): # Keep existing Accordion
         # This HTML component will be populated by JavaScript from head.html
-        podcast_history_display = gr.HTML("<ul id='podcastHistoryList' style='list-style-type: none; padding: 0;'><li>Loading history...</li></ul>") # Keep existing HTML
-        # Hidden HTML component to receive JavaScript trigger from Python
-        js_trigger_html = gr.HTML(visible=False) # Keep existing hidden HTML
+        podcast_history_display = gr.HTML("<ul id='podcastHistoryList' style='list-style-type: none; padding: 0;'><li>Loading history...</li></ul>")
+        # Hidden Textbox component to pass JSON data to JavaScript
+        js_trigger_data_textbox = gr.Textbox(label="JS Trigger Data", visible=False, elem_id="js_trigger_data_textbox")
 
 
     def switch_input_method(choice):
@@ -711,7 +708,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
             lang_input,
             api_key_input
         ],
-        outputs=[audio_output, transcript_output, js_trigger_html], # Keep existing outputs
+        outputs=[audio_output, transcript_output, js_trigger_data_textbox], # Changed js_trigger_html to js_trigger_data_textbox
         api_name="generate_podcast"
     )
 
@@ -727,7 +724,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo:
         ],
         # Examples won't trigger the history save directly unless we adapt the example fn or outputs
         # For now, history save is only for manual generation.
-        outputs=[audio_output, transcript_output, js_trigger_html], # Keep existing outputs
+        outputs=[audio_output, transcript_output, js_trigger_data_textbox], # Changed js_trigger_html to js_trigger_data_textbox
         fn=generate_audio,
         cache_examples=True,
         run_on_click=True,
