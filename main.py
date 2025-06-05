@@ -669,7 +669,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo: # 
         audio_output = gr.Audio(label="Podcast Audio", type="filepath", elem_id="podcast_audio_player") # Keep existing elem_id
         transcript_output = gr.Textbox(label="📃 Transcript", lines=15, show_copy_button=True, autoscroll=False, elem_id="podcast_transcript_display") # Keep existing elem_id
 
-    with gr.Accordion("📜 Podcast History (Stored in your browser)", open=True): # Keep existing Accordion
+    with gr.Accordion("📜 Podcast Generation History (Stored in your browser)", open=True): # Keep existing Accordion
         # This HTML component will be populated by JavaScript from head.html
         podcast_history_display = gr.HTML("<ul id='podcastHistoryList' style='list-style-type: none; padding: 0;'><li>Loading history...</li></ul>")
         # Hidden Textbox component to pass JSON data to JavaScript
