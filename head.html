@@ -90,12 +90,12 @@
         return;
     }
     listContainer.innerHTML = ''; 
-    const historyMetadata = getPodcastMetadataHistory(); 
+    const historyMetadata = getPodcastMetadataHistory(); // Get metadata from localStorage
     
     if (historyMetadata.length === 0) {
         listContainer.innerHTML = '<li style="padding: 10px; text-align: center;">No podcasts in history.</li>';
     } else {
-        historyMetadata.forEach(podcastMeta => { 
+        historyMetadata.forEach(podcastMeta => { // Iterate over metadata
             const item = document.createElement('li');
             item.style.marginBottom = '10px';
             item.style.padding = '10px';
@@ -120,13 +120,13 @@
             const loadButton = document.createElement('button');
             loadButton.textContent = 'Load';
             loadButton.className = 'gr-button gr-button-sm gr-button-secondary';
-            loadButton.onclick = () => loadPodcastFromHistory(podcastMeta.id); 
+            loadButton.onclick = () => loadPodcastFromHistory(podcastMeta.id); // Use ID to fetch from IndexedDB
             loadButton.style.marginRight = '5px';
             
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Delete';
             deleteButton.className = 'gr-button gr-button-sm gr-button-stop';
-            deleteButton.onclick = () => deletePodcastFromHistory(podcastMeta.id); 
+            deleteButton.onclick = () => deletePodcastFromHistory(podcastMeta.id); // Use ID to delete from IndexedDB & localStorage
 
             item.appendChild(titleSpan);
             item.appendChild(dateSpan);
@@ -147,14 +147,15 @@
   async function actualInitialization() {
     console.log("[ACTUAL_INIT] Initializing features. Opening IndexedDB...");
     try {
-        await openDB(); 
+        await openDB(); // Ensure DB is open before proceeding
         console.log("[ACTUAL_INIT] IndexedDB opened successfully.");
     } catch (error) {
         console.error("[ACTUAL_INIT] Failed to open IndexedDB. History feature will be limited.", error);
         alert("Failed to initialize podcast database. History feature may not work correctly.");
+        // Proceed with other initializations if possible, or degrade gracefully
     }
     
-    loadPodcastFromHistory = async function(podcastId) { 
+    loadPodcastFromHistory = async function(podcastId) { // Now async
         console.log(`[LOAD_HISTORY] Attempting to load podcast ID: ${podcastId}`);
         if (!db) {
             console.error("[LOAD_HISTORY] IndexedDB not available.");
@@ -173,7 +174,7 @@
 
         request.onsuccess = (event) => {
             const podcast = event.target.result;
-            if (podcast && podcast.audioBlob) { 
+            if (podcast && podcast.audioBlob) { // Check for audioBlob
                 console.log(`[LOAD_HISTORY] Found podcast in IndexedDB: ${podcast.title}`);
                 const audioWrapper = document.getElementById('podcast_audio_player');
                 const transcriptDisplayElement = document.querySelector('#podcast_transcript_display textarea');
@@ -194,7 +195,7 @@
                 
                 const objectURL = URL.createObjectURL(podcast.audioBlob);
                 audioPlayerElement.src = objectURL;
-                // audioPlayerElement.onended = () => URL.revokeObjectURL(objectURL); // Clean up - careful if user replays
+                audioPlayerElement.onend = () => URL.revokeObjectURL(objectURL); // Clean up
                 audioPlayerElement.load();
                 audioWrapper.style.display = 'block';
                 if(audioWrapper.querySelector('.player')) audioWrapper.querySelector('.player').style.display = 'block';
@@ -212,26 +213,28 @@
         };
     };
 
-    deletePodcastFromHistory = async function(podcastId) { 
+    deletePodcastFromHistory = async function(podcastId) { // Now async
         if (!confirm("Are you sure you want to delete this podcast from history?")) return;
         
         console.log(`[DELETE_HISTORY] Attempting to delete podcast ID: ${podcastId}`);
+        // Delete from IndexedDB
         if (db) {
             const tx = db.transaction(PODCAST_STORE_NAME, 'readwrite');
             const store = tx.objectStore(PODCAST_STORE_NAME);
             const req = store.delete(podcastId);
             req.onsuccess = () => console.log(`[DELETE_HISTORY] Podcast ${podcastId} deleted from IndexedDB.`);
             req.onerror = (e) => console.error(`[DELETE_HISTORY] Error deleting ${podcastId} from IndexedDB:`, e.target.error);
-            await new Promise(resolve => tx.oncomplete = resolve); 
+            await new Promise(resolve => tx.oncomplete = resolve); // Wait for tx to complete
         } else {
             console.warn("[DELETE_HISTORY] IndexedDB not available for deletion.");
         }
 
+        // Delete from localStorage metadata
         let historyMetadata = getPodcastMetadataHistory();
         historyMetadata = historyMetadata.filter(p => p.id !== podcastId);
         savePodcastMetadataHistory(historyMetadata);
         
-        renderPodcastHistory(); 
+        renderPodcastHistory(); // Re-render the list
         console.log(`[DELETE_HISTORY] Podcast ${podcastId} metadata removed and history re-rendered.`);
     };
 
@@ -270,7 +273,7 @@
             const podcastDataForDB = {
                 id: podcastId,
                 title: title,
-                audioBlob: audioBlob, 
+                audioBlob: audioBlob, // Store the actual blob
                 transcript: transcriptText,
                 savedAt: new Date().toISOString()
             };
@@ -281,11 +284,13 @@
 
             request.onsuccess = () => {
                 console.log(`[SAVE_NEW] Podcast data (with blob) saved to IndexedDB with ID: ${podcastId}`);
+                // Now save metadata to localStorage
                 const historyMetadata = getPodcastMetadataHistory();
                 historyMetadata.unshift({
-                    id: podcastId, 
+                    id: podcastId, // Use the same ID
                     title: title,
                     savedAt: podcastDataForDB.savedAt,
+                    // transcriptLength: transcriptText.length // Optional: store length
                     hasAudioInDB: true
                 });
                 savePodcastMetadataHistory(historyMetadata);
@@ -318,87 +323,40 @@
             if (inputElement) {
                 clearInterval(findAndObserveInterval);
                 console.log('[INIT_TRIGGER_OBSERVER] Trigger element found:', inputElement.tagName);
-                
                 const processData = (currentVal, source) => {
-                    console.log(`[PROCESS_DATA] Called from ${source}. CurrentVal (type: ${typeof currentVal}, value: '${currentVal}') Last processed: '${lastProcessedValue}'`);
-
-                    let effectiveCurrentVal = "";
-                    if (currentVal !== null && typeof currentVal !== 'undefined') {
-                        effectiveCurrentVal = String(currentVal).trim();
-                    }
-
-                    // If effectiveCurrentVal is empty, it's a "do not save" signal (e.g. from example run)
-                    if (effectiveCurrentVal === "") {
-                        if (lastProcessedValue !== "") { // Only log and update if it's a change to empty
-                            console.log("[PROCESS_DATA] Received empty value. Assuming no history save. Updating lastProcessedValue.");
-                        } else {
-                            // console.log("[PROCESS_DATA] Received empty value, and last was also empty. Ignoring.");
-                        }
-                        lastProcessedValue = ""; // Always update to current empty state
-                        return; // Stop processing for empty signals
-                    }
-                    
-                    // Proceed only if the value is new (and non-empty, checked above)
-                    if (effectiveCurrentVal !== lastProcessedValue) {
-                        console.log('[PROCESS_DATA] Value is new and non-empty. Processing:', effectiveCurrentVal.substring(0, 100) + "...");
-                        lastProcessedValue = effectiveCurrentVal; 
+                    if (currentVal && currentVal !== lastProcessedValue) {
+                        lastProcessedValue = currentVal; 
                         try {
-                            const data = JSON.parse(effectiveCurrentVal); // This should now only parse actual JSON
+                            const data = JSON.parse(currentVal);
                             if (data && data.title && data.audio_file_component_id && typeof data.transcript !== 'undefined') {
-                                console.log('[PROCESS_DATA] Parsed data successfully. Attempting to get audio URL from component:', data.audio_file_component_id);
                                 const audioFileComponentWrapper = document.getElementById(data.audio_file_component_id);
                                 if (audioFileComponentWrapper) {
-                                    setTimeout(() => { 
-                                        const downloadLink = audioFileComponentWrapper.querySelector('a[href]');
-                                        if (downloadLink && downloadLink.href) {
-                                            const audioUrlFromComponent = downloadLink.href;
-                                            console.log('[PROCESS_DATA] Found audio URL from component (after delay):', audioUrlFromComponent);
-                                            saveNewPodcastToHistory(data.title, audioUrlFromComponent, data.transcript);
-                                        } else {
-                                            console.error(`[PROCESS_DATA] Could not find a download link with href inside component #${data.audio_file_component_id} after delay.`);
-                                        }
-                                    }, 300); 
-                                } else {
-                                    console.error(`[PROCESS_DATA] Could not find audio file component wrapper with ID: #${data.audio_file_component_id}`);
-                                }
-                            } else { 
-                                console.warn("[PROCESS_DATA] Parsed JSON, but it's missing expected fields (title, audio_file_component_id, transcript). Ignoring. Data:", data);
-                            }
-                        } catch (e) { 
-                            console.warn("[PROCESS_DATA] Error parsing JSON. This implies an unexpected non-empty, non-JSON value was received. Message:", e.message, "Raw data was:", effectiveCurrentVal);
-                        }
-                    } else {
-                        // console.log("[PROCESS_DATA] Value is same as last processed. Ignoring.");
+                                    const downloadLink = audioFileComponentWrapper.querySelector('a[href]');
+                                    if (downloadLink && downloadLink.href) {
+                                        saveNewPodcastToHistory(data.title, downloadLink.href, data.transcript);
+                                    } else {
+                                        console.error(`[PROCESS_DATA] No download link in #${data.audio_file_component_id}. Retrying...`);
+                                        setTimeout(() => { 
+                                            const updatedLink = document.getElementById(data.audio_file_component_id)?.querySelector('a[href]');
+                                            if (updatedLink && updatedLink.href) saveNewPodcastToHistory(data.title, updatedLink.href, data.transcript);
+                                            else console.error(`[PROCESS_DATA] Retry failed for #${data.audio_file_component_id}.`);
+                                        }, 1000); 
+                                    }
+                                } else { console.error(`[PROCESS_DATA] Wrapper #${data.audio_file_component_id} not found.`); }
+                            } else { console.error("[PROCESS_DATA] Parsed data incomplete:", data); }
+                        } catch (e) { console.error("[PROCESS_DATA] JSON Error:", e, "Raw:", currentVal); }
                     }
                 };
-
-                inputElement.addEventListener('input', (event) => {
-                    console.log('[EVENT_LISTENER] "input" event fired on trigger textbox.');
-                    processData(event.target.value, "input event");
-                });
-                console.log('[INIT_TRIGGER_OBSERVER] "input" event listener attached.');
-
-                const observer = new MutationObserver(() => {
-                    // console.log('[MUTATION_OBSERVER] Mutation detected on trigger textbox.'); // Can be noisy
-                    processData(inputElement.value, "MutationObserver");
-                });
+                inputElement.addEventListener('input', (event) => processData(event.target.value, "input event"));
+                const observer = new MutationObserver(() => processData(inputElement.value, "MutationObserver"));
                 observer.observe(inputElement, { attributes: true, childList: true, subtree: true, characterData: true });
-                console.log('[INIT_TRIGGER_OBSERVER] MutationObserver attached.');
-
-                if (inputElement.value) {
-                    console.log('[INIT_TRIGGER_OBSERVER] Trigger textbox has an initial value. Processing it.');
-                    processData(inputElement.value, "initial check");
-                } else {
-                    console.log('[INIT_TRIGGER_OBSERVER] Trigger textbox has no initial value.');
-                }
+                if (inputElement.value) processData(inputElement.value, "initial check");
+                else console.log('[INIT_TRIGGER_OBSERVER] No initial value in trigger textbox.');
                 return; 
             }
-            
-            if (attempts % 10 === 0) console.log(`[INIT_TRIGGER_OBSERVER] Waiting for trigger element #${targetNodeId}... Attempt ${attempts}`);
-
             if (attempts >= maxAttemptsObserver) {
                 clearInterval(findAndObserveInterval);
-                console.warn(`[INIT_TRIGGER_OBSERVER] Trigger element #${targetNodeId} (textarea/input) NOT FOUND after ${maxAttemptsObserver} attempts.`);
+                console.warn(`[INIT_TRIGGER_OBSERVER] Trigger element NOT FOUND.`);
             }
         }, 100);
     };
