@@ -128,9 +128,10 @@
   }
 
   function initializePodcastHistoryFeature() {
+    console.log("[INIT_HISTORY_FEATURE] Function called. Starting attempts to find list container."); // MOVED LOG TO VERY TOP
     let attempts = 0;
     const maxAttempts = 60; // 6 seconds
-    console.log("[INIT_HISTORY_FEATURE] Initializing. Waiting for list container...");
+    // console.log("[INIT_HISTORY_FEATURE] Initializing. Waiting for list container..."); // Original position
     const interval = setInterval(() => {
         const listContainer = document.getElementById('podcastHistoryList');
         if (listContainer) {
@@ -152,14 +153,31 @@
 
   // Wait for Gradio to be ready or use DOMContentLoaded
   document.addEventListener('DOMContentLoaded', () => {
-    console.log("[DOM_CONTENT_LOADED] DOM fully loaded and parsed. Initializing history feature.");
-    initializePodcastHistoryFeature();
+    console.log("[DOM_CONTENT_LOADED] DOM fully loaded and parsed. Attempting to initialize features.");
+    try {
+      console.log("[DOM_CONTENT_LOADED] Calling initializePodcastHistoryFeature().");
+      initializePodcastHistoryFeature();
+      console.log("[DOM_CONTENT_LOADED] initializePodcastHistoryFeature() call completed.");
+    } catch (e) {
+      console.error("[DOM_CONTENT_LOADED] Error calling initializePodcastHistoryFeature():", e);
+    }
 
-    // Additional call to render history after a short delay, as a fallback
-    setTimeout(() => {
-        console.log("[DOM_CONTENT_LOADED] Delayed attempt to render history (2s).");
-        renderPodcastHistory();
-    }, 2000);
+    try {
+      console.log("[DOM_CONTENT_LOADED] Setting up delayed renderPodcastHistory().");
+      // Additional call to render history after a short delay, as a fallback
+      setTimeout(() => {
+          console.log("[DOM_CONTENT_LOADED_TIMEOUT] Delayed attempt to render history (2s).");
+          try {
+            renderPodcastHistory();
+            console.log("[DOM_CONTENT_LOADED_TIMEOUT] Delayed renderPodcastHistory() call completed.");
+          } catch (e_timeout) {
+            console.error("[DOM_CONTENT_LOADED_TIMEOUT] Error in delayed renderPodcastHistory():", e_timeout);
+          }
+      }, 2000);
+      console.log("[DOM_CONTENT_LOADED] Delayed renderPodcastHistory() setup completed.");
+    } catch (e_settimeout) {
+      console.error("[DOM_CONTENT_LOADED] Error setting up setTimeout for delayed render:", e_settimeout);
+    }
   });
 
   console.log("[HEAD_SCRIPT] Script basic structure loaded. DOMContentLoaded listener set.");
