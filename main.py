@@ -741,16 +741,19 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo: # 
 
     # Wrapper function for examples to disable history save
     def generate_audio_for_example(input_method_ex, files_ex, input_text_ex, url_input_ex, language_ex, openai_api_key_ex):
-        logger.info("Running generate_audio via example click.")
-        return generate_audio(
+        logger.info("Running generate_audio via example click (history save should be disabled).")
+        # Call the main function with history saving disabled
+        audio_path, transcript, _json_trigger_data, _hidden_file_path = generate_audio(
             input_method=input_method_ex,
             files=files_ex,
             input_text=input_text_ex,
             url_input=url_input_ex,
             language=language_ex,
             openai_api_key=openai_api_key_ex,
-            trigger_history_save=False # Explicitly disable history save for examples
+            trigger_history_save=False
         )
+        # Explicitly return empty/None for the trigger outputs for examples
+        return audio_path, transcript, "", None
 
     gr.Examples(
         examples=examples,
