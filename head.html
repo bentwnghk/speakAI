@@ -78,18 +78,18 @@
 
       if (apiKeyInput) {
         clearInterval(intervalId);
-        console.log('API key input field found.');
+        // console.log('API key input field found.');
 
         // Load API key from localStorage
         try {
           const storedApiKey = localStorage.getItem(apiKeyStorageKey);
           if (storedApiKey) {
-            console.log('Stored API key found.');
+            // console.log('Stored API key found.');
             apiKeyInput.value = storedApiKey;
             // Dispatch events to ensure Gradio recognizes the change
             apiKeyInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
             apiKeyInput.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
-            console.log('API key loaded into input field.');
+            // console.log('API key loaded into input field.');
           } else {
             console.log('No API key found in localStorage.');
           }
@@ -101,14 +101,14 @@
         apiKeyInput.addEventListener('input', () => {
           try {
             localStorage.setItem(apiKeyStorageKey, apiKeyInput.value);
-            console.log('API key saved to localStorage.');
+            // console.log('API key saved to localStorage.');
           } catch (e) {
             console.error('Error writing to localStorage:', e);
           }
         });
       } else if (attempts >= maxAttempts) {
         clearInterval(intervalId);
-        console.warn(`API key input field with ID "${apiKeyElementId}" (or a password input within it) not found after ${maxAttempts} attempts. Storage functionality will not work.`);
+        // console.warn(`API key input field with ID "${apiKeyElementId}" (or a password input within it) not found after ${maxAttempts} attempts. Storage functionality will not work.`);
       }
     }, 100); // Check every 100ms
   }
