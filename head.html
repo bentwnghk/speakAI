@@ -451,7 +451,7 @@
         apiKeyInput.addEventListener('input', () => {
           try {
             localStorage.setItem(apiKeyStorageKey, apiKeyInput.value);
-            // console.log('API key saved to localStorage.');
+            console.log('API key saved to localStorage.');
           } catch (e) {
             console.error('Error writing to localStorage:', e);
           }

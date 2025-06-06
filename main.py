@@ -237,7 +237,7 @@ def generate_audio(
     resolved_base_url = os.getenv("OPENAI_BASE_URL")
 
     full_text = ""
-    gr.Info("Processing input...")
+    gr.Info("📦 Processing input...")
     podcast_title_base = "Podcast" # Default title base
 
     if input_method == "Upload Files":
@@ -389,7 +389,7 @@ def generate_audio(
         """
 
     try:
-        gr.Info("Generating dialogue script with AI...")
+        gr.Info("✨ Generating dialogue script with AI...")
         llm_start_time = time.time()
         llm_output = generate_dialogue(full_text, language)
         logger.info(f"Dialogue generation took {time.time() - llm_start_time:.2f} seconds.")
@@ -419,7 +419,7 @@ def generate_audio(
     characters = 0
     total_lines = len(llm_output.dialogue)
     logger.info(f"Starting TTS generation for {total_lines} dialogue lines.")
-    gr.Info(f"Generating audio for {total_lines} dialogue lines... (this may take a while)")
+    gr.Info(f"🪄 Generating audio for {total_lines} dialogue lines... (this may take a while)")
 
     results = [None] * total_lines
 
@@ -443,7 +443,7 @@ def generate_audio(
                 results[index] = (transcript_line, audio_chunk)
                 processed_count += 1
                 if processed_count % 10 == 0 or processed_count == total_lines: 
-                     gr.Info(f"Generated audio for {processed_count}/{total_lines} lines...")
+                     gr.Info(f"🪄 Generated audio for {processed_count}/{total_lines} lines...")
             except Exception as exc:
                  logger.error(f'TTS generation failed for line {index+1} after retries: {exc}')
                  error_msg = f"[TTS Error: Failed audio for line {index+1}]"
@@ -516,7 +516,7 @@ def generate_audio(
         logger.warning(f"Error during old temp file cleanup: {e}")
 
     total_duration = time.time() - start_time
-    gr.Info(f"Podcast generation complete! Total time: {total_duration:.2f} seconds.")
+    gr.Info(f"🎉 Podcast generation complete! Total time: {total_duration:.2f} seconds.")
 
     # Prepare podcast title for history
     final_podcast_title = f"{podcast_title_base} - {time.strftime('%Y-%m-%d %H:%M')}"
@@ -669,7 +669,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo: # 
         audio_output = gr.Audio(label="Podcast Audio", type="filepath", elem_id="podcast_audio_player") # Keep existing elem_id
         transcript_output = gr.Textbox(label="📃 Transcript", lines=15, show_copy_button=True, autoscroll=False, elem_id="podcast_transcript_display") # Keep existing elem_id
 
-    with gr.Accordion("📜 Podcast Generation History (Stored in your browser)", open=True): # Keep existing Accordion
+    with gr.Accordion("📜 Podcast Generation History (Stored in your browser)", open=False): # Keep existing Accordion
         # This HTML component will be populated by JavaScript from head.html
         podcast_history_display = gr.HTML("<ul id='podcastHistoryList' style='list-style-type: none; padding: 0;'><li>Loading history...</li></ul>")
         # Hidden Textbox component to pass JSON data to JavaScript
