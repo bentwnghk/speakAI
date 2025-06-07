@@ -452,7 +452,7 @@ def generate_audio(
     logger.info(f"TTS generation took {time.time() - tts_start_time:.2f} seconds.")
     logger.info(f"Total characters for TTS: {characters}")
 
-    gr.Info("Combining audio segments...")
+    gr.Info("🧩 Combining audio segments...")
     final_audio_chunks = []
     final_transcript_lines = []
     successful_lines = 0
