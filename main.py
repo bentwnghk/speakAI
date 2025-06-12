@@ -364,7 +364,7 @@ def generate_audio(
                          raise gr.Error(f"Error processing PDF file: {file_path_obj.name}.")
             elif is_image(str(file_path_obj)):
                 try:
-                    text = extract_text_from_image_via_vision(str(file_path_obj), resolved_api_key)
+                    text = extract_text_from_image_via_vision(str(file_path_obj), resolved_openai_api_key)
                 except Exception as e:
                     logger.error(f"Error processing image {file_path_obj.name} with Vision API: {e}")
                     raise gr.Error(f"Error extracting text from image: {file_path_obj.name}. Check API key, file format, and OpenAI status. Error: {e}")
