@@ -35,9 +35,9 @@ OPENAI_VOICE_MAPPINGS = {
 }
 
 MINIMAX_CANTONESE_VOICE_MAPPINGS = {
-    "female-1": "Cantonese_GentleLady",
-    "male-1": "Cantonese_ProfessionalHost（M)",
-    "female-2": "Cantonese_ProfessionalHost（F)",
+    "female-1": "Cantonese_ProfessionalHost（F)",
+    "male-1": "Cantonese_Narrator",
+    "female-2": "Cantonese_GentleLady",
     "male-2": "Cantonese_PlayfulMan",
 }
 if sentry_dsn := os.getenv("SENTRY_DSN"):
