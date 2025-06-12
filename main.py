@@ -694,13 +694,13 @@ allowed_extensions = [
 examples_dir = Path("examples")
 examples = [
     [ # Input method, files, text, url, language, api_key
-        "Upload Files", [str(examples_dir / "Intangible cultural heritage item.pdf")], None, None, "English", None
+        "Upload Files", [str(examples_dir / "Intangible cultural heritage item.pdf")], "", "", "English", None
     ],
     [
-        "Upload Files", [str(examples_dir / "JUPAS Guide.jpg")], None, None, "Cantonese", None
+        "Upload Files", [str(examples_dir / "JUPAS Guide.jpg")], "", "", "Cantonese", None
     ],
     [
-        "URL", None, None, "https://en.wikipedia.org/wiki/Uncontacted_peoples", "English", None
+        "URL", "", "", "https://en.wikipedia.org/wiki/Uncontacted_peoples", "English", None
     ]
 ]
 
