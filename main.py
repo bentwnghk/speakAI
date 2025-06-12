@@ -691,12 +691,6 @@ examples = [
         "Upload Files", [str(examples_dir / "JUPAS_Guide.jpg")], None, None, "Chinese", None
     ],
     [
-        "Upload Files", [str(examples_dir / "AI_To_Replace_Doctors_Teachers.txt")], None, None, "English", None
-    ],
-    [
-        "Enter Text", None, "Artificial intelligence (AI) refers to the simulation of human intelligence processes by computer systems.", None, "English", None
-    ],
-    [
         "URL", None, None, "https://en.wikipedia.org/wiki/Uncontacted_peoples", "English", None
     ]
 ]
@@ -875,8 +869,7 @@ if __name__ == "__main__":
     examples_dir.mkdir(exist_ok=True)
     example_files = [
         "Intangible cultural heritage item.pdf",
-        "JUPAS_Guide.jpg",
-        "AI_To_Replace_Doctors_Teachers.txt"
+        "JUPAS_Guide.jpg"
     ]
     for fname in example_files:
         fpath = examples_dir / fname
