@@ -75,6 +75,16 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
         # Use the non-streaming version for simplicity within retry logic
         response = client.audio.speech.create(
             model="tts-1", # Consider tts-1-hd for higher quality if needed
+            voice=voice,
+            input=text,
+            response_format="mp3"
+        )
+        logger.debug(f"TTS generation successful for voice '{voice}', text: '{text[:50]}...'")
+        return response.content
+    except Exception as e:
+        logger.error(f"TTS generation failed for voice '{voice}', text: '{text[:50]}...'. Error: {e}")
+        raise # Reraise exception to trigger tenacity retry
+
 # Add retry mechanism to MiniMax TTS calls
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), retry=retry_if_exception_type(Exception))
 def get_mp3_minimax(text: str, voice: str, group_id: str = None, api_key: str = None) -> bytes:
@@ -144,15 +154,6 @@ def get_mp3_minimax(text: str, voice: str, group_id: str = None, api_key: str = 
         raise
     except Exception as e:
         logger.error(f"MiniMax TTS generation failed for voice '{voice}', text: '{text[:50]}...'. Error: {e}")
-        raise # Reraise exception to trigger tenacity retry
-            voice=voice,
-            input=text,
-            response_format="mp3"
-        )
-        logger.debug(f"TTS generation successful for voice '{voice}', text: '{text[:50]}...'")
-        return response.content
-    except Exception as e:
-        logger.error(f"TTS generation failed for voice '{voice}', text: '{text[:50]}...'. Error: {e}")
         raise # Reraise exception to trigger tenacity retry
 
 def is_pdf(filename):
