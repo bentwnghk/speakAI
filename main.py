@@ -700,7 +700,7 @@ examples = [
         "Upload Files", [str(examples_dir / "JUPAS Guide.jpg")], "", "", "Cantonese", None
     ],
     [
-        "URL", None, "", "https://en.wikipedia.org/wiki/Uncontacted_peoples", "English", None
+        "URL", None, "", "https://geographical.co.uk/culture/uncontacted-tribes-around-the-world", "Chinese", None
     ]
 ]
 
