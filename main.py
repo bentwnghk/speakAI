@@ -106,7 +106,7 @@ def get_mp3_minimax(text: str, voice: str, group_id: str = None, api_key: str = 
       "voice_setting":{
         "voice_id": voice,
         "speed": 1,
-        "vol": 4,
+        "vol": 2,
         "pitch": 0
       },
       "audio_setting":{
