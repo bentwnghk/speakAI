@@ -4,6 +4,7 @@ import glob
 import io
 import os
 import time
+import datetime
 import base64
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -24,6 +25,7 @@ from mimetypes import guess_type
 import docx # Added for DOCX support
 import requests # Added for URL fetching
 from bs4 import BeautifulSoup # Added for HTML parsing
+import pytz
 
 OPENAI_VOICE_MAPPINGS = {
     "female-1": "nova",
@@ -319,7 +321,7 @@ def generate_audio(
             # Consider raising gr.Error if you want to enforce this strictly and halt execution
             # raise gr.Error("MiniMax Group ID and API Key are required for Cantonese and must be set as environment variables (MINIMAX_GROUP_ID, MINIMAX_API_KEY).")
     elif not (os.getenv("OPENAI_API_KEY") or openai_api_key):
-        raise gr.Error("Mr.🆖 AI Hub API Key is required for English/Chinese.")
+        raise gr.Error("Mr.🆖 AI Hub API Key is required.")
 
     # Resolve OpenAI API key and Base URL once (used for English/Chinese and potentially dialogue generation)
     resolved_openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -525,7 +527,7 @@ def generate_audio(
             }
         else: # English or Chinese (uses OpenAI)
             if not resolved_openai_api_key:
-                 raise gr.Error("OpenAI API Key is required for English/Chinese TTS generation but not found.")
+                 raise gr.Error("OpenAI API Key is required for TTS generation but not found.")
             future_to_index = {
                 executor.submit(get_mp3, line.text, line.voice(language), resolved_openai_api_key): i # Pass language to voice method
                 for i, line in enumerate(llm_output.dialogue) if line.text.strip()
@@ -622,7 +624,14 @@ def generate_audio(
     gr.Info(f"🎉 Podcast generation complete! Total time: {total_duration:.2f} seconds.")
 
     # Prepare podcast title for history
-    final_podcast_title = f"{podcast_title_base} - {time.strftime('%Y-%m-%d %H:%M')}"
+    # Get current time in UTC
+    utc_now = datetime.datetime.now(datetime.timezone.utc)
+    # Define Hong Kong timezone
+    hk_tz = pytz.timezone('Asia/Hong_Kong')
+    # Convert UTC time to Hong Kong time
+    hk_now = utc_now.astimezone(hk_tz)
+    # Format the Hong Kong time
+    final_podcast_title = f"{podcast_title_base} - {hk_now.strftime('%Y-%m-%d %H:%M')}"
     
     # Escape transcript for JavaScript string literal
     escaped_transcript = transcript.replace('\\', '\\\\').replace("'", "\\'").replace('"', '\\"').replace('\n', '\\n').replace('\r', '\\r')
@@ -688,7 +697,7 @@ examples = [
         "Upload Files", [str(examples_dir / "Intangible cultural heritage item.pdf")], None, None, "English", None
     ],
     [
-        "Upload Files", [str(examples_dir / "JUPAS_Guide.jpg")], None, None, "Chinese", None
+        "Upload Files", [str(examples_dir / "JUPAS Guide.jpg")], None, None, "Cantonese", None
     ],
     [
         "URL", None, None, "https://en.wikipedia.org/wiki/Uncontacted_peoples", "English", None
@@ -751,17 +760,17 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo: # 
     API_KEY_URL = "https://api.mr5ai.com"
     with gr.Accordion("⚙️ Advanced Settings", open=False):
         gr.Markdown(
-            f"💡 Get your Mr.🆖 AI Hub API Key (for English/Chinese TTS & Dialogue Generation) [here]({API_KEY_URL})"
+            f"💡 Get your Mr.🆖 AI Hub API Key [here]({API_KEY_URL})"
         )
         api_key_input = gr.Textbox(
-                label="Mr.🆖 AI Hub API Key (OpenAI)",
+                label="Mr.🆖 AI Hub API Key",
                 type="password",
-                placeholder="sk-xxx (Used for English/Chinese TTS and dialogue generation)",
+                placeholder="sk-xxx",
                 elem_id="mr_ng_ai_hub_api_key_input"
         )
-        gr.Markdown(
-            "For **Cantonese** TTS, ensure `MINIMAX_GROUP_ID` and `MINIMAX_API_KEY` are set as environment variables."
-        )
+        # gr.Markdown(
+        #     "For **Cantonese** TTS, ensure `MINIMAX_GROUP_ID` and `MINIMAX_API_KEY` are set as environment variables."
+        # )
         # Future improvement: Add input fields for MiniMax keys if desired
         # minimax_group_id_input = gr.Textbox(label="MiniMax Group ID (for Cantonese)", type="password", placeholder="Enter MiniMax Group ID")
         # minimax_api_key_input = gr.Textbox(label="MiniMax API Key (for Cantonese)", type="password", placeholder="Enter MiniMax API Key")
@@ -869,7 +878,7 @@ if __name__ == "__main__":
     examples_dir.mkdir(exist_ok=True)
     example_files = [
         "Intangible cultural heritage item.pdf",
-        "JUPAS_Guide.jpg"
+        "JUPAS Guide.jpg"
     ]
     for fname in example_files:
         fpath = examples_dir / fname

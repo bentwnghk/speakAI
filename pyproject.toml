@@ -18,4 +18,5 @@ dependencies = [
     "sentry-sdk>=2.16.0",
     "tenacity>=9.0.0",
     "uvicorn>=0.32.0", # For running the FastAPI app
+    "pytz>=2024.1", # Added for timezone support
 ]
