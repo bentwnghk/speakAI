@@ -49,8 +49,7 @@ class DialogueItem(BaseModel):
     text: str
     speaker: Literal["female-1", "male-1", "female-2", "male-2"]
 
-    @property
-    def voice(self, language: str = "English"): # Add language parameter
+    def voice(self, language: str = "English"): # Add language parameter, remove @property
         if language == "Cantonese":
             return MINIMAX_CANTONESE_VOICE_MAPPINGS[self.speaker]
         return OPENAI_VOICE_MAPPINGS[self.speaker]
