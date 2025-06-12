@@ -697,10 +697,10 @@ examples = [
         "Upload Files", [str(examples_dir / "Intangible cultural heritage item.pdf")], "", "", "English", None
     ],
     [
-        "Upload Files", [str(examples_dir / "JUPAS Guide.jpg")], "", "", "Cantonese", None
+        "Upload Files", [str(examples_dir / "JUPAS Guide.jpg")], "", "", "Chinese", None
     ],
     [
-        "URL", None, "", "https://geographical.co.uk/culture/uncontacted-tribes-around-the-world", "Chinese", None
+        "URL", None, "", "https://geographical.co.uk/culture/uncontacted-tribes-around-the-world", "Cantonese", None
     ]
 ]
 
