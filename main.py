@@ -75,10 +75,26 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
     try:
         # Use the non-streaming version for simplicity within retry logic
         response = client.audio.speech.create(
-            model="tts-1", # Consider tts-1-hd for higher quality if needed
-            voice=voice,
-            input=text,
-            response_format="mp3"
+            # model="tts-1", # Consider tts-1-hd for higher quality if needed
+            # voice=voice,
+            # input=text,
+            # response_format="mp3"
+            model="speech-02-turbo", # Consider tts-1-hd for higher quality if needed
+            text=text,
+            "stream": False,
+            "voice_setting":{
+                "voice_id": voice,
+                "speed": 1,
+                "vol": 2,
+                "pitch": 0
+            },
+            "audio_setting":{
+                "sample_rate": 44100,
+                "bitrate": 128000,
+                "format": "mp3",
+                "channel": 1
+            },
+            "language_boost": "Chinese,Yue" # As per example, might need adjustment based on actual API behavior
         )
         logger.debug(f"TTS generation successful for voice '{voice}', text: '{text[:50]}...'")
         return response.content
