@@ -35,10 +35,10 @@ OPENAI_VOICE_MAPPINGS = {
 }
 
 MINIMAX_CANTONESE_VOICE_MAPPINGS = {
-    "female-1": "Cantonese_ProfessionalHost（F)",
+    "female-1": "English_captivating_female1",
     "male-1": "Cantonese_Narrator",
     "female-2": "Cantonese_GentleLady",
-    "male-2": "Cantonese_PlayfulMan",
+    "male-2": "English_Comedian",
 }
 if sentry_dsn := os.getenv("SENTRY_DSN"):
     sentry_sdk.init(sentry_dsn)
@@ -75,25 +75,10 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
     try:
         # Use the non-streaming version for simplicity within retry logic
         response = client.audio.speech.create(
-            # model="tts-1", # Consider tts-1-hd for higher quality if needed
-            # voice=voice,
-            # input=text,
-            # response_format="mp3"
-            model="speech-02-turbo", # Consider tts-1-hd for higher quality if needed
+            model="tts-1", # Consider tts-1-hd for higher quality if needed
+            voice=voice,
             input=text,
-            voice_setting = {
-                'voice_id': voice,
-                'speed': '1',
-                'vol': '2',
-                'pitch': '0'
-            },
-            audio_setting = {
-                'sample_rate': '44100',
-                'bitrate': '128000',
-                'format': 'mp3',
-                'channel': '1'
-            },
-            language_boost="Chinese,Yue" # As per example, might need adjustment based on actual API behavior
+            response_format="mp3"
         )
         logger.debug(f"TTS generation successful for voice '{voice}', text: '{text[:50]}...'")
         return response.content
