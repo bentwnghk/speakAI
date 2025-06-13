@@ -80,7 +80,7 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
             # input=text,
             # response_format="mp3"
             model="speech-02-turbo", # Consider tts-1-hd for higher quality if needed
-            text=text,
+            input=text,
             voice_setting = {
                 'voice_id': voice,
                 'speed': '1',
