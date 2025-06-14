@@ -42,7 +42,7 @@ MINIMAX_ENGLISH_VOICE_MAPPINGS = {
 }
 
 MINIMAX_CHINESE_VOICE_MAPPINGS = {
-    "female-1": "Chinese (Mandarin)_HK_Flight_Attendant",
+    "female-1": "Arrogant_Miss",
     "male-1": "Chinese (Mandarin)_Gentleman",
     "female-2": "Chinese (Mandarin)_Warm-HeartedAunt",
     "male-2": "Chinese (Mandarin)_Lyrical_Voice",
