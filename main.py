@@ -440,7 +440,7 @@ def generate_audio(
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=15), retry=retry_if_exception_type(ValidationError))
     @llm(
-        model="mr5-podcast-ai", # This LLM call might still use OpenAI
+        model="openai/mr5-podcast-ai", # This LLM call might still use OpenAI
         api_key=resolved_openai_api_key, # Dialogue generation still uses OpenAI key
         base_url=resolved_openai_base_url,
         temperature=0.5,
