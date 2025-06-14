@@ -322,7 +322,7 @@ def generate_audio(
     
     # OpenAI API key is needed for dialogue generation and vision, regardless of TTS choice.
     if not (openai_api_key or os.getenv("OPENAI_API_KEY")):
-        raise gr.Error("Mr.🆖 AI Hub API Key is required for dialogue script generation and image processing. Please provide it in Advanced Settings or set OPENAI_API_KEY as an environment variable.")
+        raise gr.Error("Mr.🆖 AI Hub API Key is required. Please provide it in Advanced Settings.")
 
     # Resolve OpenAI API key and Base URL once (used for dialogue generation)
     resolved_openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
