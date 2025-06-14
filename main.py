@@ -45,7 +45,7 @@ MINIMAX_CHINESE_VOICE_MAPPINGS = {
     "female-1": "Chinese (Mandarin)_Crisp_Girl",
     "male-1": "Chinese (Mandarin)_Gentleman",
     "female-2": "Chinese (Mandarin)_Warm-HeartedAunt",
-    "male-2": "Chinese (Mandarin)_Sincere_Adult",
+    "male-2": "Chinese (Mandarin)_Lyrical_Voice",
 }
 
 if sentry_dsn := os.getenv("SENTRY_DSN"):
