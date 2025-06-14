@@ -38,7 +38,7 @@ MINIMAX_ENGLISH_VOICE_MAPPINGS = {
     "female-1": "English_captivating_female1",
     "male-1": "English_Magnetic_Male_2",
     "female-2": "English_Steady_Female_5",
-    "male-2": "English_DeterminedMan",
+    "male-2": "English_expressive_narrator",
 }
 
 MINIMAX_CHINESE_VOICE_MAPPINGS = {
