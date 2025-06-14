@@ -37,8 +37,8 @@ MINIMAX_CANTONESE_VOICE_MAPPINGS = {
 MINIMAX_ENGLISH_VOICE_MAPPINGS = {
     "female-1": "English_captivating_female1",
     "male-1": "English_Magnetic_Male_2",
-    "female-2": "English_Kind-heartedGirl",
-    "male-2": "English_Lively_Male_11",
+    "female-2": "English_Steady_Female_5",
+    "male-2": "English_Deep-tonedMan",
 }
 
 MINIMAX_CHINESE_VOICE_MAPPINGS = {
@@ -617,7 +617,9 @@ def generate_audio(
         logger.warning(f"Error during old temp file cleanup: {e}")
 
     total_duration = time.time() - start_time
+    tts_cost = (characters / 1_000_000) * 60
     gr.Info(f"🎉 Podcast generation complete! Total time: {total_duration:.2f} seconds.")
+    gr.Info(f"💸 This podcast generation costs {tts_cost:.2f} US dollars.")
 
     # Prepare podcast title for history
     # Get current time in UTC
