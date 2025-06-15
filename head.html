@@ -96,7 +96,6 @@
         listContainer.innerHTML = '<li style="padding: 10px; text-align: center;">No podcasts in history.</li>';
     } else {
         historyMetadata.forEach(podcastMeta => { // Iterate over metadata
-            console.log("[RENDER_HISTORY] Processing podcastMeta:", podcastMeta); // Log podcastMeta
             const item = document.createElement('li');
             item.style.marginBottom = '10px';
             item.style.padding = '10px';
@@ -248,7 +247,6 @@
 
     saveNewPodcastToHistory = async function(title, audioFileUrlFromComponent, transcriptText, tts_cost) { // Added tts_cost
         console.log("[SAVE_NEW] Attempting to save podcast:", { title, audioUrl: audioFileUrlFromComponent, transcriptLength: transcriptText?.length, tts_cost }); // Added tts_cost
-        console.log("[SAVE_NEW] Received tts_cost parameter:", tts_cost); // Log received tts_cost
         if (!audioFileUrlFromComponent || typeof transcriptText === 'undefined') {
             console.error("[SAVE_NEW] Audio URL or transcript is missing."); return;
         }
@@ -351,7 +349,6 @@
                         lastProcessedValue = currentVal; 
                         try {
                             const data = JSON.parse(currentVal);
-                            console.log("[PROCESS_DATA] Parsed data from trigger:", data); // Log parsed data
                             // Assuming data.tts_cost will be provided from the backend
                             if (data && data.title && data.audio_file_component_id && typeof data.transcript !== 'undefined' && typeof data.tts_cost !== 'undefined') {
                                 const audioFileComponentWrapper = document.getElementById(data.audio_file_component_id);
