@@ -30,7 +30,7 @@ import pytz
 MINIMAX_CANTONESE_VOICE_MAPPINGS = {
     "female-1": "English_captivating_female1",
     "male-1": "Cantonese_Narrator",
-    "female-2": "Cantonese_GentleLady",
+    "female-2": "English_AnimeCharacter",
     "male-2": "English_Comedian",
 }
 
