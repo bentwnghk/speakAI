@@ -113,7 +113,13 @@
             dateSpan.textContent = `Saved: ${new Date(podcastMeta.savedAt).toLocaleString()}`;
             dateSpan.style.fontSize = '0.9em';
             dateSpan.style.color = '#666';
-            dateSpan.style.marginBottom = '8px';
+            dateSpan.style.marginBottom = '5px'; // Adjusted margin
+
+            const costSpan = document.createElement('span');
+            costSpan.textContent = podcastMeta.tts_cost ? `Cost: US${podcastMeta.tts_cost}` : 'Cost: N/A';
+            costSpan.style.fontSize = '0.9em';
+            costSpan.style.color = '#666';
+            costSpan.style.marginBottom = '8px';
             
             const buttonContainer = document.createElement('div');
 
@@ -130,6 +136,7 @@
 
             item.appendChild(titleSpan);
             item.appendChild(dateSpan);
+            item.appendChild(costSpan); // Add costSpan here
             buttonContainer.appendChild(loadButton);
             buttonContainer.appendChild(deleteButton);
             item.appendChild(buttonContainer);
@@ -238,8 +245,8 @@
         console.log(`[DELETE_HISTORY] Podcast ${podcastId} metadata removed and history re-rendered.`);
     };
 
-    saveNewPodcastToHistory = async function(title, audioFileUrlFromComponent, transcriptText) {
-        console.log("[SAVE_NEW] Attempting to save podcast:", { title, audioUrl: audioFileUrlFromComponent, transcriptLength: transcriptText?.length });
+    saveNewPodcastToHistory = async function(title, audioFileUrlFromComponent, transcriptText, tts_cost) { // Added tts_cost
+        console.log("[SAVE_NEW] Attempting to save podcast:", { title, audioUrl: audioFileUrlFromComponent, transcriptLength: transcriptText?.length, tts_cost }); // Added tts_cost
         if (!audioFileUrlFromComponent || typeof transcriptText === 'undefined') {
             console.error("[SAVE_NEW] Audio URL or transcript is missing."); return;
         }
@@ -287,7 +294,8 @@
                 title: title,
                 audioBlob: audioBlob, // Store the actual blob
                 transcript: transcriptText,
-                savedAt: new Date().toISOString()
+                savedAt: new Date().toISOString(),
+                tts_cost: tts_cost // Added tts_cost
             };
             
             const transaction = db.transaction(PODCAST_STORE_NAME, 'readwrite');
@@ -302,6 +310,7 @@
                     id: podcastId, // Use the same ID
                     title: title,
                     savedAt: podcastDataForDB.savedAt,
+                    tts_cost: tts_cost, // Added tts_cost
                     // transcriptLength: transcriptText.length // Optional: store length
                     hasAudioInDB: true
                 });
@@ -340,22 +349,23 @@
                         lastProcessedValue = currentVal; 
                         try {
                             const data = JSON.parse(currentVal);
-                            if (data && data.title && data.audio_file_component_id && typeof data.transcript !== 'undefined') {
+                            // Assuming data.tts_cost will be provided from the backend
+                            if (data && data.title && data.audio_file_component_id && typeof data.transcript !== 'undefined' && typeof data.tts_cost !== 'undefined') {
                                 const audioFileComponentWrapper = document.getElementById(data.audio_file_component_id);
                                 if (audioFileComponentWrapper) {
                                     const downloadLink = audioFileComponentWrapper.querySelector('a[href]');
                                     if (downloadLink && downloadLink.href) {
-                                        saveNewPodcastToHistory(data.title, downloadLink.href, data.transcript);
+                                        saveNewPodcastToHistory(data.title, downloadLink.href, data.transcript, data.tts_cost);
                                     } else {
                                         console.error(`[PROCESS_DATA] No download link in #${data.audio_file_component_id}. Retrying...`);
-                                        setTimeout(() => { 
+                                        setTimeout(() => {
                                             const updatedLink = document.getElementById(data.audio_file_component_id)?.querySelector('a[href]');
-                                            if (updatedLink && updatedLink.href) saveNewPodcastToHistory(data.title, updatedLink.href, data.transcript);
+                                            if (updatedLink && updatedLink.href) saveNewPodcastToHistory(data.title, updatedLink.href, data.transcript, data.tts_cost);
                                             else console.error(`[PROCESS_DATA] Retry failed for #${data.audio_file_component_id}.`);
-                                        }, 1000); 
+                                        }, 1000);
                                     }
                                 } else { console.error(`[PROCESS_DATA] Wrapper #${data.audio_file_component_id} not found.`); }
-                            } else { console.error("[PROCESS_DATA] Parsed data incomplete:", data); }
+                            } else { console.error("[PROCESS_DATA] Parsed data incomplete (missing title, audio_file_component_id, transcript, or tts_cost):", data); }
                         } catch (e) { console.error("[PROCESS_DATA] JSON Error:", e, "Raw:", currentVal); }
                     }
                 };
