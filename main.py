@@ -36,10 +36,11 @@ OPENAI_VOICE_MAPPINGS = {
 
 MINIMAX_CANTONESE_VOICE_MAPPINGS = {
     "female-1": "English_captivating_female1",
-    "male-1": "Cantonese_Narrator",
-    "female-2": "Cantonese_GentleLady",
+    "male-1": "English_magnetic_voiced_man",
+    "female-2": "English_AnimeCharacter",
     "male-2": "English_Comedian",
 }
+
 if sentry_dsn := os.getenv("SENTRY_DSN"):
     sentry_sdk.init(sentry_dsn)
 
@@ -621,7 +622,14 @@ def generate_audio(
         logger.warning(f"Error during old temp file cleanup: {e}")
 
     total_duration = time.time() - start_time
-    gr.Info(f"🎉 Podcast generation complete! Total time: {total_duration:.2f} seconds.")
+    tts_cost = (characters / 1_000_000) * 15
+    if language in ["Cantonese"]:
+        tts_cost *= 4
+        gr.Info(f"🎉 Podcast generation complete! Total time: {total_duration:.2f} seconds.")
+        gr.Info(f"💸 This podcast generation costs US${tts_cost:.2f}.")
+    else:
+        gr.Info(f"🎉 Podcast generation complete! Total time: {total_duration:.2f} seconds.")
+        gr.Info(f"💸 This podcast generation costs US${tts_cost:.2f}.")
 
     # Prepare podcast title for history
     # Get current time in UTC
@@ -676,7 +684,8 @@ def generate_audio(
         "title": final_podcast_title,
         # "audio_url": gradio_file_url, # REMOVED - JS will get this from hidden gr.File
         "audio_file_component_id": "temp_audio_file_url_holder", # ID of the hidden gr.File
-        "transcript": transcript
+        "transcript": transcript,
+        "tts_cost": f"{tts_cost:.2f}" # Added tts_cost, formatted as string
     }
     json_data_string = json.dumps(data_to_send)
     
