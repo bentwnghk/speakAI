@@ -674,7 +674,8 @@ def generate_audio(
         "title": final_podcast_title,
         # "audio_url": gradio_file_url, # REMOVED - JS will get this from hidden gr.File
         "audio_file_component_id": "temp_audio_file_url_holder", # ID of the hidden gr.File
-        "transcript": transcript
+        "transcript": transcript,
+        "tts_cost": f"{tts_cost:.2f}" # Added tts_cost, formatted as string
     }
     json_data_string = json.dumps(data_to_send)
     
