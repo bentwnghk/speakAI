@@ -618,8 +618,13 @@ def generate_audio(
 
     total_duration = time.time() - start_time
     tts_cost = (characters / 1_000_000) * 60
-    gr.Info(f"🎉 Podcast generation complete! Total time: {total_duration:.2f} seconds.")
-    gr.Info(f"💸 This podcast generation costs {tts_cost:.2f} US dollars.")
+    if language in ["Chinese", "Cantonese"]:
+        tts_cost *= 2
+        gr.Info(f"🎉 Podcast generation complete! Total time: {total_duration:.2f} seconds.")
+        gr.Info(f"💸 This podcast generation costs US${tts_cost:.2f}.")
+    else:
+        gr.Info(f"🎉 Podcast generation complete! Total time: {total_duration:.2f} seconds.")
+        gr.Info(f"💸 This podcast generation costs US${tts_cost:.2f}.")
 
     # Prepare podcast title for history
     # Get current time in UTC
