@@ -15,15 +15,15 @@ import gradio as gr
 import sentry_sdk
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from loguru import logger
+from loguru import logger # logger is imported here
 from openai import OpenAI
 from promptic import llm
 from pydantic import BaseModel, ValidationError
 from pypdf import PdfReader
-from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential # tenacity is imported here
 from mimetypes import guess_type
 import docx # Added for DOCX support
-import requests # Added for URL fetching
+import requests # requests is imported here
 from bs4 import BeautifulSoup # Added for HTML parsing
 import pytz
 
@@ -66,26 +66,77 @@ class Dialogue(BaseModel):
 # Add retry mechanism to TTS calls for resilience
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), retry=retry_if_exception_type(Exception))
 def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
-    """Generates MP3 audio for the given text using OpenAI TTS, with retries."""
-    client = OpenAI(
-        api_key=api_key or os.getenv("OPENAI_API_KEY"),
-        base_url=os.getenv("OPENAI_BASE_URL"),
-        timeout=60.0 # Add timeout
+    """
+    Generates MP3 audio for the given text by making a direct request to the
+    one-api compatible endpoint (expected at OPENAI_BASE_URL), allowing custom
+    parameters like 'language' for specific routing (e.g., to MiniMax via one-api).
+    Includes retries.
+    """
+    effective_api_key = api_key or os.getenv("OPENAI_API_KEY")
+    base_url = os.getenv("OPENAI_BASE_URL") # This should be your one-api base URL
+
+    if not effective_api_key:
+        logger.error("API key is not configured. Please set OPENAI_API_KEY or pass it directly to get_mp3.")
+        raise ValueError("API key not configured for TTS.")
+    if not base_url:
+        logger.error("Base URL is not configured. Please set OPENAI_BASE_URL (should point to your one-api instance).")
+        raise ValueError("Base URL (for one-api) not configured for TTS.")
+
+    # Construct the full URL to the one-api speech endpoint
+    # Assumes one-api exposes an OpenAI-compatible speech endpoint at /v1/audio/speech
+    speech_endpoint_url = f"{base_url.rstrip('/')}/v1/audio/speech"
+
+    headers = {
+        "Authorization": f"Bearer {effective_api_key}",
+        "Content-Type": "application/json"
+    }
+
+    # Manually construct the payload. The 'language': 'Cantonese' field is included
+    # as per the user's requirement for one-api to process this for MiniMax language_boost.
+    payload = {
+        "model": "speech-02-turbo", # This model should be recognized by one-api
+        "voice": voice,             # The voice ID should also be interpretable by one-api
+        "input": text,
+        "response_format": "mp3",
+        "language": "Cantonese"     # This field is intended for one-api to trigger
+                                    # MiniMax language_boost if one-api routes to MiniMax based on this.
+    }
+
+    logger.debug(
+        f"Requesting TTS via one-api (direct HTTP). Endpoint: '{speech_endpoint_url}', "
+        f"Voice: '{voice}', Language in payload: '{payload['language']}', Text: '{text[:50]}...'"
     )
-    logger.debug(f"Requesting TTS for voice '{voice}', text: '{text[:50]}...'")
+
     try:
-        # Use the non-streaming version for simplicity within retry logic
-        response = client.audio.speech.create(
-            model="speech-02-turbo", # Consider tts-1-hd for higher quality if needed
-            voice=voice,
-            input=text,
-            response_format="mp3",
-            language="Cantonese"
+        response = requests.post(
+            speech_endpoint_url,
+            headers=headers,
+            json=payload,
+            timeout=60.0 # Timeout in seconds
         )
-        logger.debug(f"TTS generation successful for voice '{voice}', text: '{text[:50]}...'")
-        return response.content
-    except Exception as e:
-        logger.error(f"TTS generation failed for voice '{voice}', text: '{text[:50]}...'. Error: {e}")
+        response.raise_for_status() # Raise an exception for HTTP error codes (4xx or 5xx)
+
+        logger.debug(
+            f"TTS generation successful via one-api (direct HTTP). Voice: '{voice}', Text: '{text[:50]}...'"
+        )
+        return response.content  # The binary content of the MP3
+
+    except requests.exceptions.HTTPError as http_err:
+        error_message = f"HTTP error during TTS generation via one-api (direct HTTP). Voice: '{voice}', Text: '{text[:50]}...'. " \
+                        f"Status: {http_err.response.status_code if http_err.response else 'N/A'}. " \
+                        f"Error: {http_err}. " \
+                        f"Response: {http_err.response.text if http_err.response else 'No response text'}"
+        logger.error(error_message)
+        raise # Reraise exception to trigger tenacity retry
+    except requests.exceptions.RequestException as req_err: # Catches other requests errors (e.g., timeout, connection error)
+        logger.error(
+            f"Request error during TTS generation via one-api (direct HTTP). Voice: '{voice}', Text: '{text[:50]}...'. Error: {req_err}"
+        )
+        raise # Reraise exception to trigger tenacity retry
+    except Exception as e: # Catch-all for other unexpected errors
+        logger.error(
+            f"Unexpected error during TTS generation via one-api (direct HTTP). Voice: '{voice}', Text: '{text[:50]}...'. Error: {e}"
+        )
         raise # Reraise exception to trigger tenacity retry
 
 # Add retry mechanism to MiniMax TTS calls
