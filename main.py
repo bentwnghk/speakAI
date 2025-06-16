@@ -76,7 +76,7 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
     try:
         # Use the non-streaming version for simplicity within retry logic
         response = client.audio.speech.create(
-            model="tts-1", # Consider tts-1-hd for higher quality if needed
+            model="speech-02-turbo", # Consider tts-1-hd for higher quality if needed
             voice=voice,
             input=text,
             response_format="mp3"
