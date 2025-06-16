@@ -71,11 +71,11 @@ def get_mp3(text: str, voice: str, api_key: str = None, language_selection: str 
     base_url = os.getenv("OPENAI_BASE_URL") # This should be your one-api base URL
 
     if not effective_api_key:
-        logger.error("API key is not configured. Please set OPENAI_API_KEY or pass it directly to get_mp3.")
-        raise ValueError("API key not configured for TTS.")
+        logger.error("API key is not configured.")
+        raise ValueError("API key not configured.")
     if not base_url:
-        logger.error("Base URL is not configured. Please set OPENAI_BASE_URL (should point to your one-api instance).")
-        raise ValueError("Base URL (for one-api) not configured for TTS.")
+        logger.error("Base URL is not configured.")
+        raise ValueError("Base URL not configured.")
 
     # Construct the full URL to the one-api speech endpoint
     # Assumes one-api exposes an OpenAI-compatible speech endpoint at /v1/audio/speech
@@ -90,7 +90,7 @@ def get_mp3(text: str, voice: str, api_key: str = None, language_selection: str 
     # as per the user's requirement for one-api to process this for MiniMax language_boost.
     payload = {
         "model": "speech-02-turbo", # This model should be recognized by one-api
-        "voice": voice,             # The voice ID should also be interpretable by one-api
+        "voice": voice,
         "input": text,
         "response_format": "mp3",
         "language": language_selection     # This field is intended for one-api to trigger
@@ -98,7 +98,7 @@ def get_mp3(text: str, voice: str, api_key: str = None, language_selection: str 
     }
 
     logger.debug(
-        f"Requesting TTS via one-api (direct HTTP). Endpoint: '{speech_endpoint_url}', "
+        f"Requesting TTS. Endpoint: '{speech_endpoint_url}', "
         f"Voice: '{voice}', Selected Language for Payload: '{language_selection}', Text: '{text[:50]}...'"
     )
 
@@ -112,12 +112,12 @@ def get_mp3(text: str, voice: str, api_key: str = None, language_selection: str 
         response.raise_for_status() # Raise an exception for HTTP error codes (4xx or 5xx)
 
         logger.debug(
-            f"TTS generation successful via one-api (direct HTTP). Voice: '{voice}', Text: '{text[:50]}...'"
+            f"TTS generation successful. Voice: '{voice}', Text: '{text[:50]}...'"
         )
         return response.content  # The binary content of the MP3
 
     except requests.exceptions.HTTPError as http_err:
-        error_message = f"HTTP error during TTS generation via one-api (direct HTTP). Voice: '{voice}', Text: '{text[:50]}...'. " \
+        error_message = f"HTTP error during TTS generation. Voice: '{voice}', Text: '{text[:50]}...'. " \
                         f"Status: {http_err.response.status_code if http_err.response else 'N/A'}. " \
                         f"Error: {http_err}. " \
                         f"Response: {http_err.response.text if http_err.response else 'No response text'}"
@@ -125,12 +125,12 @@ def get_mp3(text: str, voice: str, api_key: str = None, language_selection: str 
         raise # Reraise exception to trigger tenacity retry
     except requests.exceptions.RequestException as req_err: # Catches other requests errors (e.g., timeout, connection error)
         logger.error(
-            f"Request error during TTS generation via one-api (direct HTTP). Voice: '{voice}', Text: '{text[:50]}...'. Error: {req_err}"
+            f"Request error during TTS generation. Voice: '{voice}', Text: '{text[:50]}...'. Error: {req_err}"
         )
         raise # Reraise exception to trigger tenacity retry
     except Exception as e: # Catch-all for other unexpected errors
         logger.error(
-            f"Unexpected error during TTS generation via one-api (direct HTTP). Voice: '{voice}', Text: '{text[:50]}...'. Error: {e}"
+            f"Unexpected error during TTS generation. Voice: '{voice}', Text: '{text[:50]}...'. Error: {e}"
         )
         raise # Reraise exception to trigger tenacity retry
 
@@ -288,21 +288,16 @@ def generate_audio(
 ) -> (str, str, str, str): # Added 4th str for the hidden gr.File component
     """Generates podcast audio from uploaded files, direct text input, or URL."""
     start_time = time.time()
-    minimax_group_id = os.getenv("MINIMAX_GROUP_ID")
-    minimax_api_key = os.getenv("MINIMAX_API_KEY")
     
-    # API Key Check
     # API Key Check - one-api (at OPENAI_BASE_URL via resolved_openai_api_key) handles all TTS routing.
     # It needs its own API key (OPENAI_API_KEY or the one from UI input).
     if not (openai_api_key or os.getenv("OPENAI_API_KEY")): # Check if any source provides the key for one-api
-        raise gr.Error("Mr.🆖 AI Hub API Key (for one-api) is required for all TTS generation.")
+        raise gr.Error("Mr.🆖 AI Hub API Key is required.")
 
-    # Resolve OpenAI API key and Base URL once (used for English/Chinese and potentially dialogue generation)
+    # Resolve OpenAI API key and Base URL once (used for dialogue and audio generation)
     resolved_openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
     resolved_openai_base_url = os.getenv("OPENAI_BASE_URL")
     
-    # MiniMax keys are resolved within get_mp3_minimax using os.getenv
-
     full_text = ""
     gr.Info("📦 Processing input...")
     podcast_title_base = "Podcast" # Default title base
@@ -743,12 +738,6 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 PodcastAI 🎙️🎧") as demo: # 
                 placeholder="sk-xxx",
                 elem_id="mr_ng_ai_hub_api_key_input"
         )
-        # gr.Markdown(
-        #     "For **Cantonese** TTS, ensure `MINIMAX_GROUP_ID` and `MINIMAX_API_KEY` are set as environment variables."
-        # )
-        # Future improvement: Add input fields for MiniMax keys if desired
-        # minimax_group_id_input = gr.Textbox(label="MiniMax Group ID (for Cantonese)", type="password", placeholder="Enter MiniMax Group ID")
-        # minimax_api_key_input = gr.Textbox(label="MiniMax API Key (for Cantonese)", type="password", placeholder="Enter MiniMax API Key")
 
     submit_button = gr.Button("✨ Generate Podcast", variant="primary")
 
