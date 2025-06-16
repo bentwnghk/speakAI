@@ -80,7 +80,7 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
             voice=voice,
             input=text,
             response_format="mp3",
-            language_boost="Chinese,Yue"
+            language="Cantonese"
         )
         logger.debug(f"TTS generation successful for voice '{voice}', text: '{text[:50]}...'")
         return response.content
