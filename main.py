@@ -84,7 +84,7 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
 
     # Construct the full URL to the one-api speech endpoint
     # Assumes one-api exposes an OpenAI-compatible speech endpoint at /v1/audio/speech
-    speech_endpoint_url = f"{base_url.rstrip('/')}/v1/audio/speech"
+    speech_endpoint_url = f"{base_url.rstrip('/')}/audio/speech"
 
     headers = {
         "Authorization": f"Bearer {effective_api_key}",
