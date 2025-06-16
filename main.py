@@ -34,13 +34,6 @@ OPENAI_VOICE_MAPPINGS = {
     "male-2": "echo",
 }
 
-MINIMAX_CANTONESE_VOICE_MAPPINGS = {
-    "female-1": "English_captivating_female1",
-    "male-1": "English_magnetic_voiced_man",
-    "female-2": "English_AnimeCharacter",
-    "male-2": "English_Comedian",
-}
-
 if sentry_dsn := os.getenv("SENTRY_DSN"):
     sentry_sdk.init(sentry_dsn)
 
@@ -53,8 +46,9 @@ class DialogueItem(BaseModel):
     speaker: Literal["female-1", "male-1", "female-2", "male-2"]
 
     def voice(self, language: str = "English"): # Add language parameter, remove @property
-        if language == "Cantonese":
-            return MINIMAX_CANTONESE_VOICE_MAPPINGS[self.speaker]
+        # Always use OPENAI_VOICE_MAPPINGS.
+        # one-api will be responsible for mapping these voice IDs (e.g., "nova")
+        # and the 'language' from the payload to the correct downstream provider voice.
         return OPENAI_VOICE_MAPPINGS[self.speaker]
 
 
@@ -65,12 +59,13 @@ class Dialogue(BaseModel):
 
 # Add retry mechanism to TTS calls for resilience
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), retry=retry_if_exception_type(Exception))
-def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
+def get_mp3(text: str, voice: str, api_key: str = None, language_selection: str = "English") -> bytes:
     """
     Generates MP3 audio for the given text by making a direct request to the
-    one-api compatible endpoint (expected at OPENAI_BASE_URL), allowing custom
-    parameters like 'language' for specific routing (e.g., to MiniMax via one-api).
-    Includes retries.
+    one-api compatible endpoint (expected at OPENAI_BASE_URL).
+    The 'language_selection' parameter is included in the payload to one-api,
+    allowing one-api to route to appropriate downstream TTS providers (e.g., MiniMax)
+    and apply necessary language boosts. Includes retries.
     """
     effective_api_key = api_key or os.getenv("OPENAI_API_KEY")
     base_url = os.getenv("OPENAI_BASE_URL") # This should be your one-api base URL
@@ -98,13 +93,13 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
         "voice": voice,             # The voice ID should also be interpretable by one-api
         "input": text,
         "response_format": "mp3",
-        "language": "Cantonese"     # This field is intended for one-api to trigger
+        "language": language_selection     # This field is intended for one-api to trigger
                                     # MiniMax language_boost if one-api routes to MiniMax based on this.
     }
 
     logger.debug(
         f"Requesting TTS via one-api (direct HTTP). Endpoint: '{speech_endpoint_url}', "
-        f"Voice: '{voice}', Language in payload: '{payload['language']}', Text: '{text[:50]}...'"
+        f"Voice: '{voice}', Selected Language for Payload: '{language_selection}', Text: '{text[:50]}...'"
     )
 
     try:
@@ -137,77 +132,6 @@ def get_mp3(text: str, voice: str, api_key: str = None) -> bytes:
         logger.error(
             f"Unexpected error during TTS generation via one-api (direct HTTP). Voice: '{voice}', Text: '{text[:50]}...'. Error: {e}"
         )
-        raise # Reraise exception to trigger tenacity retry
-
-# Add retry mechanism to MiniMax TTS calls
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), retry=retry_if_exception_type(Exception))
-def get_mp3_minimax(text: str, voice: str, group_id: str = None, api_key: str = None) -> bytes:
-    """Generates MP3 audio for the given text using MiniMax TTS, with retries."""
-    resolved_group_id = group_id or os.getenv("MINIMAX_GROUP_ID")
-    resolved_api_key = api_key or os.getenv("MINIMAX_API_KEY")
-
-    if not resolved_group_id or not resolved_api_key:
-        logger.error("MiniMax Group ID or API Key not configured.")
-        raise ValueError("MiniMax Group ID or API Key not configured.")
-
-    url = f"https://api.minimax.io/v1/t2a_v2?GroupId={resolved_group_id}"
-
-    payload = json.dumps({
-      "model":"speech-02-turbo",
-      "text": text,
-      "stream": False,
-      "voice_setting":{
-        "voice_id": voice,
-        "speed": 1,
-        "vol": 2,
-        "pitch": 0
-      },
-      "audio_setting":{
-        "sample_rate": 16000,
-        "bitrate": 128000,
-        "format": "mp3",
-        "channel": 1
-      },
-      "language_boost": "Chinese,Yue" # As per example, might need adjustment based on actual API behavior
-    })
-    headers = {
-      'Authorization': f'Bearer {resolved_api_key}',
-      'Content-Type': 'application/json'
-    }
-    logger.debug(f"Requesting MiniMax TTS for voice '{voice}', text: '{text[:50]}...'")
-    try:
-        response = requests.request("POST", url, stream=True, headers=headers, data=payload, timeout=60.0)
-        response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
-        
-        # Check if response content type is JSON, otherwise it might be an error page or unexpected format
-        content_type = response.headers.get('Content-Type', '')
-        if 'application/json' not in content_type:
-            logger.error(f"MiniMax TTS returned non-JSON response. Status: {response.status_code}. Content: {response.text[:200]}")
-            raise requests.exceptions.RequestException(f"MiniMax TTS returned non-JSON response. Status: {response.status_code}")
-
-        parsed_json = response.json() # Use response.json() for direct parsing
-
-        if parsed_json.get("base_resp", {}).get("status_code") != 0:
-            error_msg = parsed_json.get("base_resp", {}).get("status_msg", "Unknown MiniMax API error")
-            logger.error(f"MiniMax TTS API error: {error_msg}. Full response: {parsed_json}")
-            raise Exception(f"MiniMax TTS API error: {error_msg}")
-
-        audio_hex = parsed_json.get('data', {}).get('audio')
-        if not audio_hex:
-            logger.error(f"No audio data in MiniMax TTS response. Full response: {parsed_json}")
-            raise Exception("No audio data in MiniMax TTS response")
-            
-        audio_bytes = bytes.fromhex(audio_hex)
-        logger.debug(f"MiniMax TTS generation successful for voice '{voice}', text: '{text[:50]}...'")
-        return audio_bytes
-    except requests.exceptions.HTTPError as e:
-        logger.error(f"MiniMax TTS HTTP error: {e}. Response: {e.response.text[:200] if e.response else 'No response body'}")
-        raise
-    except requests.exceptions.RequestException as e:
-        logger.error(f"MiniMax TTS request failed: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"MiniMax TTS generation failed for voice '{voice}', text: '{text[:50]}...'. Error: {e}")
         raise # Reraise exception to trigger tenacity retry
 
 def is_pdf(filename):
@@ -368,13 +292,10 @@ def generate_audio(
     minimax_api_key = os.getenv("MINIMAX_API_KEY")
     
     # API Key Check
-    if language == "Cantonese":
-        if not (minimax_group_id and minimax_api_key):
-            logger.warning("MINIMAX_GROUP_ID and MINIMAX_API_KEY must be set in environment for Cantonese.")
-            # Consider raising gr.Error if you want to enforce this strictly and halt execution
-            # raise gr.Error("MiniMax Group ID and API Key are required for Cantonese and must be set as environment variables (MINIMAX_GROUP_ID, MINIMAX_API_KEY).")
-    elif not (os.getenv("OPENAI_API_KEY") or openai_api_key):
-        raise gr.Error("Mr.🆖 AI Hub API Key is required.")
+    # API Key Check - one-api (at OPENAI_BASE_URL via resolved_openai_api_key) handles all TTS routing.
+    # It needs its own API key (OPENAI_API_KEY or the one from UI input).
+    if not (openai_api_key or os.getenv("OPENAI_API_KEY")): # Check if any source provides the key for one-api
+        raise gr.Error("Mr.🆖 AI Hub API Key (for one-api) is required for all TTS generation.")
 
     # Resolve OpenAI API key and Base URL once (used for English/Chinese and potentially dialogue generation)
     resolved_openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
@@ -571,20 +492,13 @@ def generate_audio(
 
     with cf.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_index = {}
-        if language == "Cantonese":
-            if not (minimax_group_id and minimax_api_key): # Check again before submitting tasks
-                 raise gr.Error("MiniMax Group ID and API Key environment variables (MINIMAX_GROUP_ID, MINIMAX_API_KEY) are required for Cantonese TTS generation but not found.")
-            future_to_index = {
-                executor.submit(get_mp3_minimax, line.text, line.voice(language)): i # Pass language to voice method
-                for i, line in enumerate(llm_output.dialogue) if line.text.strip()
-            }
-        else: # English or Chinese (uses OpenAI)
-            if not resolved_openai_api_key:
-                 raise gr.Error("OpenAI API Key is required for TTS generation but not found.")
-            future_to_index = {
-                executor.submit(get_mp3, line.text, line.voice(language), resolved_openai_api_key): i # Pass language to voice method
-                for i, line in enumerate(llm_output.dialogue) if line.text.strip()
-            }
+        # The comprehensive API key check for resolved_openai_api_key (used by get_mp3 for one-api)
+        # was done at the beginning of the generate_audio function.
+        # If that check passed, we can proceed.
+        future_to_index = {
+            executor.submit(get_mp3, line.text, line.voice(language), resolved_openai_api_key, language): i # Pass UI 'language' as 'language_selection'
+            for i, line in enumerate(llm_output.dialogue) if line.text.strip()
+        }
         
         for line in llm_output.dialogue:
             if line.text.strip():
