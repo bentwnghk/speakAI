@@ -88,14 +88,24 @@ def get_mp3(text: str, voice: str, api_key: str = None, language_selection: str 
 
     # Manually construct the payload. The 'language': 'Cantonese' field is included
     # as per the user's requirement for one-api to process this for MiniMax language_boost.
-    payload = {
-        "model": "speech-02-turbo", # This model should be recognized by one-api
+    payload: Dict[str, Any] = { # Ensure payload is explicitly typed for clarity
         "voice": voice,
         "input": text,
         "response_format": "mp3",
-        "language": language_selection     # This field is intended for one-api to trigger
-                                    # MiniMax language_boost if one-api routes to MiniMax based on this.
     }
+
+    if language_selection == "Cantonese":
+        payload["model"] = "speech-02-turbo"
+        payload["language"] = language_selection # This field is intended for one-api
+                                                 # to trigger MiniMax language_boost if needed.
+    elif language_selection in ["English", "Chinese"]:
+        payload["model"] = "tts-1"
+        # tts-1 does not accept the language parameter, so it's omitted.
+    else:
+        # Default or fallback behavior if a new language is added without explicit handling
+        logger.warning(f"Unhandled language_selection '{language_selection}', defaulting to speech-02-turbo and including language parameter.")
+        payload["model"] = "speech-02-turbo"
+        payload["language"] = language_selection
 
     logger.debug(
         f"Requesting TTS. Endpoint: '{speech_endpoint_url}', "
