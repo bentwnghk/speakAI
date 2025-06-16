@@ -109,7 +109,7 @@ def get_mp3_minimax(text: str, voice: str, language: str, group_id: str = None, 
         "pitch": 0
       },
       "audio_setting":{
-        "sample_rate": 44100,
+        "sample_rate": 16000,
         "bitrate": 128000,
         "format": "mp3",
         "channel": 1
