@@ -2,7 +2,7 @@ name: build_docker
 
 on:
   push:
-    branches: [main]
+    branches: [mixed-audio-providers]
   workflow_dispatch:
 
 jobs:
@@ -35,5 +35,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/mr5podcastai:${{ env.RELEASE_DATE }}
-            ${{ secrets.DOCKERHUB_USERNAME }}/mr5podcastai:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/mr5podcastai-mixed-audio-providers:${{ env.RELEASE_DATE }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/mr5podcastai-mixed-audio-providers:latest
