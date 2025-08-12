@@ -95,7 +95,7 @@ def get_mp3(text: str, voice: str, api_key: str = None, language_selection: str 
     }
 
     if language_selection == "Cantonese":
-        payload["model"] = "speech-2.5-turbo-preview"
+        payload["model"] = "speech-02-turbo"
         payload["language"] = language_selection # This field is intended for one-api
                                                  # to trigger MiniMax language_boost if needed.
     elif language_selection in ["English", "Chinese"]:
@@ -103,8 +103,8 @@ def get_mp3(text: str, voice: str, api_key: str = None, language_selection: str 
         # tts-1 does not accept the language parameter, so it's omitted.
     else:
         # Default or fallback behavior if a new language is added without explicit handling
-        logger.warning(f"Unhandled language_selection '{language_selection}', defaulting to speech-2.5-turbo-preview and including language parameter.")
-        payload["model"] = "speech-2.5-turbo-preview"
+        logger.warning(f"Unhandled language_selection '{language_selection}', defaulting to speech-02-turbo and including language parameter.")
+        payload["model"] = "speech-02-turbo"
         payload["language"] = language_selection
 
     logger.debug(
