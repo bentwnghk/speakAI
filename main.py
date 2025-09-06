@@ -88,7 +88,7 @@ def get_mp3(text: str, voice: str, api_key: str) -> bytes:
     It includes robust error handling and retries to ensure reliability.
     """
     client = OpenAI(
-        api_key=os.getenv("TTS_API_KEY"),
+        api_key=api_key,
         base_url=os.getenv("TTS_BASE_URL")
     )
     
@@ -237,8 +237,10 @@ def generate_audio(
     start_time = time.time()
         
     resolved_vision_api_key = vision_api_key or os.getenv("VISION_API_KEY")
-    if not resolved_vision_api_key:
-        raise gr.Error("Mr.🆖 AI Hub API Key for Vision is required.")
+
+    api_key = os.getenv("TTS_API_KEY")
+    if not api_key:
+        raise gr.Error("TTS_API_KEY environment variable not set.")
 
     full_text = ""
     gr.Info("📦 Processing input...")
@@ -263,6 +265,11 @@ def generate_audio(
                 except Exception as e:
                     raise gr.Error(f"Error reading PDF: {e}")
             elif is_image(str(file_path_obj)):
+                if not resolved_vision_api_key:
+                    raise gr.Error(
+                        "Vision API Key not found. Please provide it in Advanced Settings "
+                        "or set the VISION_API_KEY environment variable to process images."
+                    )
                 try:
                     text = extract_text_from_image_via_vision(str(file_path_obj), resolved_vision_api_key)
                 except Exception as e:
