@@ -88,7 +88,7 @@ def get_mp3(text: str, voice: str, api_key: str) -> bytes:
     It includes robust error handling and retries to ensure reliability.
     """
     client = OpenAI(
-        api_key=openai_api_key or os.getenv("TTS_API_KEY"),
+        api_key=os.getenv("TTS_API_KEY"),
         base_url=os.getenv("TTS_BASE_URL")
     )
     
@@ -228,7 +228,6 @@ def generate_audio(
     input_text: Optional[str],
     url_input: Optional[str],
     language: str,
-    openai_api_key: str = None,
     vision_api_key: str = None,
 ) -> (str, str, str, str):
     """
@@ -236,11 +235,7 @@ def generate_audio(
     to directly convert the input text to speech, removing the podcast dialogue generation.
     """
     start_time = time.time()
-    
-    resolved_openai_api_key = openai_api_key or os.getenv("TTS_API_KEY")
-    if not resolved_openai_api_key:
-        raise gr.Error("Mr.🆖 AI Hub API Key for TTS is required.")
-    
+        
     resolved_vision_api_key = vision_api_key or os.getenv("VISION_API_KEY")
     if not resolved_vision_api_key:
         raise gr.Error("Mr.🆖 AI Hub API Key for Vision is required.")
