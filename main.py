@@ -187,6 +187,10 @@ def extract_text_from_image_via_vision(image_file, vision_api_key=None):
         sanitized_text = extracted_text.replace('\n', ' ')
         logger.debug(f"Vision extraction successful for {image_file}. Text length: {len(sanitized_text)}")
         return sanitized_text
+        # Explicitly split the text from Vision API to handle potentially large outputs
+        # by using a smaller chunk size to trigger sentence-level splitting.
+        text_chunks = split_text(sanitized_text, max_chunk_size=1000)
+        return "\n\n".join(text_chunks)
     except Exception as e:
         logger.error(f"Vision extraction failed for {image_file}. Error: {e}")
         raise
@@ -317,10 +321,6 @@ def generate_audio(
 
     if not full_text.strip():
         raise gr.Error("No text content to process.")
-
-    # To ensure consistent chunking, treat all single newlines as paragraph breaks.
-    # This standardizes text from all sources (file, text, URL, vision).
-    full_text = full_text.replace('\n', '\n\n')
 
     logger.info(f"Total input text length: {len(full_text)} characters.")
 
