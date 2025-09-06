@@ -87,7 +87,10 @@ def get_mp3(text: str, voice: str, api_key: str) -> bytes:
     This function now uses the configured TTS_BASE_URL and the selected voice.
     It includes robust error handling and retries to ensure reliability.
     """
-    client = OpenAI(api_key=api_key, base_url=TTS_BASE_URL)
+    client = OpenAI(
+        api_key=openai_api_key or os.getenv("TTS_API_KEY"),
+        base_url=os.getenv("TTS_BASE_URL")
+    )
     
     logger.debug(f"Requesting TTS. Voice: '{voice}', Text: '{text[:50]}...'")
     
@@ -239,6 +242,8 @@ def generate_audio(
         raise gr.Error("Mr.🆖 AI Hub API Key for TTS is required.")
     
     resolved_vision_api_key = vision_api_key or os.getenv("VISION_API_KEY")
+    if not resolved_vision_api_key:
+        raise gr.Error("Mr.🆖 AI Hub API Key for Vision is required.")
 
     full_text = ""
     gr.Info("📦 Processing input...")
