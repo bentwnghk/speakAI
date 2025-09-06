@@ -171,7 +171,7 @@ def extract_text_from_image_via_vision(image_file, vision_api_key=None):
                 "role": "user",
                 "content": [
                     {"type": "image_url", "image_url": {"url": image_url, "detail": "auto"}},
-                    {"type": "text", "text": "Extract all computer-readable text from this image. Output the text as a single, continuous block. Do not add any line breaks unless they represent a clear paragraph separation in the original document. Avoid commentary; return only the extracted text."}
+                    {"type": "text", "text": "Extract all computer-readable text from this image. Output each paragraph of the text as a single, continuous block. Do not add any line breaks unless they represent a clear paragraph separation in the original document. Avoid commentary; return only the extracted text."}
                 ]
             }
         ]
