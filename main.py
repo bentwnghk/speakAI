@@ -171,7 +171,7 @@ def extract_text_from_image_via_vision(image_file, vision_api_key=None):
                 "role": "user",
                 "content": [
                     {"type": "image_url", "image_url": {"url": image_url, "detail": "auto"}},
-                    {"type": "text", "text": "Extract all the computer-readable text from this image as accurately as possible. Avoid commentary, return only the extracted text."}
+                    {"type": "text", "text": "Extract all computer-readable text from this image. Output the text as a single, continuous block. Do not add any line breaks unless they represent a clear paragraph separation in the original document. Avoid commentary; return only the extracted text."}
                 ]
             }
         ]
@@ -182,8 +182,11 @@ def extract_text_from_image_via_vision(image_file, vision_api_key=None):
             temperature=0,
         )
         extracted_text = response.choices[0].message.content.strip()
-        logger.debug(f"Vision extraction successful for {image_file}. Text length: {len(extracted_text)}")
-        return extracted_text
+        # Sanitize the output to remove any erroneous newlines introduced by the Vision API.
+        # This prevents single newlines from being converted into paragraph breaks later.
+        sanitized_text = extracted_text.replace('\n', ' ')
+        logger.debug(f"Vision extraction successful for {image_file}. Text length: {len(sanitized_text)}")
+        return sanitized_text
     except Exception as e:
         logger.error(f"Vision extraction failed for {image_file}. Error: {e}")
         raise
