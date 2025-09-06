@@ -301,17 +301,20 @@ def generate_audio(
     logger.info(f"Starting TTS generation for {total_chunks} chunks.")
     gr.Info(f"🪄 Generating audio for {total_chunks} text chunks...")
 
-    audio_chunks = []
+    audio_chunks = [None] * total_chunks
+    processed_count = 0
     with cf.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_chunk = {
             executor.submit(get_mp3, chunk, voice, resolved_openai_api_key): i
             for i, chunk in enumerate(text_chunks)
         }
         
-        for i, future in enumerate(cf.as_completed(future_to_chunk)):
+        for future in cf.as_completed(future_to_chunk):
             try:
-                audio_chunks.append(future.result())
-                gr.Info(f"🪄 Generated audio for chunk {i+1}/{total_chunks}...")
+                chunk_index = future_to_chunk[future]
+                audio_chunks[chunk_index] = future.result()
+                processed_count += 1
+                gr.Info(f"🪄 Generated audio for chunk {processed_count}/{total_chunks}...")
             except Exception as exc:
                 logger.error(f"TTS generation failed for a chunk: {exc}")
                 raise gr.Error("Failed to generate audio for a part of the text. Please check your API key and network.")
