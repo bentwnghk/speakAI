@@ -370,7 +370,7 @@ description_md = read_file_content("description.md", "A simple text-to-speech ap
 footer_md = read_file_content("footer.md", "")
 head_html = read_file_content("head.html", "")
 
-with gr.Blocks(theme="ocean", title="Mr.🆖 Text-to-Speech TTS 🗣️") as demo:
+with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
     gr.Markdown(description_md)
 
     with gr.Row():
@@ -460,7 +460,6 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 Text-to-Speech TTS 🗣️") as dem
             text_input,
             url_input_field,
             lang_input,
-            api_key_input,
             vision_api_key_input
         ],
         outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url],
