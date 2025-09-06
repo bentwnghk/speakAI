@@ -29,7 +29,7 @@ import pytz
 # --- Configuration ---
 # Set the base URL for the TTS service. This is a critical change to meet the requirements.
 # All TTS requests will be routed through this custom endpoint.
-OPENAI_BASE_URL = "https://tts.mr5ai.com/v1"
+TTS_BASE_URL = "https://tts.mr5ai.com/v1"
 
 # Define available voices. "nova" is set as the default for English as required.
 # The other voices are retained for future flexibility but are not currently used in the UI.
@@ -84,10 +84,10 @@ def split_text(text: str, max_chunk_size: int = 4000) -> List[str]:
 def get_mp3(text: str, voice: str, api_key: str) -> bytes:
     """
     Generates MP3 audio for a single text chunk using the OpenAI TTS API.
-    This function now uses the configured OPENAI_BASE_URL and the selected voice.
+    This function now uses the configured TTS_BASE_URL and the selected voice.
     It includes robust error handling and retries to ensure reliability.
     """
-    client = OpenAI(api_key=api_key, base_url=OPENAI_BASE_URL)
+    client = OpenAI(api_key=api_key, base_url=TTS_BASE_URL)
     
     logger.debug(f"Requesting TTS. Voice: '{voice}', Text: '{text[:50]}...'")
     
@@ -134,11 +134,11 @@ def is_docx(filename):
     return filename.lower().endswith(".docx") or (t or "") == docx_mime
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), retry=retry_if_exception_type(Exception))
-def extract_text_from_image_via_vision(image_file, openai_api_key=None):
+def extract_text_from_image_via_vision(image_file, vision_api_key=None):
     """Extracts text from an image using OpenAI Vision API, with retries."""
     client = OpenAI(
-        api_key=openai_api_key or os.getenv("OPENAI_API_KEY"),
-        base_url=os.getenv("OPENAI_BASE_URL"),
+        api_key=vision_api_key or os.getenv("VISION_API_KEY"),
+        base_url=os.getenv("VISION_BASE_URL"),
         timeout=120.0
     )
     logger.debug(f"Requesting Vision text extraction for image: {image_file}")
@@ -226,6 +226,7 @@ def generate_audio(
     url_input: Optional[str],
     language: str,
     openai_api_key: str = None,
+    vision_api_key: str = None,
 ) -> (str, str, str, str):
     """
     Generates audio from text, files, or a URL. This function has been refactored
@@ -233,9 +234,11 @@ def generate_audio(
     """
     start_time = time.time()
     
-    resolved_openai_api_key = openai_api_key or os.getenv("OPENAI_API_KEY")
+    resolved_openai_api_key = openai_api_key or os.getenv("TTS_API_KEY")
     if not resolved_openai_api_key:
-        raise gr.Error("Mr.🆖 AI Hub API Key is required.")
+        raise gr.Error("Mr.🆖 AI Hub API Key for TTS is required.")
+    
+    resolved_vision_api_key = vision_api_key or os.getenv("VISION_API_KEY")
 
     full_text = ""
     gr.Info("📦 Processing input...")
@@ -261,7 +264,7 @@ def generate_audio(
                     raise gr.Error(f"Error reading PDF: {e}")
             elif is_image(str(file_path_obj)):
                 try:
-                    text = extract_text_from_image_via_vision(str(file_path_obj), resolved_openai_api_key)
+                    text = extract_text_from_image_via_vision(str(file_path_obj), resolved_vision_api_key)
                 except Exception as e:
                     raise gr.Error(f"Error extracting text from image: {e}")
             elif is_text(str(file_path_obj)):
@@ -406,11 +409,11 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 Text-to-Speech TTS 🗣️") as dem
             )
 
             with gr.Accordion("⚙️ Advanced Settings", open=False):
-                api_key_input = gr.Textbox(
+                vision_api_key_input = gr.Textbox(
                     label="Mr.🆖 AI Hub API Key",
                     type="password",
                     placeholder="sk-xxx",
-                    elem_id="mr_ng_ai_hub_api_key_input"
+                    elem_id="mr_ng_ai_hub_vision_api_key_input"
                 )
 
             submit_button = gr.Button("✨ Generate Audio", variant="primary")
@@ -457,7 +460,8 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 Text-to-Speech TTS 🗣️") as dem
             text_input,
             url_input_field,
             lang_input,
-            api_key_input
+            api_key_input,
+            vision_api_key_input
         ],
         outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url],
         api_name="generate_audio"
