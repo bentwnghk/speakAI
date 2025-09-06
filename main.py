@@ -308,7 +308,7 @@ def generate_audio(
     processed_count = 0
     with cf.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_chunk = {
-            executor.submit(get_mp3, chunk, voice, resolved_openai_api_key): i
+            executor.submit(get_mp3, chunk, voice, api_key): i
             for i, chunk in enumerate(text_chunks)
         }
         
