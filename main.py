@@ -356,12 +356,6 @@ def generate_audio(
 
 # --- Gradio UI Definition ---
 allowed_extensions = [".txt", ".pdf", ".docx", ".jpg", ".jpeg", ".png"]
-examples_dir = Path("examples")
-examples = [
-    ["Upload Files", [str(examples_dir / "Intangible cultural heritage item.pdf")], "", "", "English", None],
-    ["Upload Files", [str(examples_dir / "JUPAS Guide.jpg")], "", "", "Chinese", None],
-    ["URL", None, "", "https://geographical.co.uk/culture/uncontacted-tribes-around-the-world", "Cantonese", None]
-]
 
 def read_file_content(filepath: str, default: str = "") -> str:
     try:
@@ -469,15 +463,6 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 Text-to-Speech TTS 🗣️") as dem
         api_name="generate_audio"
     )
 
-    gr.Examples(
-        examples=examples,
-        inputs=[input_method_radio, file_input, text_input, url_input_field, lang_input, api_key_input],
-        outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url],
-        fn=generate_audio,
-        cache_examples=True,
-        run_on_click=True,
-        label="Examples (Click for Demo)"
-    )
 
     gr.Markdown(footer_md)
     demo.head = (os.getenv("HEAD", "") or "") + head_html
@@ -488,12 +473,6 @@ demo = demo.queue(max_size=20, default_concurrency_limit=5)
 app = gr.mount_gradio_app(app, demo, path="/")
 
 if __name__ == "__main__":
-    examples_dir.mkdir(exist_ok=True)
-    for fname in ["Intangible cultural heritage item.pdf", "JUPAS Guide.jpg"]:
-        fpath = examples_dir / fname
-        if not fpath.is_file():
-            fpath.touch()
-    
     os.makedirs("./gradio_cached_files/tmp/", exist_ok=True)
     
     import uvicorn
