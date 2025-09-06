@@ -169,7 +169,9 @@ def extract_text_from_image_via_vision(image_file, vision_api_key=None):
         )
         extracted_text = response.choices[0].message.content.strip()
         logger.debug(f"Vision extraction successful for {image_file}. Text length: {len(extracted_text)}")
-        return extracted_text
+        # Explicitly split the text from Vision API to handle potentially large outputs
+        text_chunks = split_text(extracted_text)
+        return "\n\n".join(text_chunks)
     except Exception as e:
         logger.error(f"Vision extraction failed for {image_file}. Error: {e}")
         raise
