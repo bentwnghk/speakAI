@@ -46,34 +46,48 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 def split_text(text: str, max_chunk_size: int = 4000) -> List[str]:
     """
-    Splits the text into chunks that are safe for the TTS API.
-    This function is essential for handling large text inputs without causing API errors.
-    It splits by paragraphs first, then sentences, and finally by words if necessary.
+    Splits the text into chunks safe for the TTS API, handling paragraphs, sentences, and words.
+    This more robust version correctly handles oversized paragraphs and sentences by breaking them down
+    by sentences, and then by words if a sentence itself is too long.
     """
+    import re
     chunks = []
     
-    # Split by paragraphs (double newlines)
+    # First, split by paragraphs to preserve structure
     paragraphs = text.split('\n\n')
     
     for paragraph in paragraphs:
+        if not paragraph.strip():
+            continue
+        
         if len(paragraph) <= max_chunk_size:
-            if paragraph.strip():
-                chunks.append(paragraph)
+            chunks.append(paragraph)
         else:
-            # If a paragraph is too long, split it by sentences.
-            # This is a more complex operation and requires careful handling of punctuation.
-            import re
-            sentences = re.split(r'(?<=[.!?]) +', paragraph)
+            # If a paragraph is too long, split it into sentences
+            sentences = re.split(r'(?<=[.!?])\s+', paragraph)
             current_chunk = ""
             for sentence in sentences:
-                if len(current_chunk) + len(sentence) + 1 <= max_chunk_size:
-                    current_chunk += sentence + " "
+                if len(sentence) > max_chunk_size:
+                    # If a sentence is too long, split it into words
+                    words = sentence.split(' ')
+                    for word in words:
+                        if len(current_chunk) + len(word) + 1 > max_chunk_size:
+                            chunks.append(current_chunk)
+                            current_chunk = word
+                        else:
+                            current_chunk += (' ' if current_chunk else '') + word
+                    if current_chunk: # Add the last part of the oversized sentence
+                         chunks.append(current_chunk)
+                         current_chunk = ""
+                elif len(current_chunk) + len(sentence) + 1 > max_chunk_size:
+                    chunks.append(current_chunk)
+                    current_chunk = sentence
                 else:
-                    chunks.append(current_chunk.strip())
-                    current_chunk = sentence + " "
-            if current_chunk:
-                chunks.append(current_chunk.strip())
-                
+                    current_chunk += (' ' if current_chunk else '') + sentence
+            
+            if current_chunk: # Add the last remaining chunk
+                chunks.append(current_chunk)
+
     return chunks
 
 @retry(
