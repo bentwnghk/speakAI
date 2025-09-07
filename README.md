@@ -6,7 +6,7 @@
 
 ## Overview
 
-SpeakAI is an AI-powered web application that converts text from various sources — including pasted text, uploaded documents (PDF, DOCX, TXT), images, or URLs — into high-quality audio speech using advanced text-to-speech technology. It leverages OpenAI's TTS API for natural-sounding voices and supports concurrent processing for fast audio generation. The app features a user-friendly Gradio-based web interface and includes OCR capabilities for extracting text from images via OpenAI's Vision API.
+SpeakAI is an AI-powered web application that converts text from various sources — including pasted text, uploaded documents (PDF, DOCX, TXT), or images — into high-quality audio speech using advanced text-to-speech technology. It leverages OpenAI's TTS API for natural-sounding voices and supports concurrent processing for fast audio generation. The app features a user-friendly Gradio-based web interface and includes OCR capabilities for extracting text from images via OpenAI's Vision API.
 
 ## Features
 
@@ -14,7 +14,6 @@ SpeakAI is an AI-powered web application that converts text from various sources
   - Direct text input (paste your content)
   - File uploads (PDF, DOCX, TXT documents)
   - Images (JPG, JPEG, PNG) with automatic text extraction using AI vision
-  - URLs (web articles and pages)
 - **High-Quality Audio:** Generates lifelike speech using OpenAI's text-to-speech models
 - **Multiple Voices:** Choose from a variety of voices including English (female/male) and Cantonese options
 - **Concurrent Processing:** Efficiently processes large texts by splitting into chunks and generating audio in parallel
@@ -81,7 +80,7 @@ The project includes Docker support for easy containerized deployment.
    Open your browser and go to `http://localhost:8000`
 
 3. **Generate audio:**
-   - Choose your input method: Enter Text, Upload Files, or Provide a URL
+   - Choose your input method: Enter Text, or Upload Files
    - For file uploads, select PDF, DOCX, TXT, or image files
    - Select your preferred voice from the dropdown
    - (Optional) Enter a Vision API key in Advanced Settings for image processing
@@ -94,7 +93,6 @@ The project includes Docker support for easy containerized deployment.
 
 - **Documents:** PDF (.pdf), Word (.docx), Text (.txt)
 - **Images:** JPG (.jpg, .jpeg), PNG (.png)
-- **Web Content:** Any valid HTTP/HTTPS URL
 
 ## Configuration
 

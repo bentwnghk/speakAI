@@ -1,7 +1,7 @@
 [project]
 name = "speakai"
 version = "0.1.0"
-description = "Generates natural-sounding audio from text, image, or a URL using AI."
+description = "Generates natural-sounding audio from text, image, or document using AI."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
