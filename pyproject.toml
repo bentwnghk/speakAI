@@ -1,7 +1,7 @@
 [project]
-name = "pdf-to-podcast"
+name = "speakai"
 version = "0.1.0"
-description = "Generates podcast audio from text, documents, or a URL using AI." # Updated description slightly
+description = "Generates natural-sounding audio from text, image, or a URL using AI."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

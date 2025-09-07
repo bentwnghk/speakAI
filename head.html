@@ -3,7 +3,7 @@
 <meta name="title" content="Mr.🆖 SpeakAI 🗣️" />
 <meta
   name="description"
-  content="Easily convert documents amd websites into audio podcasts. Perfect for listening on the go and making content more accessible."
+  content="🪄 Turn text from documents and images into high-quality audio with one click. ✨ Convert articles, stories, and other content into clear speech for easy listening. 💡 Ideal for students to practice listening and speaking skills by turning any text into natural-sounding audio."
 />
 <!-- Additional Meta Tags -->
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -11,7 +11,7 @@
 <meta name="author" content="Mr.🆖 AI" />
 <meta
   name="keywords"
-  content="document to podcast, website to podcast, audio conversion, podcast creation, accessible content"
+  content="text to audio, image to audio, audio conversion, accessible content"
 />
 <link rel="icon" href="/static/icon.png" type="image/png" />
 
@@ -25,10 +25,10 @@
   console.log("[HEAD_SCRIPT] Global error handler set.");
 
   // --- IndexedDB Setup ---
-  const DB_NAME = 'pdfToPodcastDB';
+  const DB_NAME = 'SpeakAIDB';
   const DB_VERSION = 1;
-  const PODCAST_STORE_NAME = 'podcasts'; // For audio blobs and full data
-  const LOCAL_HISTORY_KEY = 'podcastHistoryMetadata'; // For localStorage (metadata only)
+  const PODCAST_STORE_NAME = 'SpeakAIaudio'; // For audio blobs and full data
+  const LOCAL_HISTORY_KEY = 'SpeakAIHistoryMetadata'; // For localStorage (metadata only)
 
   let db; // Will hold the database instance
 
@@ -76,7 +76,7 @@
         localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(historyMetadata));
     } catch (e) {
         console.error("[METADATA_HISTORY] Error saving to localStorage:", e);
-        alert("Could not save podcast metadata list. Storage might be full.");
+        alert("Could not save SpeakAI metadata list. Storage might be full.");
     }
   }
   // --- End localStorage for Metadata List ---
@@ -84,16 +84,16 @@
 
   function renderPodcastHistory() {
     console.log("[RENDER_HISTORY] Attempting to render.");
-    const listContainer = document.getElementById('podcastHistoryList');
+    const listContainer = document.getElementById('audioHistoryList');
     if (!listContainer) {
-        console.warn("[RENDER_HISTORY] 'podcastHistoryList' element NOT FOUND.");
+        console.warn("[RENDER_HISTORY] 'audioHistoryList' element NOT FOUND.");
         return;
     }
     listContainer.innerHTML = ''; 
     const historyMetadata = getPodcastMetadataHistory(); // Get metadata from localStorage
     
     if (historyMetadata.length === 0) {
-        listContainer.innerHTML = '<li style="padding: 10px; text-align: center;">No podcasts in history.</li>';
+        listContainer.innerHTML = '<li style="padding: 10px; text-align: center;">No audio in history.</li>';
     } else {
         historyMetadata.forEach(podcastMeta => { // Iterate over metadata
             const item = document.createElement('li');
@@ -158,15 +158,15 @@
         console.log("[ACTUAL_INIT] IndexedDB opened successfully.");
     } catch (error) {
         console.error("[ACTUAL_INIT] Failed to open IndexedDB. History feature will be limited.", error);
-        alert("Failed to initialize podcast database. History feature may not work correctly.");
+        alert("Failed to initialize audio database. History feature may not work correctly.");
         // Proceed with other initializations if possible, or degrade gracefully
     }
     
     loadPodcastFromHistory = async function(podcastId) { // Now async
-        console.log(`[LOAD_HISTORY] Attempting to load podcast ID: ${podcastId}`);
+        console.log(`[LOAD_HISTORY] Attempting to load audio ID: ${podcastId}`);
         if (!db) {
             console.error("[LOAD_HISTORY] IndexedDB not available.");
-            alert("Podcast database is not available. Cannot load audio.");
+            alert("Audio database is not available. Cannot load audio.");
             return;
         }
 
@@ -175,20 +175,20 @@
         const request = store.get(podcastId);
 
         request.onerror = (event) => {
-            console.error("[LOAD_HISTORY] Error fetching podcast from IndexedDB:", event.target.error);
-            alert("Error loading podcast data.");
+            console.error("[LOAD_HISTORY] Error fetching audio from IndexedDB:", event.target.error);
+            alert("Error loading audio data.");
         };
 
         request.onsuccess = (event) => {
             const podcast = event.target.result;
             if (podcast && podcast.audioBlob) { // Check for audioBlob
-                console.log(`[LOAD_HISTORY] Found podcast in IndexedDB: ${podcast.title}`);
-                const audioWrapper = document.getElementById('podcast_audio_player');
-                const transcriptDisplayElement = document.querySelector('#podcast_transcript_display textarea');
+                console.log(`[LOAD_HISTORY] Found audio in IndexedDB: ${podcast.title}`);
+                const audioWrapper = document.getElementById('audio_player');
+                const transcriptDisplayElement = document.querySelector('#audio_transcript_display textarea');
                 let audioPlayerElement = audioWrapper ? audioWrapper.querySelector('audio') : null;
 
                 if (!audioWrapper) {
-                    console.error("[LOAD_HISTORY] Audio player WRAPPER ('#podcast_audio_player') not found.");
+                    console.error("[LOAD_HISTORY] Audio player WRAPPER ('#audio_player') not found.");
                     alert("Could not find audio player component."); return;
                 }
                 if (!audioPlayerElement) {
@@ -214,22 +214,22 @@
                 }
                 window.scrollTo({ top: 0, behavior: 'smooth' });
             } else {
-                console.warn(`[LOAD_HISTORY] Podcast ID ${podcastId} not found in IndexedDB or missing audioBlob.`);
-                alert("Podcast data or audio not found in local database.");
+                console.warn(`[LOAD_HISTORY] Audio ID ${podcastId} not found in IndexedDB or missing audioBlob.`);
+                alert("Audio data or audio not found in local database.");
             }
         };
     };
 
     deletePodcastFromHistory = async function(podcastId) { // Now async
-        if (!confirm("Are you sure you want to delete this podcast from history?")) return;
+        if (!confirm("Are you sure you want to delete this audio from history?")) return;
         
-        console.log(`[DELETE_HISTORY] Attempting to delete podcast ID: ${podcastId}`);
+        console.log(`[DELETE_HISTORY] Attempting to delete audio ID: ${podcastId}`);
         // Delete from IndexedDB
         if (db) {
             const tx = db.transaction(PODCAST_STORE_NAME, 'readwrite');
             const store = tx.objectStore(PODCAST_STORE_NAME);
             const req = store.delete(podcastId);
-            req.onsuccess = () => console.log(`[DELETE_HISTORY] Podcast ${podcastId} deleted from IndexedDB.`);
+            req.onsuccess = () => console.log(`[DELETE_HISTORY] Audio ${podcastId} deleted from IndexedDB.`);
             req.onerror = (e) => console.error(`[DELETE_HISTORY] Error deleting ${podcastId} from IndexedDB:`, e.target.error);
             await new Promise(resolve => tx.oncomplete = resolve); // Wait for tx to complete
         } else {
@@ -242,11 +242,11 @@
         savePodcastMetadataHistory(historyMetadata);
         
         renderPodcastHistory(); // Re-render the list
-        console.log(`[DELETE_HISTORY] Podcast ${podcastId} metadata removed and history re-rendered.`);
+        console.log(`[DELETE_HISTORY] Audio ${podcastId} metadata removed and history re-rendered.`);
     };
 
     saveNewPodcastToHistory = async function(title, audioFileUrlFromComponent, transcriptText, tts_cost) { // Added tts_cost
-        console.log("[SAVE_NEW] Attempting to save podcast:", { title, audioUrl: audioFileUrlFromComponent, transcriptLength: transcriptText?.length, tts_cost }); // Added tts_cost
+        console.log("[SAVE_NEW] Attempting to save audio:", { title, audioUrl: audioFileUrlFromComponent, transcriptLength: transcriptText?.length, tts_cost }); // Added tts_cost
         if (!audioFileUrlFromComponent || typeof transcriptText === 'undefined') {
             console.error("[SAVE_NEW] Audio URL or transcript is missing."); return;
         }
@@ -259,21 +259,21 @@
         const currentHistoryMetadata = getPodcastMetadataHistory();
         const existingPodcast = currentHistoryMetadata.find(podcast => podcast.title === title);
         if (existingPodcast) {
-            console.warn(`[SAVE_NEW] Podcast with title "${title}" already exists in history. Skipping save.`);
-            alert(`A podcast with the title "${title}" already exists in your history and will not be added again.`);
+            console.warn(`[SAVE_NEW] Audio with title "${title}" already exists in history. Skipping save.`);
+            alert(`An audio with the title "${title}" already exists in your history and will not be added again.`);
             // Optionally remove any "saving..." message if it was added
             const savingMsgElemForSkip = document.getElementById('podcastSavingMessage');
             if (savingMsgElemForSkip) savingMsgElemForSkip.remove();
             return;
         }
         
-        const historyListElem = document.getElementById('podcastHistoryList');
+        const historyListElem = document.getElementById('audioHistoryList');
         let savingMsgElem = document.getElementById('podcastSavingMessage');
         if (!savingMsgElem && historyListElem) {
             savingMsgElem = document.createElement('li'); savingMsgElem.id = 'podcastSavingMessage';
-            savingMsgElem.textContent = 'Fetching & Saving Podcast...'; savingMsgElem.style.fontStyle = 'italic';
+            savingMsgElem.textContent = 'Fetching & Saving Audio...'; savingMsgElem.style.fontStyle = 'italic';
             historyListElem.prepend(savingMsgElem);
-        } else if (savingMsgElem) { savingMsgElem.textContent = 'Fetching & Saving Podcast...';}
+        } else if (savingMsgElem) { savingMsgElem.textContent = 'Fetching & Saving Audio...';}
 
         try {
             console.log(`[SAVE_NEW] Fetching audio blob from: ${audioFileUrlFromComponent}`);
@@ -284,11 +284,11 @@
 
             if (!db) {
                 console.error("[SAVE_NEW] IndexedDB not available. Cannot save audio blob.");
-                if(savingMsgElem) savingMsgElem.textContent = 'Error: Podcast DB not ready.';
+                if(savingMsgElem) savingMsgElem.textContent = 'Error: Audio DB not ready.';
                 return;
             }
 
-            const podcastId = 'podcast-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+            const podcastId = 'audio-' + Date.now() + '-' + Math.random().toString(36).substring(2, 9);
             const podcastDataForDB = {
                 id: podcastId,
                 title: title,
@@ -303,7 +303,7 @@
             const request = store.put(podcastDataForDB);
 
             request.onsuccess = () => {
-                console.log(`[SAVE_NEW] Podcast data (with blob) saved to IndexedDB with ID: ${podcastId}`);
+                console.log(`[SAVE_NEW] Audio data (with blob) saved to IndexedDB with ID: ${podcastId}`);
                 // Now save metadata to localStorage
                 const historyMetadata = getPodcastMetadataHistory(); // Re-fetch in case of concurrent ops, though unlikely here
                 historyMetadata.unshift({
@@ -317,10 +317,10 @@
                 savePodcastMetadataHistory(historyMetadata);
                 if (savingMsgElem) savingMsgElem.remove();
                 renderPodcastHistory();
-                console.log("[SAVE_NEW] Podcast metadata saved to localStorage and history rendered.");
+                console.log("[SAVE_NEW] Audio metadata saved to localStorage and history rendered.");
             };
             request.onerror = (event) => {
-                console.error("[SAVE_NEW] Error saving podcast to IndexedDB:", event.target.error);
+                console.error("[SAVE_NEW] Error saving audio to IndexedDB:", event.target.error);
                 if(savingMsgElem) savingMsgElem.textContent = `DB Save Error: ${event.target.error.name}`;
             };
 
@@ -390,7 +390,7 @@
   function waitForGradioElements() {
     console.log("[WAIT_FOR_GRADIO] Starting to wait for key Gradio elements.");
     let attempts = 0; const maxAttempts = 100; 
-    const keyElementIds = ['podcastHistoryList', 'js_trigger_data_textbox', 'podcast_audio_player', 'podcast_transcript_display'];
+    const keyElementIds = ['audioHistoryList', 'js_trigger_data_textbox', 'audio_player', 'audio_transcript_display'];
     const intervalId = setInterval(() => {
         attempts++; let allFound = true;
         for (const id of keyElementIds) {

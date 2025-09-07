@@ -249,7 +249,7 @@ def generate_audio(
 ) -> (str, str, str, str):
     """
     Generates audio from text, files, or a URL. This function has been refactored
-    to directly convert the input text to speech, removing the podcast dialogue generation.
+    to directly convert the input text to speech.
     """
     start_time = time.time()
         
@@ -391,7 +391,7 @@ def read_file_content(filepath: str, default: str = "") -> str:
     except (FileNotFoundError, Exception):
         return default
 
-description_md = read_file_content("description.md", "A simple text-to-speech application.")
+description_md = read_file_content("description.md", "AI-powered text-to-speech application.")
 footer_md = read_file_content("footer.md", "")
 head_html = read_file_content("head.html", "")
 
@@ -454,16 +454,16 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
                 lines=20, 
                 show_copy_button=True, 
                 autoscroll=False, 
-                elem_id="podcast_transcript_display"
+                elem_id="audio_transcript_display"
             )
             audio_output = gr.Audio(
                 label="🔊 Audio Output", 
                 type="filepath", 
-                elem_id="podcast_audio_player"
+                elem_id="audio_player"
             )
 
     with gr.Accordion("📜 History (Stored in your browser)", open=False):
-        gr.HTML("<ul id='podcastHistoryList' style='list-style-type: none; padding: 0;'><li>Loading history...</li></ul>")
+        gr.HTML("<ul id='audioHistoryList' style='list-style-type: none; padding: 0;'><li>Loading history...</li></ul>")
         js_trigger_data_textbox = gr.Textbox(label="JS Trigger Data", visible=False, elem_id="js_trigger_data_textbox")
         temp_audio_file_output_for_url = gr.File(label="Temp Audio File URL Holder", visible=False, elem_id="temp_audio_file_url_holder")
 
