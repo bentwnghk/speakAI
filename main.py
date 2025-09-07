@@ -182,15 +182,8 @@ def extract_text_from_image_via_vision(image_file, vision_api_key=None):
             temperature=0,
         )
         extracted_text = response.choices[0].message.content.strip()
-        # Sanitize the output to remove any erroneous newlines introduced by the Vision API.
-        # This prevents single newlines from being converted into paragraph breaks later.
-        # sanitized_text = extracted_text.replace('\n', ' ')
         logger.debug(f"Vision extraction successful for {image_file}. Text length: {len(extracted_text)}")
         return extracted_text
-        # Explicitly split the text from Vision API to handle potentially large outputs
-        # by using a smaller chunk size to trigger sentence-level splitting.
-        # text_chunks = split_text(extracted_text, max_chunk_size=1000)
-        # return "\n\n".join(text_chunks)
     except Exception as e:
         logger.error(f"Vision extraction failed for {image_file}. Error: {e}")
         raise
