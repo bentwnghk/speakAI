@@ -27,10 +27,6 @@ from bs4 import BeautifulSoup
 import pytz
 
 # --- Configuration ---
-# Set the base URL for the TTS service. This is a critical change to meet the requirements.
-# All TTS requests will be routed through this custom endpoint.
-TTS_BASE_URL = "https://tts.mr5ai.com/v1"
-
 # Define available voices. "nova" is set as the default.
 VOICE_MAP = {
     "Female 1": "nova",
@@ -437,7 +433,11 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
                 value="Female 1",
             )
 
+            GET_KEY_URL = "https://api.mr5ai.com"
             with gr.Accordion("⚙️ Advanced Settings", open=False):
+                gr.Markdown(
+                    f"💡 Get your Mr.🆖 AI Hub API Key [here]({GET_KEY_URL})"
+                )
                 vision_api_key_input = gr.Textbox(
                     label="Mr.🆖 AI Hub API Key",
                     type="password",
