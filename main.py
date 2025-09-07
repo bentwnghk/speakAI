@@ -171,7 +171,7 @@ def extract_text_from_image_via_vision(image_file, vision_api_key=None):
                 "role": "user",
                 "content": [
                     {"type": "image_url", "image_url": {"url": image_url, "detail": "auto"}},
-                    {"type": "text", "text": "Extract all computer-readable text from this image. Output each paragraph of the text as a single, continuous block. Do not add any line breaks unless they represent a clear paragraph separation in the original document. Avoid commentary; return only the extracted text."}
+                    {"type": "text", "text": "Extract all computer-readable text from this image. Recognize any paragraph breaks in the original document and put double newline characters between paragraphs. Do not add any new line breaks. Avoid commentary; return only the extracted text."}
                 ]
             }
         ]
@@ -184,13 +184,13 @@ def extract_text_from_image_via_vision(image_file, vision_api_key=None):
         extracted_text = response.choices[0].message.content.strip()
         # Sanitize the output to remove any erroneous newlines introduced by the Vision API.
         # This prevents single newlines from being converted into paragraph breaks later.
-        sanitized_text = extracted_text.replace('\n', ' ')
-        logger.debug(f"Vision extraction successful for {image_file}. Text length: {len(sanitized_text)}")
-        return sanitized_text
+        # sanitized_text = extracted_text.replace('\n', ' ')
+        logger.debug(f"Vision extraction successful for {image_file}. Text length: {len(extracted_text)}")
+        return extracted_text
         # Explicitly split the text from Vision API to handle potentially large outputs
         # by using a smaller chunk size to trigger sentence-level splitting.
-        text_chunks = split_text(sanitized_text, max_chunk_size=1000)
-        return "\n\n".join(text_chunks)
+        # text_chunks = split_text(extracted_text, max_chunk_size=1000)
+        # return "\n\n".join(text_chunks)
     except Exception as e:
         logger.error(f"Vision extraction failed for {image_file}. Error: {e}")
         raise
