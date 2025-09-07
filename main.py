@@ -31,9 +31,16 @@ import pytz
 # All TTS requests will be routed through this custom endpoint.
 TTS_BASE_URL = "https://tts.mr5ai.com/v1"
 
-# Define available voices. "nova" is set as the default for English as required.
-# The other voices are retained for future flexibility but are not currently used in the UI.
-OPENAI_VOICES = ["nova", "alloy", "fable", "echo", "shimmer", "onyx"]
+# Define available voices. "nova" is set as the default.
+VOICE_MAP = {
+    "Female 1": "nova",
+    "Male 1": "alloy",
+    "Female 2": "fable",
+    "Male 2": "echo",
+    "Cantonese Female": "shimmer",
+    "Cantonese Male": "onyx",
+}
+OPENAI_VOICES = list(VOICE_MAP.keys())
 
 if sentry_dsn := os.getenv("SENTRY_DSN"):
     sentry_sdk.init(sentry_dsn)
@@ -326,9 +333,11 @@ def generate_audio(
 
     audio_chunks = [None] * total_chunks
     processed_count = 0
+    actual_voice = VOICE_MAP.get(voice, "nova") # Default to nova if not found
+
     with cf.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_chunk = {
-            executor.submit(get_mp3, chunk, voice, api_key): i
+            executor.submit(get_mp3, chunk, actual_voice, api_key): i
             for i, chunk in enumerate(text_chunks)
         }
         
@@ -425,7 +434,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
             voice_input = gr.Dropdown(
                 label="🎤 Voice",
                 choices=OPENAI_VOICES,
-                value="nova",
+                value="Female 1",
             )
 
             with gr.Accordion("⚙️ Advanced Settings", open=False):
