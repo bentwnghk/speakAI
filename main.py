@@ -22,8 +22,6 @@ from pypdf import PdfReader
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 from mimetypes import guess_type
 import docx
-import requests
-from bs4 import BeautifulSoup
 import pytz
 
 # --- Configuration ---
@@ -101,7 +99,7 @@ def split_text(text: str, max_chunk_size: int = 4000) -> List[str]:
 def get_mp3(text: str, voice: str, api_key: str) -> bytes:
     """
     Generates MP3 audio for a single text chunk using the OpenAI TTS API.
-    This function now uses the configured TTS_BASE_URL and the selected voice.
+    This function now uses the TTS_BASE_URL and the selected voice.
     It includes robust error handling and retries to ensure reliability.
     """
     client = OpenAI(
@@ -191,64 +189,15 @@ def extract_text_from_image_via_vision(image_file, vision_api_key=None):
         logger.error(f"Vision extraction failed for {image_file}. Error: {e}")
         raise
 
-@retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=1, min=2, max=5), retry=retry_if_exception_type(requests.exceptions.RequestException))
-def extract_text_from_url(url: str) -> str:
-    """Fetches content from a URL and extracts text using BeautifulSoup."""
-    if not url.startswith(('http://', 'https://')):
-        url = 'https://' + url
-    logger.info(f"Fetching content from URL: {url}")
-    try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'}
-        response = requests.get(url, headers=headers, timeout=15)
-        response.raise_for_status()
-        
-        try:
-            html_content = response.content.decode('utf-8')
-        except UnicodeDecodeError:
-            html_content = response.text
-
-        soup = BeautifulSoup(html_content, 'html.parser')
-        for script_or_style in soup(["script", "style"]):
-            script_or_style.decompose()
-
-        main_content_tags = ['article', 'main', '.main-content', '#main', '#content', '.post-content', '.entry-content']
-        text_parts = []
-        found_main_content = False
-        for tag_selector in main_content_tags:
-            elements = soup.select(tag_selector)
-            if elements:
-                for element in elements:
-                    text_parts.append(element.get_text(separator='\n', strip=True))
-                found_main_content = True
-                break
-        
-        if not found_main_content and soup.body:
-            text_parts.append(soup.body.get_text(separator='\n', strip=True))
-        
-        extracted_text = "\n\n".join(filter(None, text_parts))
-        if not extracted_text.strip():
-            logger.warning(f"No significant text extracted from URL: {url}")
-            return ""
-        
-        logger.info(f"Successfully extracted {len(extracted_text)} characters from URL: {url}")
-        return extracted_text
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Error fetching URL {url}: {e}")
-        raise gr.Error(f"Failed to fetch content from URL: {url}. Details: {e}")
-    except Exception as e:
-        logger.error(f"Unexpected error processing URL {url}: {e}")
-        raise gr.Error(f"An unexpected error occurred while processing the URL: {url}.")
-
 def generate_audio(
     input_method: str,
     files: Optional[List[str]],
     input_text: Optional[str],
-    url_input: Optional[str],
     voice: str,
     vision_api_key: str = None,
 ) -> (str, str, str, str):
     """
-    Generates audio from text, files, or a URL. This function has been refactored
+    Generates audio from text or files. This function has been refactored
     to directly convert the input text to speech.
     """
     start_time = time.time()
@@ -309,11 +258,6 @@ def generate_audio(
         full_text = input_text
         title_base = "Pasted Text"
 
-    elif input_method == "URL":
-        if not url_input or not url_input.strip():
-            raise gr.Error("Please enter a URL.")
-        full_text = extract_text_from_url(url_input)
-        title_base = url_input.split('//')[-1].split('/')[0]
 
     if not full_text.strip():
         raise gr.Error("No text content to process.")
@@ -383,7 +327,7 @@ def generate_audio(
 
 
 # --- Gradio UI Definition ---
-allowed_extensions = [".txt", ".pdf", ".docx", ".jpg", ".jpeg", ".png"]
+allowed_extensions = [".txt", ".docx", ".pdf", ".jpg", ".jpeg", ".png"]
 
 def read_file_content(filepath: str, default: str = "") -> str:
     try:
@@ -402,7 +346,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
         # --- Left Column: Inputs ---
         with gr.Column(scale=1):
             input_method_radio = gr.Radio(
-                ["Enter Text", "Upload Files", "URL"],
+                ["Enter Text", "Upload Files"],
                 label="📁 Source",
                 value="Enter Text"
             )
@@ -416,17 +360,11 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
             
             with gr.Group(visible=False) as file_upload_group:
                 file_input = gr.Files(
-                    label="Upload TXT, PDF, DOCX, or Image Files",
+                    label="Upload TXT, DOCX, PDF, JPG, JPEG, or PNG Files",
                     file_types=allowed_extensions,
                     file_count="multiple",
                 )
             
-            with gr.Group(visible=False) as url_input_group:
-                url_input_field = gr.Textbox(
-                    label="🔗 Enter URL",
-                    placeholder="https://example.com/article"
-                )
-
             voice_input = gr.Dropdown(
                 label="🎤 Voice",
                 choices=OPENAI_VOICES,
@@ -462,8 +400,8 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
                 elem_id="audio_player"
             )
 
-    with gr.Accordion("📜 History (Stored in your browser)", open=False):
-        gr.HTML("<ul id='audioHistoryList' style='list-style-type: none; padding: 0;'><li>Loading history...</li></ul>")
+    with gr.Accordion("📜 Archives (Stored in your browser)", open=False):
+        gr.HTML("<ul id='audioHistoryList' style='list-style-type: none; padding: 0;'><li>Loading archives...</li></ul>")
         js_trigger_data_textbox = gr.Textbox(label="JS Trigger Data", visible=False, elem_id="js_trigger_data_textbox")
         temp_audio_file_output_for_url = gr.File(label="Temp Audio File URL Holder", visible=False, elem_id="temp_audio_file_url_holder")
 
@@ -471,14 +409,13 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
     def switch_input_method(choice):
         return {
             text_input_group: gr.update(visible=choice == "Enter Text"),
-            file_upload_group: gr.update(visible=choice == "Upload Files"),
-            url_input_group: gr.update(visible=choice == "URL"),
+            file_upload_group: gr.update(visible=choice == "Upload Files")
         }
 
     input_method_radio.change(
         fn=switch_input_method,
         inputs=input_method_radio,
-        outputs=[text_input_group, file_upload_group, url_input_group]
+        outputs=[text_input_group, file_upload_group]
     )
 
     submit_button.click(
@@ -487,7 +424,6 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
             input_method_radio,
             file_input,
             text_input,
-            url_input_field,
             voice_input,
             vision_api_key_input
         ],
