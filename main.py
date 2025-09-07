@@ -290,11 +290,11 @@ def generate_audio(
                 logger.error(f"TTS generation failed for a chunk: {exc}")
                 raise gr.Error("Failed to generate audio for a part of the text. Please check your API key and network.")
 
-    if not audio_chunks:
-        raise gr.Error("Failed to generate any audio. Please check the TTS service status or your API key.")
-
     # --- Finalization ---
-    final_audio = b"".join(audio_chunks)
+    final_audio = b"".join(chunk for chunk in audio_chunks if chunk is not None)
+ 
+    if not final_audio:
+        raise gr.Error("Failed to generate any audio. Please check the TTS service status or your API key.")
 
     temporary_directory = "./gradio_cached_files/tmp/" 
     os.makedirs(temporary_directory, exist_ok=True)
@@ -307,7 +307,7 @@ def generate_audio(
             suffix=".mp3",
             prefix="SpeakAI_audio_"
         ) as temp_file:
-            temp_file.write(audio)
+            temp_file.write(final_audio)
             temp_file_path = temp_file.name
 
         if temp_file_path:
