@@ -33,7 +33,7 @@ TTS_BASE_URL = "https://tts.mr5ai.com/v1"
 
 # Define available voices. "nova" is set as the default for English as required.
 # The other voices are retained for future flexibility but are not currently used in the UI.
-OPENAI_VOICES = ["nova", "alloy", "shimmer", "echo"]
+OPENAI_VOICES = ["nova", "alloy", "fable", "echo", "shimmer", "onyx"]
 
 if sentry_dsn := os.getenv("SENTRY_DSN"):
     sentry_sdk.init(sentry_dsn)
@@ -241,7 +241,7 @@ def generate_audio(
     files: Optional[List[str]],
     input_text: Optional[str],
     url_input: Optional[str],
-    language: str,
+    voice: str,
     vision_api_key: str = None,
 ) -> (str, str, str, str):
     """
@@ -320,7 +320,6 @@ def generate_audio(
     # --- TTS Generation ---
     text_chunks = split_text(full_text)
     total_chunks = len(text_chunks)
-    voice = "nova"
     
     logger.info(f"Starting TTS generation for {total_chunks} chunks.")
     gr.Info(f"🪄 Generating audio for {total_chunks} text chunks...")
@@ -423,10 +422,10 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
                     placeholder="https://example.com/article"
                 )
 
-            lang_input = gr.Radio(
-                label="🌐 Language",
-                choices=["English", "Chinese", "Cantonese"],
-                value="English",
+            voice_input = gr.Dropdown(
+                label="🎤 Voice",
+                choices=OPENAI_VOICES,
+                value="nova",
             )
 
             with gr.Accordion("⚙️ Advanced Settings", open=False):
@@ -480,7 +479,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️") as demo:
             file_input,
             text_input,
             url_input_field,
-            lang_input,
+            voice_input,
             vision_api_key_input
         ],
         outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url],
