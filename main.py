@@ -295,13 +295,40 @@ def generate_audio(
 
     # --- Finalization ---
     final_audio = b"".join(audio_chunks)
-    
+
     temporary_directory = "./gradio_cached_files/tmp/" 
     os.makedirs(temporary_directory, exist_ok=True)
-    
-    with NamedTemporaryFile(delete=False, suffix=".mp3", dir=temporary_directory) as temp_file:
-        temp_file.write(final_audio)
-        temp_file_path = temp_file.name
+
+    try:
+        temp_file_path = None
+        with NamedTemporaryFile(
+            dir=temporary_directory,
+            delete=False,
+            suffix=".mp3",
+            prefix="SpeakAI_audio_"
+        ) as temp_file:
+            temp_file.write(audio)
+            temp_file_path = temp_file.name
+
+        if temp_file_path:
+            logger.info(f"Audio saved to temporary file: {temp_file_path}")
+        else:
+            raise IOError("Temporary file path was not obtained.")
+
+    except Exception as e:
+        logger.error(f"Failed to write temporary audio file: {e}")
+        raise gr.Error("Failed to save the generated audio file.")
+
+    try:
+        for file in glob.glob(f"{temporary_directory}SpeakAI_audio_*.mp3"):
+            if os.path.isfile(file) and time.time() - os.path.getmtime(file) > 7 * 24 * 60 * 60: # Delete temp audio file after 7 days
+                try:
+                    os.remove(file)
+                    logger.debug(f"Removed old temp audio file: {file}")
+                except OSError as e_rem:
+                    logger.warning(f"Could not remove old temp audio file {file}: {e_rem}")
+    except Exception as e:
+        logger.warning(f"Error during old temp audio file cleanup: {e}")
 
     # --- History and UI Update ---
     hk_now = datetime.datetime.now(pytz.timezone('Asia/Hong_Kong'))
