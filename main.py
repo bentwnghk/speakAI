@@ -170,11 +170,27 @@ def extract_text_from_image_via_vision(image_file, vision_api_key=None):
             {
                 "role": "user",
                 "content": [
-                    {"type": "image_url", "image_url": {"url": image_url, "detail": "auto"}},
-                    {"type": "text", "text": "Extract all computer-readable text from this image. Recognize any paragraph breaks in the original document and put double newline characters between paragraphs. Do not add any new line breaks. Avoid commentary; return only the extracted text."}
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": image_url, "detail": "auto"}
+                    },
+                    {
+                        "type": "text",
+                        "text": (
+                            "Extract all computer-readable text from the provided image.\n\n"
+                            "Instructions:\n"
+                            "- Preserve original paragraph breaks by inserting two newline characters (`\\n\\n`) between paragraphs.\n"
+                            "- Remove any numbers in square brackets (e.g., `[1]`, `[13]`) or parentheses (e.g., `(1)`) that appear at the beginning of any paragraph.\n"
+                            "- Do not insert any additional line breaks within paragraphs.\n"
+                            "- Use visual spacing and indentation to detect paragraph breaks.\n"
+                            "- Return only the extracted text, without commentary, metadata, or formatting.\n"
+                            "- Output the result as a plain text string."
+                        )
+                    }
                 ]
             }
         ]
+
         response = client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=messages,
