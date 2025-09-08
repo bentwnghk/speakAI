@@ -381,7 +381,7 @@ description_md = read_file_content("description.md", "AI-powered text-to-speech 
 footer_md = read_file_content("footer.md", "")
 head_html = read_file_content("head.html", "")
 
-with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️" flagging_options=[], css="footer{display:none !important}") as demo:
+with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", flagging_options=[], css="footer{display:none !important}") as demo:
     gr.Markdown(description_md)
 
     with gr.Row():
