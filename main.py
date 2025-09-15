@@ -209,7 +209,7 @@ def generate_audio(
     files: Optional[List[str]],
     input_text: Optional[str],
     voice: str,
-    vision_api_key: str = None,
+    api_key: str = None,
 ) -> (str, str, str, str):
     """
     Generates audio from text or files. This function has been refactored
@@ -217,11 +217,11 @@ def generate_audio(
     """
     start_time = time.time()
         
-    resolved_vision_api_key = vision_api_key or os.getenv("VISION_API_KEY")
+    vision_api_key = os.getenv("VISION_API_KEY")
 
-    api_key = os.getenv("TTS_API_KEY")
-    if not api_key:
-        raise gr.Error("TTS_API_KEY environment variable not set.")
+    resolved_api_key = api_key or os.getenv("TTS_API_KEY")
+    if not resolved_api_key:
+        raise gr.Error("TTS API Key is not found. Please provide it in Advanced Settings or make sure the TTS_API_KEY environment variable is set.")
 
     full_text = ""
     gr.Info("📦 Processing input...")
@@ -246,13 +246,12 @@ def generate_audio(
                 except Exception as e:
                     raise gr.Error(f"Error reading PDF: {e}")
             elif is_image(str(file_path_obj)):
-                if not resolved_vision_api_key:
+                if not vision_api_key:
                     raise gr.Error(
-                        "Vision API Key not found. Please provide it in Advanced Settings "
-                        "or set the VISION_API_KEY environment variable to process images."
+                        "VISION_API_KEY environment variable is not set."
                     )
                 try:
-                    text = extract_text_from_image_via_vision(str(file_path_obj), resolved_vision_api_key)
+                    text = extract_text_from_image_via_vision(str(file_path_obj), vision_api_key)
                 except Exception as e:
                     raise gr.Error(f"Error extracting text from image: {e}")
             elif is_text(str(file_path_obj)):
@@ -292,7 +291,7 @@ def generate_audio(
 
     with cf.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_chunk = {
-            executor.submit(get_mp3, chunk, actual_voice, api_key): i
+            executor.submit(get_mp3, chunk, actual_voice, resolved_api_key): i
             for i, chunk in enumerate(text_chunks)
         }
         
@@ -304,13 +303,13 @@ def generate_audio(
                 gr.Info(f"🪄 Generated audio for chunk {processed_count}/{total_chunks}...")
             except Exception as exc:
                 logger.error(f"TTS generation failed for a chunk: {exc}")
-                raise gr.Error("Failed to generate audio for a part of the text. Please check your API key and network.")
+                raise gr.Error("Failed to generate audio for a part of the text. Please check your TTS API Key and network.")
 
     # --- Finalization ---
     final_audio = b"".join(chunk for chunk in audio_chunks if chunk is not None)
  
     if not final_audio:
-        raise gr.Error("Failed to generate any audio. Please check the TTS service status or your API key.")
+        raise gr.Error("Failed to generate any audio. Please check the TTS service status or your TTS API Key.")
 
     temporary_directory = "./gradio_cached_files/tmp/" 
     os.makedirs(temporary_directory, exist_ok=True)
@@ -418,11 +417,11 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
                 gr.Markdown(
                     f"💡 Get your Mr.🆖 AI Hub API Key [here]({GET_KEY_URL})"
                 )
-                vision_api_key_input = gr.Textbox(
+                api_key_input = gr.Textbox(
                     label="Mr.🆖 AI Hub API Key",
                     type="password",
                     placeholder="sk-xxx",
-                    elem_id="mr_ng_ai_hub_vision_api_key_input"
+                    elem_id="mr_ng_ai_hub_api_key_input"
                 )
 
             submit_button = gr.Button("✨ Generate Audio", variant="primary")
@@ -467,7 +466,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
             file_input,
             text_input,
             voice_input,
-            vision_api_key_input
+            api_key_input
         ],
         outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url],
         api_name="generate_audio"
