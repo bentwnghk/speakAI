@@ -30,8 +30,8 @@ VOICE_MAP = {
     "Male 1": "alloy",
     "Female 2": "fable",
     "Male 2": "echo",
-    "Cantonese Female": "shimmer",
-    "Cantonese Male": "onyx",
+    "Female 3": "shimmer",
+    "Male 3": "onyx",
 }
 OPENAI_VOICES = list(VOICE_MAP.keys())
 
