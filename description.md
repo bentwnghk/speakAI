@@ -2,7 +2,7 @@
   <strong>Mr.🆖 SpeakAI 🗣️</strong>
 </p>
 <p style="text-align:center; font-size: 1em;">
-  <strong>⚡ <em>Unleash the Power of AI Voice Technology</em> ⚡</strong><br><br>
+  <strong>⚡ <em>Unleash the Power of AI Voice Technology</em></strong><br><br>
   <strong>🔥 INSTANT TRANSFORMATION:</strong> Convert ANY text—from documents or images—into crystal-clear, professional audio with a single click!<br><br>
   <strong>🎯 PERFECT FOR:</strong><br>
   • 📚 Students mastering English language through immersive audio practice<br>
