@@ -128,6 +128,12 @@
             loadButton.className = 'gr-button gr-button-sm gr-button-secondary';
             loadButton.onclick = () => loadPodcastFromHistory(podcastMeta.id); // Use ID to fetch from IndexedDB
             loadButton.style.marginRight = '5px';
+
+            const renameButton = document.createElement('button');
+            renameButton.textContent = 'Rename';
+            renameButton.className = 'gr-button gr-button-sm gr-button-secondary';
+            renameButton.onclick = () => renamePodcastInHistory(podcastMeta.id);
+            renameButton.style.marginRight = '5px';
             
             const deleteButton = document.createElement('button');
             deleteButton.textContent = 'Delete';
@@ -138,6 +144,7 @@
             item.appendChild(dateSpan);
             item.appendChild(costSpan); // Add costSpan here
             buttonContainer.appendChild(loadButton);
+            buttonContainer.appendChild(renameButton);
             buttonContainer.appendChild(deleteButton);
             item.appendChild(buttonContainer);
             listContainer.appendChild(item);
@@ -150,6 +157,7 @@
   let saveNewPodcastToHistory = async function() { console.warn("saveNewPodcastToHistory called before definition."); };
   let loadPodcastFromHistory = function() { console.warn("loadPodcastFromHistory called before definition.")};
   let deletePodcastFromHistory = function() { console.warn("deletePodcastFromHistory called before definition.")};
+  let renamePodcastInHistory = function() { console.warn("renamePodcastInHistory called before definition.")};
 
   async function actualInitialization() {
     console.log("[ACTUAL_INIT] Initializing features. Opening IndexedDB...");
@@ -243,6 +251,56 @@
         
         renderPodcastHistory(); // Re-render the list
         console.log(`[DELETE_HISTORY] Audio ${podcastId} metadata removed and history re-rendered.`);
+    };
+
+    renamePodcastInHistory = async function(podcastId) {
+        const newTitle = prompt("Enter the new title for the audio:");
+        if (!newTitle || newTitle.trim() === "") {
+            console.log("[RENAME_HISTORY] Rename cancelled or empty title provided.");
+            return;
+        }
+
+        console.log(`[RENAME_HISTORY] Attempting to rename audio ID: ${podcastId} to "${newTitle}"`);
+
+        // 1. Update IndexedDB
+        if (db) {
+            const tx = db.transaction(PODCAST_STORE_NAME, 'readwrite');
+            const store = tx.objectStore(PODCAST_STORE_NAME);
+            const req = store.get(podcastId);
+
+            req.onsuccess = (event) => {
+                const podcast = event.target.result;
+                if (podcast) {
+                    podcast.title = newTitle.trim();
+                    const updateReq = store.put(podcast);
+                    updateReq.onsuccess = () => {
+                        console.log(`[RENAME_HISTORY] Audio ${podcastId} title updated in IndexedDB.`);
+                    };
+                    updateReq.onerror = (e) => {
+                        console.error(`[RENAME_HISTORY] Error updating title for ${podcastId} in IndexedDB:`, e.target.error);
+                    };
+                }
+            };
+            req.onerror = (e) => {
+                console.error(`[RENAME_HISTORY] Error fetching audio ${podcastId} for rename from IndexedDB:`, e.target.error);
+            };
+            await new Promise(resolve => tx.oncomplete = resolve);
+        } else {
+            console.warn("[RENAME_HISTORY] IndexedDB not available for rename.");
+        }
+
+        // 2. Update localStorage metadata
+        let historyMetadata = getPodcastMetadataHistory();
+        const podcastMetaIndex = historyMetadata.findIndex(p => p.id === podcastId);
+        if (podcastMetaIndex > -1) {
+            historyMetadata[podcastMetaIndex].title = newTitle.trim();
+            savePodcastMetadataHistory(historyMetadata);
+            console.log(`[RENAME_HISTORY] Audio ${podcastId} metadata updated in localStorage.`);
+        }
+
+        // 3. Re-render the list
+        renderPodcastHistory();
+        console.log(`[RENAME_HISTORY] History re-rendered after rename.`);
     };
 
     saveNewPodcastToHistory = async function(title, audioFileUrlFromComponent, transcriptText, tts_cost) { // Added tts_cost
