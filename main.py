@@ -424,16 +424,6 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
                 info="Adjust from 50% (slow) to 200% (fast). Default to 100% (normal)"
             )
 
-            # Add CSS to show % symbols on the slider values
-            slider_css = """
-            .gradio-slider .value::after {
-                content: "%";
-                margin-left: 2px;
-                color: #888;
-                font-weight: normal;
-            }
-            """
-
             GET_KEY_URL = "https://api.mr5ai.com"
             with gr.Accordion("⚙️ Advanced Settings", open=False):
                 gr.Markdown(
