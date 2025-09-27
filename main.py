@@ -95,7 +95,7 @@ def split_text(text: str, max_chunk_size: int = 4000) -> List[str]:
     wait=wait_exponential(multiplier=1, min=2, max=10),
     retry=retry_if_exception_type(APIError) # More specific retry for OpenAI errors
 )
-def get_mp3(text: str, voice: str, api_key: str) -> bytes:
+def get_mp3(text: str, voice: str, api_key: str, speed: float = 1.0) -> bytes:
     """
     Generates MP3 audio for a single text chunk using the OpenAI TTS API.
     This function now uses the TTS_BASE_URL and the selected voice.
@@ -114,6 +114,7 @@ def get_mp3(text: str, voice: str, api_key: str) -> bytes:
             voice=voice,
             input=text,
             response_format="mp3",
+            speed=speed,
         )
         
         # The response content is the binary audio data
@@ -209,6 +210,7 @@ def generate_audio(
     files: Optional[List[str]],
     input_text: Optional[str],
     voice: str,
+    speed_percent: float,
     api_key: str = None,
 ) -> (str, str, str, str):
     """
@@ -281,17 +283,18 @@ def generate_audio(
     # --- TTS Generation ---
     text_chunks = split_text(full_text)
     total_chunks = len(text_chunks)
-    
+
     logger.info(f"Starting TTS generation for {total_chunks} chunks.")
     gr.Info(f"🪄 Generating audio for {total_chunks} text chunks...")
 
     audio_chunks = [None] * total_chunks
     processed_count = 0
     actual_voice = VOICE_MAP.get(voice, "nova") # Default to nova if not found
+    actual_speed = speed_percent / 100.0  # Convert percentage to speed value (0.5 to 2.0)
 
     with cf.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_chunk = {
-            executor.submit(get_mp3, chunk, actual_voice, resolved_api_key): i
+            executor.submit(get_mp3, chunk, actual_voice, resolved_api_key, actual_speed): i
             for i, chunk in enumerate(text_chunks)
         }
         
@@ -401,7 +404,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
             
             with gr.Group(visible=False) as file_upload_group:
                 file_input = gr.Files(
-                    label="Upload TXT, DOCX, PDF, JPG, JPEG, or PNG Files",
+                    label="Upload JPG, JPEG, TXT, DOCX, or PDF Files",
                     file_types=allowed_extensions,
                     file_count="multiple",
                 )
@@ -410,6 +413,15 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
                 label="🎤 Voice",
                 choices=OPENAI_VOICES,
                 value="Female 1",
+            )
+
+            speed_input = gr.Slider(
+                label="⚡ Speed",
+                minimum=50,
+                maximum=200,
+                value=100,
+                step=5,
+                info="50% (slow) to 200% (fast)"
             )
 
             GET_KEY_URL = "https://api.mr5ai.com"
@@ -466,6 +478,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
             file_input,
             text_input,
             voice_input,
+            speed_input,
             api_key_input
         ],
         outputs=[audio_output, transcript_output, js_trigger_data_textbox, temp_audio_file_output_for_url],
