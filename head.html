@@ -312,8 +312,8 @@
         console.log(`[RENAME_HISTORY] History re-rendered after rename.`);
     };
 
-    saveNewPodcastToHistory = async function(title, audioFileUrlFromComponent, transcriptText, tts_cost) { // Added tts_cost
-        console.log("[SAVE_NEW] Attempting to save audio:", { title, audioUrl: audioFileUrlFromComponent, transcriptLength: transcriptText?.length, tts_cost }); // Added tts_cost
+    saveNewPodcastToHistory = async function(title, audioFileUrlFromComponent, transcriptText, tts_cost, voice, speed_percent) { // Added voice and speed_percent
+        console.log("[SAVE_NEW] Attempting to save audio:", { title, audioUrl: audioFileUrlFromComponent, transcriptLength: transcriptText?.length, tts_cost, voice, speed_percent }); // Added voice and speed_percent
         if (!audioFileUrlFromComponent || typeof transcriptText === 'undefined') {
             console.error("[SAVE_NEW] Audio URL or transcript is missing."); return;
         }
@@ -362,7 +362,9 @@
                 audioBlob: audioBlob, // Store the actual blob
                 transcript: transcriptText,
                 savedAt: new Date().toISOString(),
-                tts_cost: tts_cost // Added tts_cost
+                tts_cost: tts_cost, // Added tts_cost
+                voice: voice,
+                speed_percent: speed_percent
             };
             
             const transaction = db.transaction(PODCAST_STORE_NAME, 'readwrite');
@@ -378,6 +380,8 @@
                     title: title,
                     savedAt: podcastDataForDB.savedAt,
                     tts_cost: tts_cost, // Added tts_cost
+                    voice: voice,
+                    speed_percent: speed_percent,
                     // transcriptLength: transcriptText.length // Optional: store length
                     hasAudioInDB: true
                 });
@@ -416,18 +420,19 @@
                         lastProcessedValue = currentVal; 
                         try {
                             const data = JSON.parse(currentVal);
+                            console.log("[PROCESS_DATA] Parsed data:", data);
                             // Assuming data.tts_cost will be provided from the backend
                             if (data && data.title && data.audio_file_component_id && typeof data.transcript !== 'undefined' && typeof data.tts_cost !== 'undefined') {
                                 const audioFileComponentWrapper = document.getElementById(data.audio_file_component_id);
                                 if (audioFileComponentWrapper) {
                                     const downloadLink = audioFileComponentWrapper.querySelector('a[href]');
                                     if (downloadLink && downloadLink.href) {
-                                        saveNewPodcastToHistory(data.title, downloadLink.href, data.transcript, data.tts_cost);
+                                        saveNewPodcastToHistory(data.title, downloadLink.href, data.transcript, data.tts_cost, data.voice, data.speed_percent);
                                     } else {
                                         console.error(`[PROCESS_DATA] No download link in #${data.audio_file_component_id}. Retrying...`);
                                         setTimeout(() => {
                                             const updatedLink = document.getElementById(data.audio_file_component_id)?.querySelector('a[href]');
-                                            if (updatedLink && updatedLink.href) saveNewPodcastToHistory(data.title, updatedLink.href, data.transcript, data.tts_cost);
+                                            if (updatedLink && updatedLink.href) saveNewPodcastToHistory(data.title, updatedLink.href, data.transcript, data.tts_cost, data.voice, data.speed_percent);
                                             else console.error(`[PROCESS_DATA] Retry failed for #${data.audio_file_component_id}.`);
                                         }, 1000);
                                     }
