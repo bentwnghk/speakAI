@@ -109,6 +109,14 @@
             titleSpan.style.fontWeight = 'bold';
             titleSpan.style.marginBottom = '5px';
 
+            const voiceSpeedSpan = document.createElement('span');
+            const voice = podcastMeta.voice || 'N/A';
+            const speedPercent = podcastMeta.speed_percent || 'N/A';
+            voiceSpeedSpan.textContent = `Voice: ${voice} | Speed: ${speedPercent}%`;
+            voiceSpeedSpan.style.fontSize = '0.9em';
+            voiceSpeedSpan.style.color = '#666';
+            voiceSpeedSpan.style.marginBottom = '3px';
+
             const dateSpan = document.createElement('span');
             dateSpan.textContent = `Saved: ${new Date(podcastMeta.savedAt).toLocaleString()}`;
             dateSpan.style.fontSize = '0.9em';
@@ -141,6 +149,7 @@
             deleteButton.onclick = () => deletePodcastFromHistory(podcastMeta.id); // Use ID to delete from IndexedDB & localStorage
 
             item.appendChild(titleSpan);
+            item.appendChild(voiceSpeedSpan);
             item.appendChild(dateSpan);
             item.appendChild(costSpan); // Add costSpan here
             buttonContainer.appendChild(loadButton);

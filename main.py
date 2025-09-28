@@ -359,7 +359,9 @@ def generate_audio(
         "title": final_title,
         "audio_file_component_id": "temp_audio_file_url_holder",
         "transcript": full_text,
-        "tts_cost": f"{tts_cost:.2f}"
+        "tts_cost": f"{tts_cost:.2f}",
+        "voice": voice,
+        "speed_percent": speed_percent
     }
     json_data_string = json.dumps(data_to_send)
     
