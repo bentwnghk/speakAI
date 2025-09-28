@@ -393,7 +393,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
         with gr.Column(scale=1):
             input_method_radio = gr.Radio(
                 ["Enter Text", "Upload Files"],
-                label="📁 Source",
+                label="📁 Source to Convert",
                 value="Enter Text"
             )
 
@@ -412,18 +412,18 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
                 )
             
             voice_input = gr.Dropdown(
-                label="🎤 Voice",
+                label="🎤 Select Voice",
                 choices=OPENAI_VOICES,
                 value="Female 1",
             )
 
             speed_input = gr.Slider(
-                label="⚡ Speed",
+                label="⚡ Adjust Speed",
                 minimum=50,
                 maximum=200,
                 value=100,
                 step=5,
-                info="Adjust from 50% (slow) to 200% (fast). Default to 100% (normal)"
+                info="From 50% (slow) to 200% (fast). Default to 100% (normal)"
             )
 
             GET_KEY_URL = "https://api.mr5ai.com"
