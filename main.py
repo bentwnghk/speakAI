@@ -406,7 +406,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
             
             with gr.Group(visible=False) as file_upload_group:
                 file_input = gr.Files(
-                    label="Upload JPG, JPEG, TXT, DOCX, or PDF Files",
+                    label="Upload JPG, JPEG, PNG, TXT, DOCX, or PDF Files",
                     file_types=allowed_extensions,
                     file_count="multiple",
                 )
