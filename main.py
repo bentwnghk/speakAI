@@ -401,12 +401,12 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
                 text_input = gr.Textbox(
                     label="✍️ Enter Text",
                     lines=15,
-                    placeholder="Paste or type your text here..."
+                    placeholder="Paste or type the text to read here..."
                 )
             
             with gr.Group(visible=False) as file_upload_group:
                 file_input = gr.Files(
-                    label="Upload JPG, JPEG, PNG, TXT, DOCX, or PDF Files",
+                    label="Upload Image of the Text to Read",
                     file_types=allowed_extensions,
                     file_count="multiple",
                 )
