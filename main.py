@@ -290,7 +290,7 @@ def generate_audio(
     audio_chunks = [None] * total_chunks
     processed_count = 0
     actual_voice = VOICE_MAP.get(voice, "nova") # Default to nova if not found
-    actual_speed = speed_percent / 100.0  # Convert percentage to speed value (0.5 to 2.0)
+    actual_speed = speed_percent / 100.0  # Convert percentage to speed value (0.5 to 1.0)
 
     with cf.ThreadPoolExecutor(max_workers=10) as executor:
         future_to_chunk = {
@@ -401,12 +401,12 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
                 text_input = gr.Textbox(
                     label="✍️ Enter Text",
                     lines=15,
-                    placeholder="Paste or type the text to read here..."
+                    placeholder="Paste or type the text to read aloud here..."
                 )
 
             with gr.Group(visible=True) as file_upload_group:
                 file_input = gr.Files(
-                    label="Upload Image of the Text to Read",
+                    label="Upload Image of the Text to Read Aloud",
                     file_types=allowed_extensions,
                     file_count="multiple",
                 )
@@ -420,10 +420,10 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
             speed_input = gr.Slider(
                 label="⚡ Adjust Speed",
                 minimum=50,
-                maximum=200,
+                maximum=100,
                 value=100,
                 step=5,
-                info="From 50% (slow) to 200% (fast). Default to 100% (normal)"
+                info="From 50% (slow) to 100% (normal). Default to 100%."
             )
 
             GET_KEY_URL = "https://api.mr5ai.com"
