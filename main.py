@@ -406,7 +406,7 @@ with gr.Blocks(theme="ocean", title="Mr.🆖 SpeakAI 🗣️", css="footer{displ
 
             with gr.Group(visible=True) as file_upload_group:
                 file_input = gr.Files(
-                    label="Upload Image of the Text to Read Aloud",
+                    label="📸 Upload Image of the Text to Read Aloud",
                     file_types=allowed_extensions,
                     file_count="multiple",
                 )
