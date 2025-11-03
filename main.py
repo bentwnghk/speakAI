@@ -353,7 +353,7 @@ def generate_audio(
     final_title = f"{title_base} - {hk_now.strftime('%Y-%m-%d %H:%M')}"
     
     characters = len(full_text)
-    tts_cost = (characters / 1_000_000) * 15
+    tts_cost = (characters / 1_000_000) * 15 * 7.8
     
     data_to_send = {
         "title": final_title,
@@ -367,7 +367,7 @@ def generate_audio(
     
     total_duration = time.time() - start_time
     gr.Info(f"🎉 Audio generation complete! Total time: {total_duration:.2f} seconds.")
-    gr.Info(f"💸 Estimated cost: US${tts_cost:.2f}.")
+    gr.Info(f"💸 Estimated cost: HK${tts_cost:.2f}.")
 
     return temp_file_path, full_text, json_data_string, temp_file_path
 
