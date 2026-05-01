@@ -28,10 +28,10 @@ export function SpeedSlider({ value, onValueChange }: SpeedSliderProps) {
         step={25}
         onValueChange={(v) => onValueChange(v[0])}
       />
-      <div className="flex justify-between text-xs text-muted-foreground">
-        <span>0.25x</span>
-        <span>1x</span>
-        <span>2x</span>
+      <div className="relative h-4 text-xs text-muted-foreground">
+        <span className="absolute left-0 -translate-x-1/2">0.25x</span>
+        <span className="absolute left-[42.857%] -translate-x-1/2">1x</span>
+        <span className="absolute right-0 translate-x-1/2">2x</span>
       </div>
     </div>
   );
