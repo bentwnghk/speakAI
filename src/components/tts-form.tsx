@@ -9,9 +9,11 @@ import { VoiceSelect } from "@/components/voice-select";
 import { SpeedSlider } from "@/components/speed-slider";
 import { FileUpload } from "@/components/file-upload";
 import { AudioPlayer } from "@/components/audio-player";
+import { KaraokeText } from "@/components/karaoke-text";
 import { Sparkles, Type, Upload, Loader2, History, FileText, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import type { Segment } from "@/types/karaoke";
 
 interface Generation {
   id: string;
@@ -20,6 +22,7 @@ interface Generation {
   voice: string;
   speed: number;
   audioUrl: string;
+  segments?: Segment[];
   ttsCost: string | null;
   createdAt: string;
 }
@@ -36,6 +39,9 @@ export function TtsForm() {
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [audioTitle, setAudioTitle] = useState<string>();
   const [audioCreatedAt, setAudioCreatedAt] = useState<string>();
+  const [audioSegments, setAudioSegments] = useState<Segment[]>([]);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
 
   const handleFilesSelected = useCallback(async (newFiles: File[]) => {
     if (newFiles.length === 0) {
@@ -109,6 +115,7 @@ export function TtsForm() {
       setAudioSrc(data.audioUrl);
       setAudioTitle(data.title);
       setAudioCreatedAt(data.createdAt);
+      setAudioSegments(data.segments ?? []);
 
       toast.success(
         `Audio generated! ${data.ttsCost ? `Cost: HK$${data.ttsCost}` : ""}`,
@@ -124,6 +131,7 @@ export function TtsForm() {
   };
 
   const displayText = inputMethod === "upload" ? extractedText : text;
+  const showKaraoke = isAudioPlaying && audioSegments.length > 0 && audioSrc;
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -136,49 +144,58 @@ export function TtsForm() {
             </CardTitle>
           </CardHeader>
           <CardContent className="max-h-[50vh] overflow-y-auto">
-            <Tabs
-              value={inputMethod}
-              onValueChange={(v) => setInputMethod(v as "text" | "upload")}
-            >
-              <TabsList className="w-full">
-                <TabsTrigger value="text" className="flex-1">
-                  <Type className="size-4" />
-                  Text
-                </TabsTrigger>
-                <TabsTrigger value="upload" className="flex-1">
-                  <Upload className="size-4" />
-                  Files
-                </TabsTrigger>
-              </TabsList>
+            {showKaraoke ? (
+              <KaraokeText
+                text={displayText}
+                segments={audioSegments}
+                currentTime={audioCurrentTime}
+                isPlaying={isAudioPlaying}
+              />
+            ) : (
+              <Tabs
+                value={inputMethod}
+                onValueChange={(v) => setInputMethod(v as "text" | "upload")}
+              >
+                <TabsList className="w-full">
+                  <TabsTrigger value="text" className="flex-1">
+                    <Type className="size-4" />
+                    Text
+                  </TabsTrigger>
+                  <TabsTrigger value="upload" className="flex-1">
+                    <Upload className="size-4" />
+                    Files
+                  </TabsTrigger>
+                </TabsList>
 
-              <TabsContent value="text" className="mt-3">
-                <Textarea
-                  placeholder="Paste or type the text to read aloud here..."
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  rows={10}
-                />
-              </TabsContent>
+                <TabsContent value="text" className="mt-3">
+                  <Textarea
+                    placeholder="Paste or type the text to read aloud here..."
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    rows={10}
+                  />
+                </TabsContent>
 
-              <TabsContent value="upload" className="mt-3">
-                <FileUpload
-                  onFilesSelected={handleFilesSelected}
-                  isExtracting={isExtracting}
-                />
-                {extractedText && (
-                  <div className="mt-3">
-                    <p className="text-xs text-muted-foreground mb-1">
-                      Edit the extracted text as needed before generating:
-                    </p>
-                    <Textarea
-                      value={extractedText}
-                      onChange={(e) => setExtractedText(e.target.value)}
-                      rows={10}
-                    />
-                  </div>
-                )}
-              </TabsContent>
-            </Tabs>
+                <TabsContent value="upload" className="mt-3">
+                  <FileUpload
+                    onFilesSelected={handleFilesSelected}
+                    isExtracting={isExtracting}
+                  />
+                  {extractedText && (
+                    <div className="mt-3">
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Edit the extracted text as needed before generating:
+                      </p>
+                      <Textarea
+                        value={extractedText}
+                        onChange={(e) => setExtractedText(e.target.value)}
+                        rows={10}
+                      />
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            )}
           </CardContent>
         </Card>
 
@@ -216,7 +233,13 @@ export function TtsForm() {
       </div>
 
       <div className="space-y-4">
-        <AudioPlayer src={audioSrc} title={audioTitle} createdAt={audioCreatedAt} />
+        <AudioPlayer
+          src={audioSrc}
+          title={audioTitle}
+          createdAt={audioCreatedAt}
+          onTimeUpdate={setAudioCurrentTime}
+          onPlayStateChange={setIsAudioPlaying}
+        />
 
         <Link href="/history" className="block">
           <Button variant="outline" className="w-full">

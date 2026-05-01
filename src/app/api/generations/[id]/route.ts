@@ -31,6 +31,7 @@ export async function GET(
     voice: generation.voice,
     speed: generation.speed,
     audioUrl: `/api/audio/${generation.id}`,
+    segments: generation.segments ? (JSON.parse(generation.segments) as unknown[]) : undefined,
     ttsCost: generation.ttsCost,
     createdAt: generation.createdAt,
   });

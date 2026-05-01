@@ -22,6 +22,8 @@ import {
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { AudioPlayer } from "@/components/audio-player";
+import { KaraokeText } from "@/components/karaoke-text";
+import type { Segment } from "@/types/karaoke";
 
 interface Generation {
   id: string;
@@ -30,6 +32,7 @@ interface Generation {
   voice: string;
   speed: number;
   audioUrl: string;
+  segments?: Segment[];
   ttsCost: string | null;
   createdAt: string;
 }
@@ -91,6 +94,8 @@ export function HistoryList() {
   const [editTitle, setEditTitle] = useState("");
   const [loadedGeneration, setLoadedGeneration] =
     useState<Generation | null>(null);
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
 
   useEffect(() => {
     if (session) {
@@ -176,13 +181,22 @@ export function HistoryList() {
   }
 
   if (loadedGeneration) {
+    const showKaraoke =
+      isAudioPlaying &&
+      loadedGeneration.segments &&
+      loadedGeneration.segments.length > 0;
+
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setLoadedGeneration(null)}
+            onClick={() => {
+              setLoadedGeneration(null);
+              setAudioCurrentTime(0);
+              setIsAudioPlaying(false);
+            }}
           >
             <ArrowLeft className="size-4" />
             Back to list
@@ -197,12 +211,21 @@ export function HistoryList() {
             <CardTitle className="text-base">Source Text</CardTitle>
           </CardHeader>
           <CardContent>
-            <Textarea
-              value={loadedGeneration.transcript}
-              readOnly
-              rows={10}
-              className="resize-none max-h-[50vh] overflow-y-auto"
-            />
+            {showKaraoke ? (
+              <KaraokeText
+                text={loadedGeneration.transcript}
+                segments={loadedGeneration.segments!}
+                currentTime={audioCurrentTime}
+                isPlaying={isAudioPlaying}
+              />
+            ) : (
+              <Textarea
+                value={loadedGeneration.transcript}
+                readOnly
+                rows={10}
+                className="resize-none max-h-[50vh] overflow-y-auto"
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -210,6 +233,8 @@ export function HistoryList() {
           src={loadedGeneration.audioUrl}
           title={loadedGeneration.title}
           createdAt={loadedGeneration.createdAt}
+          onTimeUpdate={setAudioCurrentTime}
+          onPlayStateChange={setIsAudioPlaying}
         />
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -290,7 +315,11 @@ export function HistoryList() {
                 variant="ghost"
                 size="icon"
                 className="size-8"
-                onClick={() => setLoadedGeneration(gen)}
+                onClick={() => {
+                  setAudioCurrentTime(0);
+                  setIsAudioPlaying(false);
+                  setLoadedGeneration(gen);
+                }}
                 title="Load session"
               >
                 <Play className="size-4" />

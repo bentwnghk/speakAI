@@ -10,6 +10,8 @@ interface AudioPlayerProps {
   src: string | null;
   title?: string;
   createdAt?: string;
+  onTimeUpdate?: (currentTime: number) => void;
+  onPlayStateChange?: (isPlaying: boolean) => void;
 }
 
 function formatDownloadTimestamp(dateStr: string): string {
@@ -27,7 +29,7 @@ function formatDownloadTimestamp(dateStr: string): string {
     .replace(/[/:, ]/g, "-");
 }
 
-export function AudioPlayer({ src, title, createdAt }: AudioPlayerProps) {
+export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateChange }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -38,24 +40,33 @@ export function AudioPlayer({ src, title, createdAt }: AudioPlayerProps) {
     if (!audio) return;
 
     const onLoadedMetadata = () => setDuration(audio.duration);
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const onEnded = () => setIsPlaying(false);
+    const onTimeUpdateHandler = () => {
+      const t = audio.currentTime;
+      setCurrentTime(t);
+      onTimeUpdate?.(t);
+    };
+    const onEnded = () => {
+      setIsPlaying(false);
+      onPlayStateChange?.(false);
+    };
 
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
-    audio.addEventListener("timeupdate", onTimeUpdate);
+    audio.addEventListener("timeupdate", onTimeUpdateHandler);
     audio.addEventListener("ended", onEnded);
 
     return () => {
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
-      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("timeupdate", onTimeUpdateHandler);
       audio.removeEventListener("ended", onEnded);
     };
-  }, [src]);
+  }, [src, onTimeUpdate, onPlayStateChange]);
 
   useEffect(() => {
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
+    onPlayStateChange?.(false);
+    onTimeUpdate?.(0);
   }, [src]);
 
   const togglePlay = () => {
@@ -66,7 +77,9 @@ export function AudioPlayer({ src, title, createdAt }: AudioPlayerProps) {
     } else {
       void audio.play();
     }
-    setIsPlaying(!isPlaying);
+    const newState = !isPlaying;
+    setIsPlaying(newState);
+    onPlayStateChange?.(newState);
   };
 
   const handleSeek = (value: number[]) => {

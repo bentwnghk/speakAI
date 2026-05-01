@@ -53,6 +53,7 @@ CREATE TABLE "generation" (
   "voice" voice NOT NULL DEFAULT 'nova',
   "speed" integer NOT NULL DEFAULT 100,
   "audioPath" text NOT NULL,
+  "segments" text,
   "ttsCost" text,
   "createdAt" timestamp NOT NULL DEFAULT now()
 );

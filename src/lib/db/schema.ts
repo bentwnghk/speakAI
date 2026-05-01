@@ -79,6 +79,7 @@ export const generations = pgTable("generation", {
   voice: voiceEnum("voice").notNull().default("nova"),
   speed: integer("speed").notNull().default(100),
   audioPath: text("audioPath").notNull(),
+  segments: text("segments"),
   ttsCost: text("ttsCost"),
   createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { generateTtsAudio, VOICE_MAP } from "@/lib/tts";
+import { generateTtsAudio, VOICE_MAP, alignAudio } from "@/lib/tts";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -36,6 +36,9 @@ export async function POST(request: NextRequest) {
 
     const result = await generateTtsAudio(text, voice, speed);
 
+    const segments = await alignAudio(result.audioPath, text);
+    const segmentsJson = segments.length > 0 ? JSON.stringify(segments) : null;
+
     const generationTitle =
       title?.trim() ||
       `Audio - ${text.trim().slice(0, 30).replace(/\n/g, " ")}${text.trim().length > 30 ? "..." : ""}`;
@@ -55,6 +58,7 @@ export async function POST(request: NextRequest) {
           | "onyx",
         speed,
         audioPath: result.audioPath,
+        segments: segmentsJson,
         ttsCost: result.cost,
       })
       .returning();
@@ -66,6 +70,7 @@ export async function POST(request: NextRequest) {
       voice,
       speed,
       audioUrl: `/api/audio/${generation.id}`,
+      segments: segments.length > 0 ? segments : undefined,
       ttsCost: result.cost,
       createdAt: generation.createdAt,
     });
@@ -97,6 +102,7 @@ export async function GET() {
       voice: g.voice,
       speed: g.speed,
       audioUrl: `/api/audio/${g.id}`,
+      segments: g.segments ? (JSON.parse(g.segments) as unknown[]) : undefined,
       ttsCost: g.ttsCost,
       createdAt: g.createdAt,
     }))
