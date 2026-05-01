@@ -1,17 +1,18 @@
-services:
-  web:
-    build: .
-    ports:
-      - "${PORT:-8000}:8000"
-    environment:
-      TTS_BASE_URL: ${TTS_BASE_URL}
-      TTS_API_KEY: ${TTS_API_KEY}
-      VISION_BASE_URL: ${VISION_BASE_URL}
-      VISION_API_KEY: ${VISION_API_KEY}
-    volumes:
-      - pdf_to_podcast_gradio:/app/.gradio
-      - pdf_to_podcast_gradio_cache:/app/gradio_cached_files
+version: '3.8'
 
-volumes:
-  pdf_to_podcast_gradio:
-  pdf_to_podcast_gradio_cache:
+services:
+  speakai:
+    image: ghcr.io/bentwnghk/speakai:dev
+    container_name: speakai
+    restart: always
+    ports:
+      - "8223:8000"
+    volumes:
+      - /home/ncadmin/speakai:/app/.gradio
+      - /home/ncadmin/speakai_files:/app/gradio_cached_files
+    environment:
+      TTS_BASE_URL: https://api.mr5ai.com/v1
+      VISION_BASE_URL: https://api.mr5ai.com/v1
+      TTS_API_KEY: sk-XnbHbzBOmPYGHgL_BJdPUDEQaM4_hKpMiSmPAqAQosEmyzIgupzU084JZVQ
+      VISION_API_KEY: sk-XnbHbzBOmPYGHgL_BJdPUDEQaM4_hKpMiSmPAqAQosEmyzIgupzU084JZVQ
+      
