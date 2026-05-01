@@ -151,23 +151,57 @@ export async function generateTtsAudio(
   };
 }
 
-interface WhisperWord {
-  word: string;
-  start: number;
-  end: number;
+/** A word token is "speakable" if it contains at least one alphanumeric character.
+ *  This filters out bullets (•), em dashes (—), colons alone, etc. */
+function isSpeakableWord(token: string): boolean {
+  return /[a-zA-Z0-9]/.test(token);
 }
 
+/**
+ * Split source text into sentences by line.
+ * Each non-empty line becomes its own sentence — this gives fine-grained
+ * segments that match how Whisper naturally pauses between lines.
+ */
 function splitIntoSentences(text: string): string[] {
-  const sentences: string[] = [];
-  const parts = text.match(/[^.!?]*[.!?]+[\s]*/g) || [text];
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (trimmed) sentences.push(trimmed);
+  const result: string[] = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed && isSpeakableWord(trimmed)) {
+      result.push(trimmed);
+    }
   }
-  if (sentences.length === 0 && text.trim()) {
-    sentences.push(text.trim());
+  return result.length > 0 ? result : [text.trim()].filter(Boolean);
+}
+
+/**
+ * Distribute a time range [startTime, endTime] proportionally across the
+ * speakable words in a sentence, weighted by character length.
+ * Non-speakable tokens (bullets, dashes, etc.) are skipped.
+ */
+function distributeTimingToWords(
+  sentenceText: string,
+  startTime: number,
+  endTime: number
+): WordTimestamp[] {
+  const tokens = sentenceText.split(/\s+/).filter((t) => t.length > 0);
+  const speakable = tokens.filter(isSpeakableWord);
+  if (speakable.length === 0) return [];
+
+  const duration = endTime - startTime;
+  const totalChars = speakable.reduce((sum, w) => sum + w.length, 0);
+  const result: WordTimestamp[] = [];
+  let currentTime = startTime;
+
+  for (const word of speakable) {
+    const wordDuration =
+      totalChars > 0
+        ? (word.length / totalChars) * duration
+        : duration / speakable.length;
+    result.push({ word, start: currentTime, end: currentTime + wordDuration });
+    currentTime += wordDuration;
   }
-  return sentences;
+
+  return result;
 }
 
 export async function alignAudio(
@@ -190,13 +224,13 @@ export async function alignAudio(
     formData.append("file", audioBlob, "audio.mp3");
     formData.append("model", "whisper-1");
     formData.append("response_format", "verbose_json");
-    formData.append("timestamp_granularities[]", "word");
+    // Request sentence-level segments only — word text from Whisper is not
+    // used for display, so word-level timestamps are not needed here.
+    formData.append("timestamp_granularities[]", "segment");
 
     const response = await fetch(`${baseUrl}/audio/transcriptions`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers: { Authorization: `Bearer ${apiKey}` },
       body: formData,
     });
 
@@ -206,62 +240,63 @@ export async function alignAudio(
     }
 
     const data = (await response.json()) as {
-      words?: WhisperWord[];
       segments?: { text: string; start: number; end: number }[];
     };
 
-    if (!data.words || data.words.length === 0) return [];
+    const whisperSegments = data.segments ?? [];
+    if (whisperSegments.length === 0) return [];
 
-    const whisperWords: WordTimestamp[] = data.words.map((w) => ({
-      word: w.word.trim(),
-      start: w.start,
-      end: w.end,
-    }));
+    const sourceSentences = splitIntoSentences(text);
+    if (sourceSentences.length === 0) return [];
 
-    const sentenceTexts = splitIntoSentences(text);
+    const audioStart = whisperSegments[0].start;
+    const audioEnd = whisperSegments[whisperSegments.length - 1].end;
+    const audioDuration = audioEnd - audioStart;
 
-    const segments: Segment[] = [];
-    let wordIdx = 0;
+    // Assign a [startTime, endTime] range to each source sentence.
+    // When Whisper segment count matches source sentence count, use 1-to-1.
+    // Otherwise fall back to distributing total audio time proportionally
+    // by the number of speakable characters in each source sentence.
+    const sentenceTimings: { start: number; end: number }[] = [];
 
-    for (const sentenceText of sentenceTexts) {
-      const sentenceWords = sentenceText
-        .split(/\s+/)
-        .filter((w) => w.length > 0);
-      if (sentenceWords.length === 0 || wordIdx >= whisperWords.length) continue;
-
-      const segmentWords: WordTimestamp[] = [];
-      let matched = 0;
-
-      while (matched < sentenceWords.length && wordIdx < whisperWords.length) {
-        const expected = sentenceWords[matched].toLowerCase().replace(/[.,!?;:'"]/g, "");
-        const actual = whisperWords[wordIdx].word.toLowerCase().replace(/[.,!?;:'"]/g, "");
-        if (actual === expected || actual.startsWith(expected) || expected.startsWith(actual)) {
-          segmentWords.push(whisperWords[wordIdx]);
-          matched++;
-          wordIdx++;
-        } else {
-          segmentWords.push(whisperWords[wordIdx]);
-          matched++;
-          wordIdx++;
-        }
+    if (whisperSegments.length === sourceSentences.length) {
+      for (const ws of whisperSegments) {
+        sentenceTimings.push({ start: ws.start, end: ws.end });
       }
-
-      if (segmentWords.length > 0) {
-        segments.push({
-          text: sentenceText,
-          startTime: segmentWords[0].start,
-          endTime: segmentWords[segmentWords.length - 1].end,
-          words: segmentWords,
-        });
+    } else {
+      const charCounts = sourceSentences.map((s) =>
+        s
+          .split(/\s+/)
+          .filter(isSpeakableWord)
+          .reduce((sum, w) => sum + w.length, 0)
+      );
+      const totalChars = charCounts.reduce((a, b) => a + b, 0);
+      let currentTime = audioStart;
+      for (const charCount of charCounts) {
+        const duration =
+          totalChars > 0
+            ? (charCount / totalChars) * audioDuration
+            : audioDuration / sourceSentences.length;
+        sentenceTimings.push({ start: currentTime, end: currentTime + duration });
+        currentTime += duration;
       }
     }
 
-    if (wordIdx < whisperWords.length && segments.length > 0) {
-      const lastSegment = segments[segments.length - 1];
-      const remaining = whisperWords.slice(wordIdx);
-      lastSegment.words.push(...remaining);
-      lastSegment.endTime = remaining[remaining.length - 1].end;
-      lastSegment.text = lastSegment.text + " " + remaining.map((w) => w.word).join(" ");
+    // Build Segment[] — words come from the SOURCE TEXT, not Whisper.
+    // This guarantees that the original wording ("per cent", "gap-year", etc.)
+    // is always preserved regardless of how Whisper transcribed the audio.
+    const segments: Segment[] = [];
+    for (let i = 0; i < sourceSentences.length; i++) {
+      const { start, end } = sentenceTimings[i];
+      const timedWords = distributeTimingToWords(sourceSentences[i], start, end);
+      if (timedWords.length > 0) {
+        segments.push({
+          text: sourceSentences[i],
+          startTime: start,
+          endTime: end,
+          words: timedWords,
+        });
+      }
     }
 
     return segments;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useMemo } from "react";
 import type { Segment } from "@/types/karaoke";
 
 interface KaraokeTextProps {
@@ -11,87 +11,118 @@ interface KaraokeTextProps {
   className?: string;
 }
 
+/** Matches how tts.ts decides which tokens are speakable. */
+function isSpeakable(token: string): boolean {
+  return /[a-zA-Z0-9]/.test(token);
+}
+
+type SpaceToken = { type: "space"; text: string };
+type NonWordToken = { type: "nonword"; text: string };
+type WordToken = { type: "word"; text: string; wordIdx: number };
+type LineToken = SpaceToken | NonWordToken | WordToken;
+
 export function KaraokeText({
+  text,
   segments,
   currentTime,
   isPlaying,
   className,
 }: KaraokeTextProps) {
-  const activeSegmentRef = useRef<HTMLSpanElement>(null);
+  const activeWordRef = useRef<HTMLSpanElement>(null);
+
+  // Flat list of all timed words from all segments, in source-text order.
+  // These come from distributeTimingToWords() in tts.ts, so the word strings
+  // are the original source words — "per", "cent", "gap-year", etc.
+  const allTimedWords = useMemo(
+    () => segments.flatMap((s) => s.words),
+    [segments]
+  );
+
+  // Index of the segment currently being spoken (-1 when idle).
+  const activeSegmentIdx = useMemo(() => {
+    for (let i = 0; i < segments.length; i++) {
+      if (
+        currentTime >= segments[i].startTime &&
+        currentTime <= segments[i].endTime
+      ) {
+        return i;
+      }
+    }
+    return -1;
+  }, [segments, currentTime]);
+
+  // Build a per-line token array from the original text.
+  // Each speakable whitespace-split token gets an incrementing wordIdx that
+  // maps directly into allTimedWords[]. Non-speakable tokens (bullets, dashes,
+  // colons) and whitespace are rendered as-is with no timing.
+  const lines = useMemo<LineToken[][]>(() => {
+    let wordIdx = 0;
+    return text.split("\n").map((line) => {
+      const parts = line.split(/(\s+)/);
+      return parts
+        .filter((p) => p.length > 0)
+        .map((part): LineToken => {
+          if (/^\s+$/.test(part)) return { type: "space", text: part };
+          if (isSpeakable(part)) return { type: "word", text: part, wordIdx: wordIdx++ };
+          return { type: "nonword", text: part };
+        });
+    });
+  }, [text]);
 
   const scrollToActive = useCallback(() => {
-    activeSegmentRef.current?.scrollIntoView({
+    activeWordRef.current?.scrollIntoView({
       behavior: "smooth",
       block: "center",
     });
   }, []);
 
+  // Scroll when the active sentence changes, not on every word tick.
   useEffect(() => {
-    if (isPlaying) {
+    if (isPlaying && activeSegmentIdx >= 0) {
       scrollToActive();
     }
-  }, [isPlaying, currentTime, scrollToActive]);
-
-  if (!segments || segments.length === 0) {
-    return (
-      <div
-        className={`whitespace-pre-wrap text-sm leading-relaxed ${className ?? ""}`}
-      >
-        {segments.length === 0 ? "No timing data available." : ""}
-      </div>
-    );
-  }
+  }, [activeSegmentIdx, isPlaying, scrollToActive]);
 
   return (
     <div
-      className={`whitespace-pre-wrap text-sm leading-relaxed ${className ?? ""}`}
+      className={`text-sm leading-relaxed max-h-[50vh] overflow-y-auto ${className ?? ""}`}
     >
-      {segments.map((segment, sIdx) => {
-        const isActive =
-          currentTime >= segment.startTime && currentTime <= segment.endTime;
-        const isPast = currentTime > segment.endTime;
-        const isUpcoming = currentTime < segment.startTime;
+      {lines.map((lineTokens, li) => (
+        <div key={li} className="min-h-[1.25em]">
+          {lineTokens.map((token, ti) => {
+            // Spaces and non-word characters (bullets, punctuation) render as-is.
+            if (token.type !== "word") {
+              return <span key={ti}>{token.text}</span>;
+            }
 
-        return (
-          <span
-            key={sIdx}
-            ref={isActive ? activeSegmentRef : undefined}
-            className={`inline ${
-              isActive
-                ? "bg-primary/10 rounded px-0.5"
-                : isPast
-                  ? "text-muted-foreground/60"
-                  : isUpcoming
-                    ? "text-foreground"
-                    : ""
-            }`}
-          >
-            {segment.words.map((word, wIdx) => {
-              const isWordActive =
-                isActive &&
-                currentTime >= word.start &&
-                currentTime <= word.end;
-              const isWordPast = currentTime > word.end;
+            // Word token — look up timing from the aligned segments.
+            const timing = allTimedWords[token.wordIdx];
+            if (!timing) {
+              return <span key={ti}>{token.text}</span>;
+            }
 
-              return (
-                <span
-                  key={wIdx}
-                  className={`transition-colors duration-150 ${
-                    isWordActive
-                      ? "font-bold text-primary"
-                      : isWordPast
-                        ? "text-muted-foreground/60"
-                        : ""
-                  }`}
-                >
-                  {word.word}
-                  {wIdx < segment.words.length - 1 ? " " : ""}
-                </span>
-              );
-            })}
-          </span>
-        );
-      })}
+            const isWordActive =
+              currentTime >= timing.start && currentTime <= timing.end;
+            const isPast = currentTime > timing.end;
+
+            return (
+              <span
+                key={ti}
+                ref={isWordActive ? activeWordRef : undefined}
+                className={`transition-colors duration-75 ${
+                  isWordActive
+                    ? "font-bold text-primary"
+                    : isPast
+                      ? "text-muted-foreground/50"
+                      : ""
+                }`}
+              >
+                {token.text}
+              </span>
+            );
+          })}
+        </div>
+      ))}
     </div>
   );
 }
