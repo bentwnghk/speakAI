@@ -3,7 +3,7 @@ import { join } from "path";
 import { nanoid } from "nanoid";
 
 import { VOICE_MAP, VOICE_OPTIONS } from "./constants";
-import type { Segment, WordTimestamp } from "@/types/karaoke";
+import type { Segment } from "@/types/karaoke";
 
 export { VOICE_MAP, VOICE_OPTIONS };
 
@@ -151,28 +151,21 @@ export async function generateTtsAudio(
   };
 }
 
+interface WhisperSegment {
+  text: string;
+  start: number;
+  end: number;
+  words?: WhisperWord[];
+}
+
 interface WhisperWord {
   word: string;
   start: number;
   end: number;
 }
 
-function splitIntoSentences(text: string): string[] {
-  const sentences: string[] = [];
-  const parts = text.match(/[^.!?]*[.!?]+[\s]*/g) || [text];
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (trimmed) sentences.push(trimmed);
-  }
-  if (sentences.length === 0 && text.trim()) {
-    sentences.push(text.trim());
-  }
-  return sentences;
-}
-
 export async function alignAudio(
   audioPath: string,
-  text: string
 ): Promise<Segment[]> {
   const apiKey = process.env.TTS_API_KEY;
   const baseUrl = (
@@ -191,6 +184,7 @@ export async function alignAudio(
     formData.append("model", "whisper-1");
     formData.append("response_format", "verbose_json");
     formData.append("timestamp_granularities[]", "word");
+    formData.append("timestamp_granularities[]", "segment");
 
     const response = await fetch(`${baseUrl}/audio/transcriptions`, {
       method: "POST",
@@ -206,65 +200,23 @@ export async function alignAudio(
     }
 
     const data = (await response.json()) as {
-      words?: WhisperWord[];
-      segments?: { text: string; start: number; end: number }[];
+      segments?: WhisperSegment[];
     };
 
-    if (!data.words || data.words.length === 0) return [];
+    if (!data.segments || data.segments.length === 0) return [];
 
-    const whisperWords: WordTimestamp[] = data.words.map((w) => ({
-      word: w.word.trim(),
-      start: w.start,
-      end: w.end,
-    }));
-
-    const sentenceTexts = splitIntoSentences(text);
-
-    const segments: Segment[] = [];
-    let wordIdx = 0;
-
-    for (const sentenceText of sentenceTexts) {
-      const sentenceWords = sentenceText
-        .split(/\s+/)
-        .filter((w) => w.length > 0);
-      if (sentenceWords.length === 0 || wordIdx >= whisperWords.length) continue;
-
-      const segmentWords: WordTimestamp[] = [];
-      let matched = 0;
-
-      while (matched < sentenceWords.length && wordIdx < whisperWords.length) {
-        const expected = sentenceWords[matched].toLowerCase().replace(/[.,!?;:'"]/g, "");
-        const actual = whisperWords[wordIdx].word.toLowerCase().replace(/[.,!?;:'"]/g, "");
-        if (actual === expected || actual.startsWith(expected) || expected.startsWith(actual)) {
-          segmentWords.push(whisperWords[wordIdx]);
-          matched++;
-          wordIdx++;
-        } else {
-          segmentWords.push(whisperWords[wordIdx]);
-          matched++;
-          wordIdx++;
-        }
-      }
-
-      if (segmentWords.length > 0) {
-        segments.push({
-          text: sentenceText,
-          startTime: segmentWords[0].start,
-          endTime: segmentWords[segmentWords.length - 1].end,
-          words: segmentWords,
-        });
-      }
-    }
-
-    if (wordIdx < whisperWords.length && segments.length > 0) {
-      const lastSegment = segments[segments.length - 1];
-      const remaining = whisperWords.slice(wordIdx);
-      lastSegment.words.push(...remaining);
-      lastSegment.endTime = remaining[remaining.length - 1].end;
-      lastSegment.text = lastSegment.text + " " + remaining.map((w) => w.word).join(" ");
-    }
-
-    return segments;
+    return data.segments
+      .filter((seg) => seg.words && seg.words.length > 0)
+      .map((seg) => ({
+        text: seg.text.trim(),
+        startTime: seg.start,
+        endTime: seg.end,
+        words: seg.words!.map((w) => ({
+          word: w.word.trim(),
+          start: w.start,
+          end: w.end,
+        })),
+      }));
   } catch (error) {
     console.error("Audio alignment error:", error);
     return [];
