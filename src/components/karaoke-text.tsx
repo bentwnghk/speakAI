@@ -37,7 +37,7 @@ export function KaraokeText({
       <div
         className={`whitespace-pre-wrap text-sm leading-relaxed ${className ?? ""}`}
       >
-        No timing data available.
+        {segments.length === 0 ? "No timing data available." : ""}
       </div>
     );
   }
@@ -50,44 +50,45 @@ export function KaraokeText({
         const isActive =
           currentTime >= segment.startTime && currentTime <= segment.endTime;
         const isPast = currentTime > segment.endTime;
+        const isUpcoming = currentTime < segment.startTime;
 
         return (
-          <span key={sIdx}>
-            <span
-              ref={isActive ? activeSegmentRef : undefined}
-              className={`inline ${
-                isActive
-                  ? "bg-primary/10 rounded px-0.5"
-                  : isPast
-                    ? "text-muted-foreground/60"
+          <span
+            key={sIdx}
+            ref={isActive ? activeSegmentRef : undefined}
+            className={`inline ${
+              isActive
+                ? "bg-primary/10 rounded px-0.5"
+                : isPast
+                  ? "text-muted-foreground/60"
+                  : isUpcoming
+                    ? "text-foreground"
                     : ""
-              }`}
-            >
-              {segment.words.map((word, wIdx) => {
-                const isWordActive =
-                  isActive &&
-                  currentTime >= word.start &&
-                  currentTime <= word.end;
-                const isWordPast = currentTime > word.end;
+            }`}
+          >
+            {segment.words.map((word, wIdx) => {
+              const isWordActive =
+                isActive &&
+                currentTime >= word.start &&
+                currentTime <= word.end;
+              const isWordPast = currentTime > word.end;
 
-                return (
-                  <span
-                    key={wIdx}
-                    className={`transition-colors duration-150 ${
-                      isWordActive
-                        ? "font-bold text-primary"
-                        : isWordPast
-                          ? "text-muted-foreground/60"
-                          : ""
-                    }`}
-                  >
-                    {word.word}
-                    {wIdx < segment.words.length - 1 ? " " : ""}
-                  </span>
-                );
-              })}
-            </span>
-            {sIdx < segments.length - 1 ? " " : ""}
+              return (
+                <span
+                  key={wIdx}
+                  className={`transition-colors duration-150 ${
+                    isWordActive
+                      ? "font-bold text-primary"
+                      : isWordPast
+                        ? "text-muted-foreground/60"
+                        : ""
+                  }`}
+                >
+                  {word.word}
+                  {wIdx < segment.words.length - 1 ? " " : ""}
+                </span>
+              );
+            })}
           </span>
         );
       })}
