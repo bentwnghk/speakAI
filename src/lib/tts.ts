@@ -381,13 +381,25 @@ export async function alignAudio(
     const audioEnd   = whisperWords[whisperWords.length - 1].end;
 
     // ── Sentence timing ──────────────────────────────────────────────────────
-    // When Whisper segment count matches source sentence count use 1-to-1
-    // segment timing (most accurate).  Otherwise distribute total duration
-    // proportionally by source sentence character count (graceful fallback).
     const sentenceTimings: { start: number; end: number }[] = [];
 
-    if (whisperSegments.length === sourceSentences.length) {
-      // Best case: 1-to-1 mapping — use Whisper segment timing directly.
+    // A 1-to-1 mapping is only safe when Whisper segmented the audio the same
+    // way as our source-sentence split.  We validate this by checking that
+    // each Whisper segment's text length is within 2× of its paired source
+    // sentence.  A larger ratio means Whisper merged or split differently —
+    // common when a heading has no terminal punctuation (it gets absorbed into
+    // the next segment) and another long sentence gets split to keep the total
+    // count equal, making the 1-to-1 assignment silently wrong.
+    const segmentsAlignWithSentences =
+      whisperSegments.length === sourceSentences.length &&
+      sourceSentences.every((src, i) => {
+        const srcLen = src.trim().length;
+        const wsLen  = whisperSegments[i].text.trim().length;
+        return wsLen <= srcLen * 2 && srcLen <= wsLen * 2;
+      });
+
+    if (segmentsAlignWithSentences) {
+      // Confirmed 1-to-1 match — use Whisper segment timing directly.
       for (const ws of whisperSegments) {
         sentenceTimings.push({ start: ws.start, end: ws.end });
       }
