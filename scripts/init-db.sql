@@ -1,21 +1,28 @@
 BEGIN;
 
+DROP TABLE IF EXISTS "generation" CASCADE;
+DROP TABLE IF EXISTS "session" CASCADE;
+DROP TABLE IF EXISTS "account" CASCADE;
+DROP TABLE IF EXISTS "verification_token" CASCADE;
+DROP TABLE IF EXISTS "user" CASCADE;
+DROP TYPE IF EXISTS voice CASCADE;
+
 CREATE TYPE voice AS ENUM ('nova', 'alloy', 'fable', 'echo', 'shimmer', 'onyx');
 
-CREATE TABLE IF NOT EXISTS "user" (
+CREATE TABLE "user" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid(),
   "name" text,
   "email" text NOT NULL UNIQUE,
-  "email_verified" timestamp,
+  "emailVerified" timestamp,
   "image" text
 );
 
-CREATE TABLE IF NOT EXISTS "account" (
+CREATE TABLE "account" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid(),
-  "user_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "userId" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
   "type" text NOT NULL,
   "provider" text NOT NULL,
-  "provider_account_id" text NOT NULL,
+  "providerAccountId" text NOT NULL,
   "refresh_token" text,
   "access_token" text,
   "expires_at" integer,
@@ -25,32 +32,32 @@ CREATE TABLE IF NOT EXISTS "account" (
   "session_state" text
 );
 
-CREATE TABLE IF NOT EXISTS "session" (
+CREATE TABLE "session" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid(),
-  "session_token" text NOT NULL UNIQUE,
-  "user_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "sessionToken" text NOT NULL UNIQUE,
+  "userId" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
   "expires" timestamp NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "verification_token" (
+CREATE TABLE "verification_token" (
   "identifier" text NOT NULL,
   "token" text NOT NULL UNIQUE,
   "expires" timestamp NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS "generation" (
+CREATE TABLE "generation" (
   "id" text PRIMARY KEY DEFAULT gen_random_uuid(),
-  "user_id" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "userId" text NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
   "title" varchar(500) NOT NULL,
   "transcript" text NOT NULL,
   "voice" voice NOT NULL DEFAULT 'nova',
   "speed" integer NOT NULL DEFAULT 100,
-  "audio_path" text NOT NULL,
-  "tts_cost" text,
-  "created_at" timestamp NOT NULL DEFAULT now()
+  "audioPath" text NOT NULL,
+  "ttsCost" text,
+  "createdAt" timestamp NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS "account_provider_idx" ON "account"("provider", "provider_account_id");
-CREATE INDEX IF NOT EXISTS "verification_token_idx" ON "verification_token"("identifier", "token");
+CREATE INDEX "account_provider_idx" ON "account"("provider", "providerAccountId");
+CREATE INDEX "verification_token_idx" ON "verification_token"("identifier", "token");
 
 COMMIT;

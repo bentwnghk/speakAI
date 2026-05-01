@@ -1,5 +1,4 @@
 import {
-  boolean,
   index,
   integer,
   pgEnum,
@@ -13,7 +12,7 @@ export const users = pgTable("user", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   name: text("name"),
   email: text("email").notNull().unique(),
-  emailVerified: timestamp("email_verified", { mode: "date" }),
+  emailVerified: timestamp("emailVerified", { mode: "date" }),
   image: text("image"),
 });
 
@@ -21,12 +20,12 @@ export const accounts = pgTable(
   "account",
   {
     id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-    userId: text("user_id")
+    userId: text("userId")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     type: text("type").notNull(),
     provider: text("provider").notNull(),
-    providerAccountId: text("provider_account_id").notNull(),
+    providerAccountId: text("providerAccountId").notNull(),
     refresh_token: text("refresh_token"),
     access_token: text("access_token"),
     expires_at: integer("expires_at"),
@@ -42,8 +41,8 @@ export const accounts = pgTable(
 
 export const sessions = pgTable("session", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  sessionToken: text("session_token").notNull().unique(),
-  userId: text("user_id")
+  sessionToken: text("sessionToken").notNull().unique(),
+  userId: text("userId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   expires: timestamp("expires", { mode: "date" }).notNull(),
@@ -72,14 +71,14 @@ export const voiceEnum = pgEnum("voice", [
 
 export const generations = pgTable("generation", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text("user_id")
+  userId: text("userId")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 500 }).notNull(),
   transcript: text("transcript").notNull(),
   voice: voiceEnum("voice").notNull().default("nova"),
   speed: integer("speed").notNull().default(100),
-  audioPath: text("audio_path").notNull(),
-  ttsCost: text("tts_cost"),
-  createdAt: timestamp("created_at", { mode: "date" }).defaultNow().notNull(),
+  audioPath: text("audioPath").notNull(),
+  ttsCost: text("ttsCost"),
+  createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 });
