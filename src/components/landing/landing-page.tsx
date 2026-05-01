@@ -17,6 +17,8 @@ import {
   Rocket,
   ArrowRight,
   CheckCircle2,
+  Captions,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -250,18 +252,18 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       desc: "Adjust playback speed to match your listening preference — slow it down or speed it up.",
     },
     {
+      icon: Captions,
+      key: "karaoke",
+      color: "text-yellow-600 dark:text-yellow-400",
+      title: "Karaoke Effect",
+      desc: "Follow along word-by-word as text highlights in sync with the audio — like reading karaoke subtitles.",
+    },
+    {
       icon: Sparkles,
       key: "ai",
       color: "text-purple-600 dark:text-purple-400",
       title: "AI-Powered TTS",
       desc: "Leverage cutting-edge AI models for crystal-clear, natural-sounding speech synthesis.",
-    },
-    {
-      icon: Headphones,
-      key: "playback",
-      color: "text-teal-600 dark:text-teal-400",
-      title: "Instant Playback",
-      desc: "Listen to generated audio instantly with a built-in player featuring seek and progress controls.",
     },
     {
       icon: Download,
@@ -284,8 +286,9 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
     { num: 2, icon: Mic, key: "voice", label: "Choose Voice & Speed" },
     { num: 3, icon: Brain, key: "generate", label: "AI Generates Audio" },
     { num: 4, icon: Headphones, key: "listen", label: "Listen to Audio" },
-    { num: 5, icon: Download, key: "download", label: "Download MP3" },
-    { num: 6, icon: History, key: "history", label: "Review History" },
+    { num: 5, icon: BookOpen, key: "read", label: "Read Along with Karaoke" },
+    { num: 6, icon: Download, key: "download", label: "Download MP3" },
+    { num: 7, icon: History, key: "history", label: "Review History" },
   ];
 
   const capabilities = [
@@ -294,6 +297,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
     "Image OCR",
     "6 AI Voices",
     "Speed Control",
+    "Karaoke Effect",
     "Audio Download",
     "Playback Controls",
     "Generation History",
@@ -339,9 +343,9 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-white/50"
           >
             Upload documents, images, or paste text and let AI transform it into
-            high-quality audio. Choose from 6 natural voices, adjust speed, and
-            download MP3s for offline listening. The easiest way to listen to
-            any content.
+            high-quality audio. Choose from 6 natural voices, follow along with
+            the karaoke effect, and download MP3s for offline listening. The
+            easiest way to listen to any content.
           </motion.p>
 
           <motion.div variants={heroItemVariants} className="mt-10">
