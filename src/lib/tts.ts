@@ -263,6 +263,40 @@ function mapWordsToTimings(
 }
 
 /**
+ * Re-scale a sentence's Whisper word timestamps so the first word starts at
+ * exactly segStart and the last word ends at exactly segEnd.
+ *
+ * Why this matters for fast voices:
+ *   Whisper's word-level detector becomes less precise as speech speeds up —
+ *   word boundaries can drift by 100–300 ms relative to the true audio
+ *   position.  Sentence (segment) boundaries are estimated at a coarser
+ *   acoustic resolution and are considerably more reliable.  Anchoring the
+ *   word timestamps to those known-good boundaries corrects the drift while
+ *   preserving the relative ordering and proportions of words within the
+ *   sentence.
+ */
+function normalizeWordTimingsToSegment(
+  words: WhisperWord[],
+  segStart: number,
+  segEnd: number
+): WhisperWord[] {
+  if (words.length === 0) return [];
+  if (words.length === 1) return [{ ...words[0], start: segStart, end: segEnd }];
+
+  const rawStart    = words[0].start;
+  const rawEnd      = words[words.length - 1].end;
+  const rawDuration = rawEnd - rawStart;
+  if (rawDuration <= 0) return words;
+
+  const segDuration = segEnd - segStart;
+  return words.map((w) => ({
+    ...w,
+    start: segStart + ((w.start - rawStart) / rawDuration) * segDuration,
+    end:   segStart + ((w.end   - rawStart) / rawDuration) * segDuration,
+  }));
+}
+
+/**
  * Fallback: distribute [startTime, endTime] proportionally by character length.
  * Used only when Whisper returns no words for a sentence's time range.
  */
@@ -343,9 +377,8 @@ export async function alignAudio(
     const sourceSentences = splitIntoSentences(text);
     if (sourceSentences.length === 0) return [];
 
-    const audioStart    = whisperWords[0].start;
-    const audioEnd      = whisperWords[whisperWords.length - 1].end;
-    const audioDuration = audioEnd - audioStart;
+    const audioStart = whisperWords[0].start;
+    const audioEnd   = whisperWords[whisperWords.length - 1].end;
 
     // ── Sentence timing ──────────────────────────────────────────────────────
     // When Whisper segment count matches source sentence count use 1-to-1
@@ -354,22 +387,37 @@ export async function alignAudio(
     const sentenceTimings: { start: number; end: number }[] = [];
 
     if (whisperSegments.length === sourceSentences.length) {
+      // Best case: 1-to-1 mapping — use Whisper segment timing directly.
       for (const ws of whisperSegments) {
         sentenceTimings.push({ start: ws.start, end: ws.end });
       }
     } else {
-      const charCounts = sourceSentences.map((s) =>
-        getSpeakableWords(s).reduce((sum, w) => sum + w.length, 0)
-      );
-      const totalChars = charCounts.reduce((a, b) => a + b, 0);
-      let currentTime = audioStart;
-      for (const charCount of charCounts) {
-        const duration =
-          totalChars > 0
-            ? (charCount / totalChars) * audioDuration
-            : audioDuration / sourceSentences.length;
-        sentenceTimings.push({ start: currentTime, end: currentTime + duration });
-        currentTime += duration;
+      // Count mismatch: project each source sentence's word count onto the
+      // Whisper word sequence to find sentence boundary timestamps.
+      // This uses real Whisper timing data rather than character-count math,
+      // so it stays accurate regardless of voice speed.
+      const sentenceWordCounts = sourceSentences.map((s) => getSpeakableWords(s).length);
+      const totalSrcWords  = sentenceWordCounts.reduce((a, b) => a + b, 0);
+      const totalWWords    = whisperWords.length;
+
+      let cumSrcWords = 0;
+      for (let i = 0; i < sourceSentences.length; i++) {
+        cumSrcWords += sentenceWordCounts[i];
+
+        // Whisper word index that corresponds to the end of this source sentence
+        const wEndIdx = Math.min(
+          Math.round((cumSrcWords / totalSrcWords) * totalWWords) - 1,
+          totalWWords - 1
+        );
+        const clampedEnd = Math.max(wEndIdx, 0);
+
+        const segStart = i === 0 ? audioStart : sentenceTimings[i - 1].end;
+        const segEnd   = Math.max(whisperWords[clampedEnd].end, segStart + 0.01);
+        sentenceTimings.push({ start: segStart, end: segEnd });
+      }
+      // Clamp the last sentence to the true audio end
+      if (sentenceTimings.length > 0) {
+        sentenceTimings[sentenceTimings.length - 1].end = audioEnd;
       }
     }
 
@@ -391,9 +439,14 @@ export async function alignAudio(
         return centre >= start && centre <= end;
       });
 
+      // Re-anchor the word timestamps to the sentence boundaries before
+      // mapping.  This corrects word-level drift that Whisper produces for
+      // fast speech, while preserving the relative proportions between words.
+      const anchoredWords = normalizeWordTimingsToSegment(sentenceWhisperWords, start, end);
+
       const timedWords =
-        sentenceWhisperWords.length > 0
-          ? mapWordsToTimings(speakable, sentenceWhisperWords)
+        anchoredWords.length > 0
+          ? mapWordsToTimings(speakable, anchoredWords)
           : distributeTimingToWords(sourceSentences[i], start, end);
 
       if (timedWords.length > 0) {
