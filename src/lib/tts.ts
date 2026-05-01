@@ -98,7 +98,7 @@ export async function generateTtsAudio(
   text: string,
   voice: string,
   speedPercent: number
-): Promise<{ audioPath: string; cost: string }> {
+): Promise<{ audioPath: string; cost: string; audioDurationSeconds: number }> {
   const apiKey = process.env.TTS_API_KEY;
   const baseUrl = (process.env.TTS_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
 
@@ -143,11 +143,12 @@ export async function generateTtsAudio(
   await writeFile(audioPath, combinedBuffer);
 
   const characters = text.length;
-  const ttsCost = ((characters / 1_000_000) * 15 * 7.8).toFixed(2);
+  const ttsCost = (characters / 1_000_000) * 15 * 7.8;
 
   return {
     audioPath: `data/audio/${audioId}.mp3`,
-    cost: ttsCost,
+    cost: ttsCost.toFixed(2),
+    audioDurationSeconds: 0,
   };
 }
 
@@ -325,13 +326,13 @@ function distributeTimingToWords(
 export async function alignAudio(
   audioPath: string,
   text: string
-): Promise<Segment[]> {
+): Promise<{ segments: Segment[]; audioDurationSeconds: number }> {
   const apiKey = process.env.TTS_API_KEY;
   const baseUrl = (
     process.env.TTS_BASE_URL || "https://api.openai.com/v1"
   ).replace(/\/$/, "");
 
-  if (!apiKey) return [];
+  if (!apiKey) return { segments: [], audioDurationSeconds: 0 };
 
   try {
     const absolutePath = join(process.cwd(), audioPath);
@@ -361,7 +362,7 @@ export async function alignAudio(
 
     if (!response.ok) {
       console.error("Whisper alignment failed:", response.status);
-      return [];
+      return { segments: [], audioDurationSeconds: 0 };
     }
 
     const data = (await response.json()) as {
@@ -372,10 +373,10 @@ export async function alignAudio(
     const whisperWords    = data.words    ?? [];
     const whisperSegments = data.segments ?? [];
 
-    if (whisperWords.length === 0) return [];
+    if (whisperWords.length === 0) return { segments: [], audioDurationSeconds: 0 };
 
     const sourceSentences = splitIntoSentences(text);
-    if (sourceSentences.length === 0) return [];
+    if (sourceSentences.length === 0) return { segments: [], audioDurationSeconds: 0 };
 
     const audioStart = whisperWords[0].start;
     const audioEnd   = whisperWords[whisperWords.length - 1].end;
@@ -471,9 +472,9 @@ export async function alignAudio(
       }
     }
 
-    return segments;
+    return { segments, audioDurationSeconds: audioEnd };
   } catch (error) {
     console.error("Audio alignment error:", error);
-    return [];
+    return { segments: [], audioDurationSeconds: 0 };
   }
 }

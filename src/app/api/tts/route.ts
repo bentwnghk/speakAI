@@ -36,7 +36,12 @@ export async function POST(request: NextRequest) {
 
     const result = await generateTtsAudio(text, voice, speed);
 
-    const segments = await alignAudio(result.audioPath, text);
+    const { segments, audioDurationSeconds } = await alignAudio(result.audioPath, text);
+
+    const ttsCost = parseFloat(result.cost);
+    const whisperCost = (audioDurationSeconds / 60) * 0.006 * 7.8;
+    const totalCost = (ttsCost + whisperCost).toFixed(2);
+
     const segmentsJson = segments.length > 0 ? JSON.stringify(segments) : null;
 
     const generationTitle =
@@ -59,7 +64,7 @@ export async function POST(request: NextRequest) {
         speed,
         audioPath: result.audioPath,
         segments: segmentsJson,
-        ttsCost: result.cost,
+        ttsCost: totalCost,
       })
       .returning();
 
@@ -71,7 +76,7 @@ export async function POST(request: NextRequest) {
       speed,
       audioUrl: `/api/audio/${generation.id}`,
       segments: segments.length > 0 ? segments : undefined,
-      ttsCost: result.cost,
+      ttsCost: totalCost,
       createdAt: generation.createdAt,
     });
   } catch (error) {
