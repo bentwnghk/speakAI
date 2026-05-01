@@ -109,12 +109,12 @@ export function KaraokeText({
               <span
                 key={ti}
                 ref={isWordActive ? activeWordRef : undefined}
-                className={`transition-colors duration-75 ${
+                className={`${
                   isWordActive
-                    ? "font-bold text-primary"
+                    ? "bg-primary/20 text-primary rounded-sm font-bold -mx-0.5 px-0.5"
                     : isPast
-                      ? "text-muted-foreground/50"
-                      : ""
+                      ? "text-muted-foreground/50 transition-colors duration-300"
+                      : "text-muted-foreground/70 transition-colors duration-300"
                 }`}
               >
                 {token.text}
