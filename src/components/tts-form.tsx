@@ -5,14 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { VoiceSelect } from "@/components/voice-select";
 import { SpeedSlider } from "@/components/speed-slider";
 import { FileUpload } from "@/components/file-upload";
 import { AudioPlayer } from "@/components/audio-player";
-import { HistoryList } from "@/components/history-list";
-import { Sparkles, Type, Upload, Loader2, Settings } from "lucide-react";
+import { Sparkles, Type, Upload, Loader2, History } from "lucide-react";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface Generation {
   id: string;
@@ -29,17 +28,14 @@ export function TtsForm() {
   const [inputMethod, setInputMethod] = useState<"text" | "upload">("text");
   const [text, setText] = useState("");
   const [extractedText, setExtractedText] = useState("");
-  const [files, setFiles] = useState<File[]>([]);
   const [voice, setVoice] = useState("Female 1");
   const [speed, setSpeed] = useState(100);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [audioTitle, setAudioTitle] = useState<string>();
-  const [transcript, setTranscript] = useState<string>("");
 
   const handleFilesSelected = useCallback(async (newFiles: File[]) => {
-    setFiles(newFiles);
     if (newFiles.length === 0) {
       setExtractedText("");
       return;
@@ -76,8 +72,7 @@ export function TtsForm() {
   }, []);
 
   const handleGenerate = async () => {
-    const inputText =
-      inputMethod === "text" ? text : extractedText;
+    const inputText = inputMethod === "text" ? text : extractedText;
 
     if (!inputText?.trim()) {
       toast.error("Please enter text or upload files first");
@@ -86,21 +81,14 @@ export function TtsForm() {
 
     setIsGenerating(true);
     try {
-      const formData = new FormData();
-      formData.append("inputMethod", inputMethod);
-      formData.append("voice", voice);
-      formData.append("speed", speed.toString());
-      formData.append("text", inputMethod === "text" ? inputText : "");
-
-      if (inputMethod === "upload") {
-        for (const file of files) {
-          formData.append("files", file);
-        }
-      }
-
       const res = await fetch("/api/tts", {
         method: "POST",
-        body: formData,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          text: inputText,
+          voice,
+          speed,
+        }),
       });
 
       if (!res.ok) {
@@ -111,7 +99,6 @@ export function TtsForm() {
       const data = (await res.json()) as Generation;
       setAudioSrc(data.audioUrl);
       setAudioTitle(data.title);
-      setTranscript(data.transcript);
 
       toast.success(
         `Audio generated! ${data.ttsCost ? `Cost: HK$${data.ttsCost}` : ""}`,
@@ -167,10 +154,13 @@ export function TtsForm() {
                 />
                 {extractedText && (
                   <div className="mt-3">
+                    <p className="text-xs text-muted-foreground mb-1">
+                      Edit the extracted text as needed before generating:
+                    </p>
                     <Textarea
                       value={extractedText}
                       onChange={(e) => setExtractedText(e.target.value)}
-                      rows={8}
+                      rows={10}
                     />
                   </div>
                 )}
@@ -193,7 +183,7 @@ export function TtsForm() {
           className="w-full"
           size="lg"
           onClick={() => void handleGenerate()}
-          disabled={isGenerating || (!displayText?.trim() && files.length === 0)}
+          disabled={isGenerating || !displayText?.trim()}
         >
           {isGenerating ? (
             <>
@@ -212,35 +202,12 @@ export function TtsForm() {
       <div className="space-y-4">
         <AudioPlayer src={audioSrc} title={audioTitle} />
 
-        {transcript && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Transcript</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                value={transcript}
-                readOnly
-                rows={10}
-                className="resize-none"
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        <Accordion type="single" collapsible>
-          <AccordionItem value="history">
-            <AccordionTrigger>
-              <span className="flex items-center gap-2">
-                <Settings className="size-4" />
-                History
-              </span>
-            </AccordionTrigger>
-            <AccordionContent>
-              <HistoryList />
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+        <Link href="/history" className="block">
+          <Button variant="outline" className="w-full">
+            <History className="size-4" />
+            View Audio History
+          </Button>
+        </Link>
       </div>
     </div>
   );

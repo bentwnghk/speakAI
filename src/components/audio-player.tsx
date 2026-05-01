@@ -67,6 +67,30 @@ export function AudioPlayer({ src, title }: AudioPlayerProps) {
     return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
+  const handleDownload = () => {
+    const now = new Date();
+    const ts = now
+      .toLocaleString("en-HK", {
+        timeZone: "Asia/Hong_Kong",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+      })
+      .replace(/[/:, ]/g, "-");
+    const filename = `MrNg-SpeakAI-audio-${ts}.mp3`;
+
+    const a = document.createElement("a");
+    a.href = src!;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   if (!src) {
     return (
       <Card>
@@ -116,11 +140,14 @@ export function AudioPlayer({ src, title }: AudioPlayerProps) {
             {formatTime(duration)}
           </span>
 
-          <a href={src} download>
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <Download className="size-4" />
-            </Button>
-          </a>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={handleDownload}
+          >
+            <Download className="size-4" />
+          </Button>
         </div>
       </CardContent>
     </Card>
