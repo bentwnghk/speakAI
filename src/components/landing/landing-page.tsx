@@ -321,7 +321,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             className="text-6xl sm:text-8xl font-extrabold tracking-tighter text-white"
           >
             Mr.
-            <span className="inline-block mx-1">&#x1F197;</span>
+            <span className="inline-block mx-1">&#x1F196;</span>
             <span className="bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">
               SpeakAI
             </span>
