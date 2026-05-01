@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Sign in - Mr.🆖 SpeakAI",
+  title: "Mr.\u{1F197} SpeakAI - AI Text to Speech",
 };
 
 export default async function AuthLayout({
@@ -16,9 +16,5 @@ export default async function AuthLayout({
     redirect("/");
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      {children}
-    </div>
-  );
+  return <>{children}</>;
 }
