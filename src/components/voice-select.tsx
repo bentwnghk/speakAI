@@ -1,0 +1,40 @@
+"use client";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Mic } from "lucide-react";
+import { VOICE_OPTIONS } from "@/lib/constants";
+
+interface VoiceSelectProps {
+  value: string;
+  onValueChange: (value: string) => void;
+}
+
+export function VoiceSelect({ value, onValueChange }: VoiceSelectProps) {
+  return (
+    <div className="space-y-2">
+      <Label className="flex items-center gap-2">
+        <Mic className="size-4" />
+        Voice
+      </Label>
+      <Select value={value} onValueChange={onValueChange}>
+        <SelectTrigger>
+          <SelectValue placeholder="Select a voice" />
+        </SelectTrigger>
+        <SelectContent>
+          {VOICE_OPTIONS.map((voice) => (
+            <SelectItem key={voice} value={voice}>
+              {voice}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}

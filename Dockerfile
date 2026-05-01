@@ -1,12 +1,35 @@
-FROM python:3.12-slim
+FROM node:22-slim AS base
 
+FROM base AS deps
+WORKDIR /app
+COPY package.json ./
+RUN npm install --omit=dev
+
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+RUN npm run build
+
+FROM base AS runner
 WORKDIR /app
 
-RUN pip install uv
+ENV NODE_ENV=production
 
-COPY pyproject.toml uv.lock ./
-RUN uv sync
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
 
-COPY . .
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
 
-CMD uv run uvicorn --host 0.0.0.0 --port 8000 main:app
+RUN mkdir -p data/audio data/tmp && chown -R nextjs:nodejs data
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+CMD ["node", "server.js"]
