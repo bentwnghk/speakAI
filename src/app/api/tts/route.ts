@@ -50,9 +50,8 @@ export async function POST(request: NextRequest) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        const tmpDir = join(process.cwd(), "data", "tmp");
-        await mkdir(tmpDir, { recursive: true });
-        const tmpPath = join(tmpDir, `${Date.now()}-${file.name}`);
+        const tmpDir = await import("os").then(m => m.tmpdir());
+        const tmpPath = join(tmpDir, `speakai-${Date.now()}-${file.name}`);
         await writeFile(tmpPath, buffer);
 
         try {
