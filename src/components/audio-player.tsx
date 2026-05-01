@@ -100,12 +100,21 @@ export function AudioPlayer({ src, title, createdAt }: AudioPlayerProps) {
           .replace(/[/:, ]/g, "-");
     const filename = `MrNg-SpeakAI-audio-${ts}.mp3`;
 
-    const a = document.createElement("a");
-    a.href = src!;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    fetch(src!)
+      .then((res) => res.blob())
+      .then((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => {
+        window.open(src!, "_blank");
+      });
   };
 
   if (!src) {

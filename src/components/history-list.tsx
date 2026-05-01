@@ -66,12 +66,21 @@ function downloadAudio(gen: Generation) {
   const ts = formatDownloadTimestamp(gen.createdAt);
   const filename = `MrNg-SpeakAI-audio-${ts}.mp3`;
 
-  const a = document.createElement("a");
-  a.href = gen.audioUrl;
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  fetch(gen.audioUrl)
+    .then((res) => res.blob())
+    .then((blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    })
+    .catch(() => {
+      window.open(gen.audioUrl, "_blank");
+    });
 }
 
 export function HistoryList() {
