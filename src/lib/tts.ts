@@ -3,7 +3,7 @@ import { join } from "path";
 import { nanoid } from "nanoid";
 
 import { VOICE_MAP, VOICE_OPTIONS } from "./constants";
-import type { Segment } from "@/types/karaoke";
+import type { Segment, WordTimestamp } from "@/types/karaoke";
 
 export { VOICE_MAP, VOICE_OPTIONS };
 
@@ -164,8 +164,118 @@ interface WhisperWord {
   end: number;
 }
 
+function normalize(w: string): string {
+  return w.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function splitSentences(text: string): string[] {
+  const parts = text.match(/[^.!?\n]+[.!?]?\n?/g);
+  if (!parts) return text.trim() ? [text.trim()] : [];
+  return parts.map((p) => p.trim()).filter(Boolean);
+}
+
+function mapOriginalToWhisper(
+  originalWords: string[],
+  whisperWords: WhisperWord[]
+): WordTimestamp[] {
+  const result: WordTimestamp[] = [];
+  let oi = 0;
+  let wi = 0;
+
+  while (oi < originalWords.length && wi < whisperWords.length) {
+    const origNorm = normalize(originalWords[oi]);
+    const whispNorm = normalize(whisperWords[wi].word);
+
+    if (origNorm === whispNorm) {
+      result.push({
+        word: originalWords[oi],
+        start: whisperWords[wi].start,
+        end: whisperWords[wi].end,
+      });
+      oi++;
+      wi++;
+      continue;
+    }
+
+    let matched = false;
+
+    for (let take = 2; take <= 4 && oi + take <= originalWords.length; take++) {
+      const joined = originalWords
+        .slice(oi, oi + take)
+        .map(normalize)
+        .join("");
+      if (joined === whispNorm) {
+        const startTime = whisperWords[wi].start;
+        const endTime = whisperWords[wi].end;
+        const totalLen = originalWords
+          .slice(oi, oi + take)
+          .reduce((s, w) => s + w.length, 0);
+        let curStart = startTime;
+        for (let j = 0; j < take; j++) {
+          const proportion = originalWords[oi + j].length / totalLen;
+          const wordEnd = curStart + (endTime - startTime) * proportion;
+          result.push({
+            word: originalWords[oi + j],
+            start: curStart,
+            end: wordEnd,
+          });
+          curStart = wordEnd;
+        }
+        oi += take;
+        wi++;
+        matched = true;
+        break;
+      }
+    }
+
+    if (matched) continue;
+
+    for (let take = 2; take <= 4 && wi + take <= whisperWords.length; take++) {
+      const joined = whisperWords
+        .slice(wi, wi + take)
+        .map((w) => normalize(w.word))
+        .join("");
+      if (joined === origNorm) {
+        result.push({
+          word: originalWords[oi],
+          start: whisperWords[wi].start,
+          end: whisperWords[wi + take - 1].end,
+        });
+        oi++;
+        wi += take;
+        matched = true;
+        break;
+      }
+    }
+
+    if (matched) continue;
+
+    result.push({
+      word: originalWords[oi],
+      start: whisperWords[wi].start,
+      end: whisperWords[wi].end,
+    });
+    oi++;
+    wi++;
+  }
+
+  const lastEnd =
+    result.length > 0 ? result[result.length - 1].end : 0;
+  while (oi < originalWords.length) {
+    result.push({
+      word: originalWords[oi],
+      start: lastEnd,
+      end: lastEnd,
+    });
+    oi++;
+  }
+
+  return result;
+}
+
 export async function alignAudio(
   audioPath: string,
+  originalText: string
 ): Promise<Segment[]> {
   const apiKey = process.env.TTS_API_KEY;
   const baseUrl = (
@@ -205,18 +315,37 @@ export async function alignAudio(
 
     if (!data.segments || data.segments.length === 0) return [];
 
-    return data.segments
-      .filter((seg) => seg.words && seg.words.length > 0)
-      .map((seg) => ({
-        text: seg.text.trim(),
-        startTime: seg.start,
-        endTime: seg.end,
-        words: seg.words!.map((w) => ({
-          word: w.word.trim(),
-          start: w.start,
-          end: w.end,
-        })),
-      }));
+    const allWhisperWords = data.segments.flatMap(
+      (seg) => seg.words ?? []
+    );
+
+    if (allWhisperWords.length === 0) return [];
+
+    const sentences = splitSentences(originalText);
+    const allOriginalWords = sentences.flatMap((s) =>
+      s.split(/\s+/).filter(Boolean)
+    );
+
+    const mappedWords = mapOriginalToWhisper(
+      allOriginalWords,
+      allWhisperWords
+    );
+
+    let wordIdx = 0;
+    return sentences
+      .map((sentenceText) => {
+        const count = sentenceText.split(/\s+/).filter(Boolean).length;
+        const words = mappedWords.slice(wordIdx, wordIdx + count);
+        wordIdx += count;
+        if (words.length === 0) return null;
+        return {
+          text: sentenceText,
+          startTime: words[0].start,
+          endTime: words[words.length - 1].end,
+          words,
+        };
+      })
+      .filter((s): s is Segment => s !== null);
   } catch (error) {
     console.error("Audio alignment error:", error);
     return [];
