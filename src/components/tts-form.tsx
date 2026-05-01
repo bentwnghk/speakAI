@@ -79,39 +79,24 @@ export function TtsForm() {
       }
 
       for (const pdfFile of pdfFiles) {
-        try {
-          const result = await processPdf(pdfFile);
-          if (result.text) {
-            allTexts.push(result.text);
-          } else if (result.images.length > 0) {
-            for (const img of result.images) {
-              const formData = new FormData();
-              formData.append("file", img);
-              const res = await fetch("/api/extract-text", {
-                method: "POST",
-                body: formData,
-              });
-              if (!res.ok) {
-                const err = (await res.json()) as { error?: string };
-                throw new Error(err.error ?? "OCR failed for scanned PDF page");
-              }
-              const data = (await res.json()) as { text: string };
-              allTexts.push(data.text);
+        const result = await processPdf(pdfFile);
+        if (result.text) {
+          allTexts.push(result.text);
+        } else if (result.images.length > 0) {
+          for (const img of result.images) {
+            const formData = new FormData();
+            formData.append("file", img);
+            const res = await fetch("/api/extract-text", {
+              method: "POST",
+              body: formData,
+            });
+            if (!res.ok) {
+              const err = (await res.json()) as { error?: string };
+              throw new Error(err.error ?? "OCR failed for scanned PDF page");
             }
+            const data = (await res.json()) as { text: string };
+            allTexts.push(data.text);
           }
-        } catch {
-          const formData = new FormData();
-          formData.append("file", pdfFile);
-          const res = await fetch("/api/extract-text", {
-            method: "POST",
-            body: formData,
-          });
-          if (!res.ok) {
-            const err = (await res.json()) as { error?: string };
-            throw new Error(err.error ?? "Text extraction failed");
-          }
-          const data = (await res.json()) as { text: string };
-          allTexts.push(data.text);
         }
       }
 

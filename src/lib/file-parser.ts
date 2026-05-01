@@ -1,13 +1,6 @@
 import { readFile } from "fs/promises";
 import { extname } from "path";
 
-async function extractFromPdf(filePath: string): Promise<string> {
-  const pdfParse = (await import("pdf-parse")).default;
-  const buffer = await readFile(filePath);
-  const data = await pdfParse(buffer);
-  return data.text;
-}
-
 async function extractFromDocx(filePath: string): Promise<string> {
   const mammoth = await import("mammoth");
   const buffer = await readFile(filePath);
@@ -86,7 +79,7 @@ export async function extractTextFromFile(
   const supportedImageExts = [".jpg", ".jpeg", ".png"];
 
   if (ext === ".pdf") {
-    return extractFromPdf(filePath);
+    throw new Error("PDFs should be processed client-side via pdfjs-dist");
   } else if (ext === ".docx") {
     return extractFromDocx(filePath);
   } else if (ext === ".txt") {
