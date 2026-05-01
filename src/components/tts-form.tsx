@@ -14,6 +14,7 @@ import { Sparkles, Type, Upload, Loader2, History, FileText, SlidersHorizontal }
 import { toast } from "sonner";
 import Link from "next/link";
 import type { Segment } from "@/types/karaoke";
+import { processPdf } from "@/lib/pdf-client";
 
 interface Generation {
   id: string;
@@ -55,7 +56,14 @@ export function TtsForm() {
     setIsExtracting(true);
     try {
       const allTexts: string[] = [];
-      for (const file of newFiles) {
+      const pdfFiles = newFiles.filter(
+        (f) =>
+          f.type === "application/pdf" ||
+          f.name.toLowerCase().endsWith(".pdf")
+      );
+      const nonPdfFiles = newFiles.filter((f) => !pdfFiles.includes(f));
+
+      for (const file of nonPdfFiles) {
         const formData = new FormData();
         formData.append("file", file);
         const res = await fetch("/api/extract-text", {
@@ -69,6 +77,44 @@ export function TtsForm() {
         const data = (await res.json()) as { text: string };
         allTexts.push(data.text);
       }
+
+      for (const pdfFile of pdfFiles) {
+        try {
+          const result = await processPdf(pdfFile);
+          if (result.text) {
+            allTexts.push(result.text);
+          } else if (result.images.length > 0) {
+            for (const img of result.images) {
+              const formData = new FormData();
+              formData.append("file", img);
+              const res = await fetch("/api/extract-text", {
+                method: "POST",
+                body: formData,
+              });
+              if (!res.ok) {
+                const err = (await res.json()) as { error?: string };
+                throw new Error(err.error ?? "OCR failed for scanned PDF page");
+              }
+              const data = (await res.json()) as { text: string };
+              allTexts.push(data.text);
+            }
+          }
+        } catch {
+          const formData = new FormData();
+          formData.append("file", pdfFile);
+          const res = await fetch("/api/extract-text", {
+            method: "POST",
+            body: formData,
+          });
+          if (!res.ok) {
+            const err = (await res.json()) as { error?: string };
+            throw new Error(err.error ?? "Text extraction failed");
+          }
+          const data = (await res.json()) as { text: string };
+          allTexts.push(data.text);
+        }
+      }
+
       const combined = allTexts.filter(Boolean).join("\n\n");
       setExtractedText(combined);
       toast.success(`Extracted text from ${newFiles.length} file(s)`);
