@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { extractTextFromFile, SUPPORTED_EXTENSIONS } from "@/lib/file-parser";
-import { writeFile, mkdir, unlink } from "fs/promises";
+import { writeFile, unlink } from "fs/promises";
 import { join } from "path";
 import { extname } from "path";
 

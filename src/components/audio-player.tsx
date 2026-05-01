@@ -48,7 +48,7 @@ export function AudioPlayer({ src, title }: AudioPlayerProps) {
     if (isPlaying) {
       audio.pause();
     } else {
-      audio.play();
+      void audio.play();
     }
     setIsPlaying(!isPlaying);
   };

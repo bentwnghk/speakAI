@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -15,8 +14,6 @@ import { HistoryList } from "@/components/history-list";
 import { Sparkles, Type, Upload, Loader2, Settings } from "lucide-react";
 import { toast } from "sonner";
 
-interface TtsFormProps {}
-
 interface Generation {
   id: string;
   title: string;
@@ -28,8 +25,7 @@ interface Generation {
   createdAt: string;
 }
 
-export function TtsForm({}: TtsFormProps) {
-  const { data: session } = useSession();
+export function TtsForm() {
   const [inputMethod, setInputMethod] = useState<"text" | "upload">("text");
   const [text, setText] = useState("");
   const [extractedText, setExtractedText] = useState("");
@@ -60,10 +56,10 @@ export function TtsForm({}: TtsFormProps) {
           body: formData,
         });
         if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || "Text extraction failed");
+          const err = (await res.json()) as { error?: string };
+          throw new Error(err.error ?? "Text extraction failed");
         }
-        const data = await res.json();
+        const data = (await res.json()) as { text: string };
         allTexts.push(data.text);
       }
       const combined = allTexts.filter(Boolean).join("\n\n");
@@ -108,11 +104,11 @@ export function TtsForm({}: TtsFormProps) {
       });
 
       if (!res.ok) {
-        const err = await res.json();
+        const err = (await res.json()) as { error?: string };
         throw new Error(err.error || "Generation failed");
       }
 
-      const data: Generation = await res.json();
+      const data = (await res.json()) as Generation;
       setAudioSrc(data.audioUrl);
       setAudioTitle(data.title);
       setTranscript(data.transcript);
@@ -196,7 +192,7 @@ export function TtsForm({}: TtsFormProps) {
         <Button
           className="w-full"
           size="lg"
-          onClick={handleGenerate}
+          onClick={() => void handleGenerate()}
           disabled={isGenerating || (!displayText?.trim() && files.length === 0)}
         >
           {isGenerating ? (

@@ -25,7 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             id: user.id,
             name: user.name,
             email: user.email,
-            emailVerified: user.emailVerified,
+            emailVerified: "emailVerified" in user ? user.emailVerified : null,
             image: user.image,
           });
         } else {
@@ -34,13 +34,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true;
     },
-    async session({ session, token }) {
+    session({ session, token }) {
       if (token?.sub) {
         session.user.id = token.sub;
       }
       return session;
     },
-    async jwt({ token, user }) {
+    jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
       }

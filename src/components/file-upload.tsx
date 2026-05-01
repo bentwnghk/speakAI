@@ -1,13 +1,12 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileUp, X, Loader2, FileText, Image as ImageIcon } from "lucide-react";
 import { SUPPORTED_EXTENSIONS } from "@/lib/constants";
 
 interface FileUploadProps {
-  onFilesSelected: (files: File[]) => void;
+  onFilesSelected: (files: File[]) => void | Promise<void>;
   isExtracting: boolean;
 }
 
@@ -22,7 +21,7 @@ export function FileUpload({ onFilesSelected, isExtracting }: FileUploadProps) {
       const fileArray = Array.from(newFiles);
       setFiles((prev) => {
         const updated = [...prev, ...fileArray];
-        onFilesSelected(updated);
+        void onFilesSelected(updated);
         return updated;
       });
     },
@@ -32,7 +31,7 @@ export function FileUpload({ onFilesSelected, isExtracting }: FileUploadProps) {
   const removeFile = (index: number) => {
     setFiles((prev) => {
       const updated = prev.filter((_, i) => i !== index);
-      onFilesSelected(updated);
+      void onFilesSelected(updated);
       return updated;
     });
   };

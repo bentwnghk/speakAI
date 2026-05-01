@@ -4,7 +4,7 @@ import { generateTtsAudio, VOICE_MAP } from "@/lib/tts";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { writeFile, mkdir } from "fs/promises";
+import { writeFile } from "fs/promises";
 import { join } from "path";
 import { extractTextFromFile, SUPPORTED_EXTENSIONS } from "@/lib/file-parser";
 import { extname } from "path";
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

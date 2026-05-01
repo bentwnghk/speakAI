@@ -7,13 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   Play,
   Download,
   Trash2,
@@ -23,7 +16,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 
 interface Generation {
   id: string;
@@ -49,7 +41,7 @@ export function HistoryList({ onLoad }: HistoryListProps) {
 
   useEffect(() => {
     if (session) {
-      fetchGenerations();
+      void fetchGenerations();
     }
   }, [session]);
 
@@ -57,7 +49,7 @@ export function HistoryList({ onLoad }: HistoryListProps) {
     try {
       const res = await fetch("/api/tts");
       if (res.ok) {
-        const data = await res.json();
+        const data = (await res.json()) as Generation[];
         setGenerations(data);
       }
     } catch {
@@ -134,14 +126,14 @@ export function HistoryList({ onLoad }: HistoryListProps) {
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
                     onKeyDown={(e) =>
-                      e.key === "Enter" && handleRename(gen.id)
+                      e.key === "Enter" && void handleRename(gen.id)
                     }
                     className="h-7 text-sm"
                   />
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => handleRename(gen.id)}
+                    onClick={() => void handleRename(gen.id)}
                   >
                     Save
                   </Button>
@@ -197,7 +189,7 @@ export function HistoryList({ onLoad }: HistoryListProps) {
                 variant="ghost"
                 size="icon"
                 className="size-8 text-destructive"
-                onClick={() => handleDelete(gen.id)}
+                onClick={() => void handleDelete(gen.id)}
               >
                 <Trash2 className="size-4" />
               </Button>

@@ -28,7 +28,7 @@ export default function LoginPage() {
           type="button"
           className="w-full"
           size="lg"
-          onClick={() => signIn("google", { callbackUrl: "/" })}
+          onClick={() => void signIn("google", { callbackUrl: "/" })}
         >
           <svg className="size-4" viewBox="0 0 24 24">
             <path

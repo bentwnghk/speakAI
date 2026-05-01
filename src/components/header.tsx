@@ -65,7 +65,7 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => signOut()}>
+                <DropdownMenuItem onClick={() => void signOut()}>
                   <LogOut className="size-4" />
                   Sign out
                 </DropdownMenuItem>

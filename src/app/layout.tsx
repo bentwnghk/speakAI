@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/components/auth-provider";
 import { Toaster } from "@/components/ui/sonner";
-import { AudioWaveform } from "lucide-react";
 import "./globals.css";
 
 export const metadata: Metadata = {
