@@ -73,25 +73,23 @@ export function FileUpload({ onFilesSelected, isExtracting }: FileUploadProps) {
             <p className="text-sm">Extracting text from files...</p>
           </div>
         ) : (
-          <>
+          <label className="flex flex-col items-center justify-center cursor-pointer w-full">
             <FileUp className="size-8 text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground text-center">
               Drag & drop files or{" "}
-              <label className="text-primary cursor-pointer hover:underline">
-                browse
-                <input
-                  type="file"
-                  multiple
-                  accept={acceptStr}
-                  className="hidden"
-                  onChange={(e) => e.target.files && handleFiles(e.target.files)}
-                />
-              </label>
+              <span className="text-primary hover:underline">browse</span>
             </p>
             <p className="text-xs text-muted-foreground/70 mt-1">
               PDF, DOCX, TXT, JPG, PNG
             </p>
-          </>
+            <input
+              type="file"
+              multiple
+              accept={acceptStr}
+              className="hidden"
+              onChange={(e) => e.target.files && handleFiles(e.target.files)}
+            />
+          </label>
         )}
       </div>
 
