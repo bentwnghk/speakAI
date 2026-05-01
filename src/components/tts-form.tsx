@@ -135,7 +135,7 @@ export function TtsForm() {
               Source
             </CardTitle>
           </CardHeader>
-          <CardContent className="max-h-[70vh] overflow-y-auto">
+          <CardContent className="max-h-[50vh] overflow-y-auto">
             <Tabs
               value={inputMethod}
               onValueChange={(v) => setInputMethod(v as "text" | "upload")}
