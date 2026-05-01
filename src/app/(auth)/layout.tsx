@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Sign in - SpeakAI",
+  title: "Sign in - Mr.🆖 SpeakAI",
 };
 
 export default async function AuthLayout({

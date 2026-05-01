@@ -23,7 +23,7 @@ export default async function DashboardLayout({
           Built with ❤️ by Mr.🆖 for students learning English.
         </p>
         <p className="text-center text-xs text-muted-foreground mt-1">
-          Powered by Mr.🆖 AI Hub
+          Powered by <a href="https://api.mr5ai.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Mr.🆖 AI Hub</a>
         </p>
       </footer>
     </div>

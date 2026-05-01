@@ -228,7 +228,7 @@ export function HistoryList() {
     <div className="space-y-3">
       {generations.map((gen) => (
         <Card key={gen.id}>
-          <CardContent className="flex items-start gap-3 pt-6">
+           <CardContent className="flex items-start gap-3 py-3">
             <div className="flex-1 min-w-0 space-y-1">
               {editingId === gen.id ? (
                 <div className="flex gap-2">
