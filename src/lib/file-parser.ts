@@ -48,7 +48,7 @@ async function extractFromImage(
         : "image/png";
 
   const { text } = await generateText({
-    model: openai("gpt-4.1-mini"),
+    model: openai(process.env.VISION_MODEL || "gpt-4.1-mini"),
     messages: [
       {
         role: "user",

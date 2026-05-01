@@ -15,6 +15,7 @@ services:
       TTS_BASE_URL: ${TTS_BASE_URL:-https://api.openai.com/v1}
       VISION_API_KEY: ${VISION_API_KEY}
       VISION_BASE_URL: ${VISION_BASE_URL:-https://api.openai.com/v1}
+      VISION_MODEL: ${VISION_MODEL:-gpt-4.1-mini}
     volumes:
       - audio_data:/app/data
     depends_on:
