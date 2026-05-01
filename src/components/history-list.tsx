@@ -250,6 +250,13 @@ export function HistoryList() {
                   >
                     Save
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setEditingId(null)}
+                  >
+                    Cancel
+                  </Button>
                 </div>
               ) : (
                 <p className="text-sm font-medium truncate">{gen.title}</p>
