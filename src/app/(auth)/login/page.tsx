@@ -18,7 +18,7 @@ export default function LoginPage() {
         <div className="flex justify-center mb-2">
           <AudioWaveform className="size-10 text-primary" />
         </div>
-        <CardTitle className="text-2xl">SpeakAI</CardTitle>
+        <CardTitle className="text-2xl">Mr.🆖 SpeakAI</CardTitle>
         <CardDescription>
           AI-powered text-to-speech application
         </CardDescription>

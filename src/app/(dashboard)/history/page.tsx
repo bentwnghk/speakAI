@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { HistoryList } from "@/components/history-list";
 
 export const metadata: Metadata = {
-  title: "History - SpeakAI",
+  title: "History - Mr.🆖 SpeakAI",
 };
 
 export default function HistoryPage() {

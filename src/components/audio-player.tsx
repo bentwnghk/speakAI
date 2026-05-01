@@ -9,9 +9,25 @@ import { Slider } from "@/components/ui/slider";
 interface AudioPlayerProps {
   src: string | null;
   title?: string;
+  createdAt?: string;
 }
 
-export function AudioPlayer({ src, title }: AudioPlayerProps) {
+function formatDownloadTimestamp(dateStr: string): string {
+  return new Date(dateStr)
+    .toLocaleString("en-HK", {
+      timeZone: "Asia/Hong_Kong",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+    })
+    .replace(/[/:, ]/g, "-");
+}
+
+export function AudioPlayer({ src, title, createdAt }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -68,19 +84,20 @@ export function AudioPlayer({ src, title }: AudioPlayerProps) {
   };
 
   const handleDownload = () => {
-    const now = new Date();
-    const ts = now
-      .toLocaleString("en-HK", {
-        timeZone: "Asia/Hong_Kong",
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-      })
-      .replace(/[/:, ]/g, "-");
+    const ts = createdAt
+      ? formatDownloadTimestamp(createdAt)
+      : new Date()
+          .toLocaleString("en-HK", {
+            timeZone: "Asia/Hong_Kong",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+            hour12: false,
+          })
+          .replace(/[/:, ]/g, "-");
     const filename = `MrNg-SpeakAI-audio-${ts}.mp3`;
 
     const a = document.createElement("a");

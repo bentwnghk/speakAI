@@ -20,7 +20,10 @@ export default async function DashboardLayout({
       </main>
       <footer className="border-t py-4">
         <p className="text-center text-sm text-muted-foreground">
-          Powered by Mr. AI Hub
+          Built with ❤️ by Mr.🆖 for students learning English.
+        </p>
+        <p className="text-center text-xs text-muted-foreground mt-1">
+          Powered by Mr.🆖 AI Hub
         </p>
       </footer>
     </div>

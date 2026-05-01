@@ -16,8 +16,9 @@ export async function POST(request: NextRequest) {
       text: string;
       voice: string;
       speed: number;
+      title?: string;
     };
-    const { text, voice, speed } = body;
+    const { text, voice, speed, title } = body;
 
     if (!text?.trim()) {
       return NextResponse.json(
@@ -35,14 +36,15 @@ export async function POST(request: NextRequest) {
 
     const result = await generateTtsAudio(text, voice, speed);
 
-    const now = new Date();
-    const title = `Audio - ${now.toISOString().slice(0, 16).replace("T", " ")}`;
+    const generationTitle =
+      title?.trim() ||
+      `Audio - ${text.trim().slice(0, 30).replace(/\n/g, " ")}${text.trim().length > 30 ? "..." : ""}`;
 
     const [generation] = await db
       .insert(generations)
       .values({
         userId: session.user.id,
-        title,
+        title: generationTitle,
         transcript: text,
         voice: (VOICE_MAP[voice] || "nova") as
           | "nova"

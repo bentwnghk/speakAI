@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "SpeakAI - AI Text to Speech",
-    short_name: "SpeakAI",
+    name: "Mr.🆖 SpeakAI - AI Text to Speech",
+    short_name: "Mr.🆖 SpeakAI",
     description:
       "Turn text from documents and images into high-quality audio with one click.",
     start_url: "/",

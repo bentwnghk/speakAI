@@ -31,8 +31,21 @@ interface Generation {
   createdAt: string;
 }
 
-function formatHongKongTimestamp(date: Date): string {
-  return date
+function formatHongKongDateTime(dateStr: string): string {
+  return new Date(dateStr).toLocaleString("en-HK", {
+    timeZone: "Asia/Hong_Kong",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+}
+
+function formatDownloadTimestamp(dateStr: string): string {
+  return new Date(dateStr)
     .toLocaleString("en-HK", {
       timeZone: "Asia/Hong_Kong",
       year: "numeric",
@@ -44,6 +57,18 @@ function formatHongKongTimestamp(date: Date): string {
       hour12: false,
     })
     .replace(/[/:, ]/g, "-");
+}
+
+function downloadAudio(gen: Generation) {
+  const ts = formatDownloadTimestamp(gen.createdAt);
+  const filename = `MrNg-SpeakAI-audio-${ts}.mp3`;
+
+  const a = document.createElement("a");
+  a.href = gen.audioUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 export function HistoryList() {
@@ -119,18 +144,6 @@ export function HistoryList() {
     }
   };
 
-  const handleDownload = (gen: Generation) => {
-    const ts = formatHongKongTimestamp(new Date(gen.createdAt));
-    const filename = `MrNg-SpeakAI-audio-${ts}.mp3`;
-
-    const a = document.createElement("a");
-    a.href = gen.audioUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  };
-
   if (loading) {
     return (
       <div className="space-y-3">
@@ -184,19 +197,24 @@ export function HistoryList() {
         <AudioPlayer
           src={loadedGeneration.audioUrl}
           title={loadedGeneration.title}
+          createdAt={loadedGeneration.createdAt}
         />
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Button
             variant="outline"
-            onClick={() => handleDownload(loadedGeneration)}
+            onClick={() => downloadAudio(loadedGeneration)}
           >
             <Download className="size-4" />
             Download
           </Button>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
             <Badge variant="secondary">{loadedGeneration.voice}</Badge>
             <Badge variant="outline">{loadedGeneration.speed}%</Badge>
+            <span className="flex items-center gap-1">
+              <Clock className="size-3" />
+              {formatHongKongDateTime(loadedGeneration.createdAt)}
+            </span>
             {loadedGeneration.ttsCost && (
               <span>HK${loadedGeneration.ttsCost}</span>
             )}
@@ -242,7 +260,7 @@ export function HistoryList() {
                 </Badge>
                 <span className="flex items-center gap-1">
                   <Clock className="size-3" />
-                  {new Date(gen.createdAt).toLocaleDateString()}
+                  {formatHongKongDateTime(gen.createdAt)}
                 </span>
                 {gen.ttsCost && <span>HK${gen.ttsCost}</span>}
               </div>
@@ -262,7 +280,7 @@ export function HistoryList() {
                 variant="ghost"
                 size="icon"
                 className="size-8"
-                onClick={() => handleDownload(gen)}
+                onClick={() => downloadAudio(gen)}
                 title="Download"
               >
                 <Download className="size-4" />

@@ -28,18 +28,23 @@ export function TtsForm() {
   const [inputMethod, setInputMethod] = useState<"text" | "upload">("text");
   const [text, setText] = useState("");
   const [extractedText, setExtractedText] = useState("");
+  const [uploadedFileName, setUploadedFileName] = useState("");
   const [voice, setVoice] = useState("Female 1");
   const [speed, setSpeed] = useState(100);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [audioTitle, setAudioTitle] = useState<string>();
+  const [audioCreatedAt, setAudioCreatedAt] = useState<string>();
 
   const handleFilesSelected = useCallback(async (newFiles: File[]) => {
     if (newFiles.length === 0) {
       setExtractedText("");
+      setUploadedFileName("");
       return;
     }
+
+    setUploadedFileName(newFiles[0].name.replace(/\.[^.]+$/, ""));
 
     setIsExtracting(true);
     try {
@@ -88,6 +93,10 @@ export function TtsForm() {
           text: inputText,
           voice,
           speed,
+          title:
+            inputMethod === "upload" && uploadedFileName
+              ? `Audio - ${uploadedFileName}`
+              : undefined,
         }),
       });
 
@@ -99,6 +108,7 @@ export function TtsForm() {
       const data = (await res.json()) as Generation;
       setAudioSrc(data.audioUrl);
       setAudioTitle(data.title);
+      setAudioCreatedAt(data.createdAt);
 
       toast.success(
         `Audio generated! ${data.ttsCost ? `Cost: HK$${data.ttsCost}` : ""}`,
@@ -200,7 +210,7 @@ export function TtsForm() {
       </div>
 
       <div className="space-y-4">
-        <AudioPlayer src={audioSrc} title={audioTitle} />
+        <AudioPlayer src={audioSrc} title={audioTitle} createdAt={audioCreatedAt} />
 
         <Link href="/history" className="block">
           <Button variant="outline" className="w-full">
