@@ -6,34 +6,29 @@ import { users } from "./db/schema";
 import { eq } from "drizzle-orm";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: DrizzleAdapter(db),
+  adapter: {
+    ...DrizzleAdapter(db),
+    async createUser(data) {
+      const existing = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, data.email))
+        .limit(1);
+
+      if (existing.length > 0) {
+        return existing[0];
+      }
+
+      const [created] = await db.insert(users).values(data).returning();
+      return created;
+    },
+  },
   providers: [Google],
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
   },
   callbacks: {
-    async signIn({ user }) {
-      if (user.email) {
-        const existing = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, user.email))
-          .limit(1);
-        if (existing.length === 0) {
-          await db.insert(users).values({
-            id: user.id,
-            name: user.name,
-            email: user.email,
-            emailVerified: "emailVerified" in user ? user.emailVerified : null,
-            image: user.image,
-          });
-        } else {
-          user.id = existing[0].id;
-        }
-      }
-      return true;
-    },
     session({ session, token }) {
       if (token?.sub) {
         session.user.id = token.sub;
