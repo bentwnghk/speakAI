@@ -2,8 +2,8 @@ FROM node:22-slim AS base
 
 FROM base AS deps
 WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev
+COPY package.json package-lock.json* ./
+RUN npm install
 
 FROM base AS builder
 WORKDIR /app
