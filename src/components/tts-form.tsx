@@ -9,7 +9,7 @@ import { VoiceSelect } from "@/components/voice-select";
 import { SpeedSlider } from "@/components/speed-slider";
 import { FileUpload } from "@/components/file-upload";
 import { AudioPlayer } from "@/components/audio-player";
-import { Sparkles, Type, Upload, Loader2, History } from "lucide-react";
+import { Sparkles, Type, Upload, Loader2, History, FileText, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
@@ -130,7 +130,10 @@ export function TtsForm() {
       <div className="space-y-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Source</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="size-4" />
+              Source
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Tabs
@@ -181,7 +184,10 @@ export function TtsForm() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Settings</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <SlidersHorizontal className="size-4" />
+              Settings
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <VoiceSelect value={voice} onValueChange={setVoice} />

@@ -15,6 +15,9 @@ import {
   Volume2,
   Clock,
   ArrowLeft,
+  Mic,
+  Gauge,
+  DollarSign,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -209,14 +212,14 @@ export function HistoryList() {
             Download
           </Button>
           <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-            <Badge variant="secondary">{loadedGeneration.voice}</Badge>
-            <Badge variant="outline">{loadedGeneration.speed}%</Badge>
+            <Badge variant="secondary"><Mic className="size-3" />{loadedGeneration.voice}</Badge>
+            <Badge variant="outline"><Gauge className="size-3" />{loadedGeneration.speed}%</Badge>
             <span className="flex items-center gap-1">
               <Clock className="size-3" />
               {formatHongKongDateTime(loadedGeneration.createdAt)}
             </span>
             {loadedGeneration.ttsCost && (
-              <span>HK${loadedGeneration.ttsCost}</span>
+              <span className="flex items-center gap-1"><DollarSign className="size-3" />HK${loadedGeneration.ttsCost}</span>
             )}
           </div>
         </div>
@@ -252,17 +255,17 @@ export function HistoryList() {
                 <p className="text-sm font-medium truncate">{gen.title}</p>
               )}
               <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                <Badge variant="secondary" className="text-xs">
-                  {gen.voice}
+                <Badge variant="secondary" className="text-xs gap-1">
+                  <Mic className="size-3" />{gen.voice}
                 </Badge>
-                <Badge variant="outline" className="text-xs">
-                  {gen.speed}%
+                <Badge variant="outline" className="text-xs gap-1">
+                  <Gauge className="size-3" />{gen.speed}%
                 </Badge>
                 <span className="flex items-center gap-1">
                   <Clock className="size-3" />
                   {formatHongKongDateTime(gen.createdAt)}
                 </span>
-                {gen.ttsCost && <span>HK${gen.ttsCost}</span>}
+                {gen.ttsCost && <span className="flex items-center gap-1"><DollarSign className="size-3" />HK${gen.ttsCost}</span>}
               </div>
             </div>
 
