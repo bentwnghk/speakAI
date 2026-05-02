@@ -333,9 +333,25 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
 
           <motion.p
             variants={heroItemVariants}
-            className="mt-3 text-2xl sm:text-3xl font-medium italic text-white/60 bg-gradient-to-r from-blue-300/80 via-indigo-300/80 to-violet-300/80 bg-clip-text"
+            className="mt-3 text-2xl sm:text-3xl font-medium italic flex flex-wrap items-center justify-center gap-x-2"
           >
-            Turn any text into natural speech — instantly.
+            {["Turn", "any", "text", "into", "lifelike", "speech", "—", "read", "along", "with", "karaoke-style", "highlighting"].map((word, i, arr) => (
+              <motion.span
+                key={i}
+                initial={{ opacity: 0.2 }}
+                animate={{ opacity: [0.2, 1, 1, 0.5] }}
+                transition={{
+                  duration: arr.length * 0.35,
+                  repeat: Infinity,
+                  repeatDelay: 1,
+                  delay: i * 0.35,
+                  ease: "easeInOut",
+                }}
+                className={word === "—" ? "font-bold bg-gradient-to-r from-blue-300/80 via-indigo-300/80 to-violet-300/80 bg-clip-text text-transparent" : "text-white/60"}
+              >
+                {word}
+              </motion.span>
+            ))}
           </motion.p>
 
           <motion.p
