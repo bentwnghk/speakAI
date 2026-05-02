@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { generateTtsAudio, VOICE_MAP, alignAudio } from "@/lib/tts";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, count } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -87,20 +87,37 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const userGenerations = await db
-    .select()
-    .from(generations)
-    .where(eq(generations.userId, session.user.id))
-    .orderBy(desc(generations.createdAt));
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 10));
+  const offset = (page - 1) * limit;
 
-  return NextResponse.json(
-    userGenerations.map((g) => ({
+  const whereClause = eq(generations.userId, session.user.id);
+
+  const [userGenerations, totalResult] = await Promise.all([
+    db
+      .select()
+      .from(generations)
+      .where(whereClause)
+      .orderBy(desc(generations.createdAt))
+      .limit(limit)
+      .offset(offset),
+    db
+      .select({ count: count() })
+      .from(generations)
+      .where(whereClause),
+  ]);
+
+  const total = totalResult[0]?.count ?? 0;
+
+  return NextResponse.json({
+    items: userGenerations.map((g) => ({
       id: g.id,
       title: g.title,
       transcript: g.transcript,
@@ -110,6 +127,10 @@ export async function GET() {
       segments: g.segments ? (JSON.parse(g.segments) as unknown[]) : undefined,
       ttsCost: g.ttsCost,
       createdAt: g.createdAt,
-    }))
-  );
+    })),
+    total,
+    page,
+    limit,
+    totalPages: Math.ceil(total / limit),
+  });
 }

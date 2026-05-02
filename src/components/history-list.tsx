@@ -18,9 +18,18 @@ import {
   Mic,
   Gauge,
   DollarSign,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { AudioPlayer } from "@/components/audio-player";
 import { KaraokeText } from "@/components/karaoke-text";
 import type { Segment } from "@/types/karaoke";
@@ -86,6 +95,8 @@ function downloadAudio(gen: Generation) {
     });
 }
 
+const PAGE_SIZE_OPTIONS = [10, 20, 30, 50] as const;
+
 export function HistoryList() {
   const { data: session } = useSession();
   const [generations, setGenerations] = useState<Generation[]>([]);
@@ -97,19 +108,33 @@ export function HistoryList() {
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [karaokeActive, setKaraokeActive] = useState(false);
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  const totalPages = Math.ceil(total / limit);
 
   useEffect(() => {
     if (session) {
       void fetchGenerations();
     }
-  }, [session]);
+  }, [session, page, limit]);
 
   const fetchGenerations = async () => {
+    setLoading(true);
     try {
-      const res = await fetch("/api/tts");
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
+      const res = await fetch(`/api/tts?${params}`);
       if (res.ok) {
-        const data = (await res.json()) as Generation[];
-        setGenerations(data);
+        const data = (await res.json()) as {
+          items: Generation[];
+          total: number;
+        };
+        setGenerations(data.items);
+        setTotal(data.total);
       }
     } catch {
       toast.error("Failed to load history");
@@ -124,7 +149,14 @@ export function HistoryList() {
     try {
       const res = await fetch(`/api/generations/${id}`, { method: "DELETE" });
       if (res.ok) {
-        setGenerations((prev) => prev.filter((g) => g.id !== id));
+        const newTotal = total - 1;
+        setTotal(newTotal);
+        const newTotalPages = Math.ceil(newTotal / limit);
+        if (page > newTotalPages && newTotalPages > 0) {
+          setPage(newTotalPages);
+        } else {
+          void fetchGenerations();
+        }
         if (loadedGeneration?.id === id) {
           setLoadedGeneration(null);
         }
@@ -270,6 +302,33 @@ export function HistoryList() {
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {total} item{total !== 1 ? "s" : ""}
+        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Per page</span>
+          <Select
+            value={String(limit)}
+            onValueChange={(val) => {
+              setLimit(Number(val));
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-8 w-[70px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {generations.map((gen) => (
         <Card key={gen.id}>
            <CardContent className="flex items-start gap-3 py-3">
@@ -364,6 +423,32 @@ export function HistoryList() {
           </CardContent>
         </Card>
       ))}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            <ChevronLeft className="size-4" />
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground px-2">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            Next
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
