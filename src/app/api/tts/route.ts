@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const result = await generateTtsAudio(text, voice, speed);
 
     const { segments, audioDurationSeconds } = await alignAudio(
-      result.audioPath,
+      result.chunks,
       text
     );
 

@@ -1,4 +1,4 @@
-import { mkdir, writeFile, readFile } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { nanoid } from "nanoid";
 
@@ -119,11 +119,16 @@ async function fetchAudioChunk(
   throw new Error("Failed after 3 attempts");
 }
 
+export interface AudioChunk {
+  text: string;
+  buffer: ArrayBuffer;
+}
+
 export async function generateTtsAudio(
   text: string,
   voice: string,
   speedPercent: number
-): Promise<{ audioPath: string; cost: string; audioDurationSeconds: number }> {
+): Promise<{ audioPath: string; cost: string; audioDurationSeconds: number; chunks: AudioChunk[] }> {
   const apiKey = process.env.TTS_API_KEY;
   const baseUrl = (process.env.TTS_BASE_URL || "https://api.openai.com/v1").replace(/\/$/, "");
 
@@ -134,13 +139,13 @@ export async function generateTtsAudio(
   const actualVoice = VOICE_MAP[voice] || "nova";
   const speed = speedPercent / 100;
 
-  const chunks = splitText(text);
+  const chunkTexts = splitText(text);
   const audioBuffers: ArrayBuffer[] = [];
 
   const concurrencyLimit = 10;
   const batches: string[][] = [];
-  for (let i = 0; i < chunks.length; i += concurrencyLimit) {
-    batches.push(chunks.slice(i, i + concurrencyLimit));
+  for (let i = 0; i < chunkTexts.length; i += concurrencyLimit) {
+    batches.push(chunkTexts.slice(i, i + concurrencyLimit));
   }
 
   for (const batch of batches) {
@@ -174,6 +179,7 @@ export async function generateTtsAudio(
     audioPath: `data/audio/${audioId}.mp3`,
     cost: ttsCost.toFixed(2),
     audioDurationSeconds: 0,
+    chunks: chunkTexts.map((t, i) => ({ text: t, buffer: audioBuffers[i] })),
   };
 }
 
@@ -348,8 +354,74 @@ function distributeTimingToWords(
   return result;
 }
 
+/**
+ * Transcribe a single audio chunk with Whisper and return word/segment
+ * timestamps shifted by `timeOffset` (the cumulative duration of all
+ * preceding chunks).  Processing each chunk separately avoids the
+ * ID3-header-splice problem that occurs when multiple MP3 files are
+ * byte-concatenated: ffmpeg/Whisper may treat the second ID3 header as a
+ * new stream origin, causing timestamps to restart mid-file and leaving the
+ * first N paragraphs without reliable word-level timing data.
+ */
+async function transcribeChunk(
+  chunkText: string,
+  buffer: ArrayBuffer,
+  timeOffset: number,
+  apiKey: string,
+  baseUrl: string,
+): Promise<{ words: WhisperWord[]; segments: WhisperSegment[]; duration: number }> {
+  const audioBlob = new Blob([buffer], { type: "audio/mpeg" });
+  const formData = new FormData();
+  formData.append("file", audioBlob, "audio.mp3");
+  formData.append("model", "whisper-1");
+  formData.append("response_format", "verbose_json");
+  formData.append("timestamp_granularities[]", "word");
+  formData.append("timestamp_granularities[]", "segment");
+  // Use this chunk's own text as the prompt so Whisper's vocabulary bias is
+  // tight — a 900-char window of the full text may not even reach this chunk.
+  const prompt = chunkText.replace(/•/g, "").replace(/\s+/g, " ").trim().slice(0, 900);
+  formData.append("prompt", prompt);
+
+  const response = await fetch(`${baseUrl}/audio/transcriptions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}` },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    console.error("Whisper chunk transcription failed:", response.status);
+    return { words: [], segments: [], duration: 0 };
+  }
+
+  const data = (await response.json()) as {
+    words?:    WhisperWord[];
+    segments?: WhisperSegment[];
+    duration?: number;
+  };
+
+  const rawWords = data.words    ?? [];
+  const rawSegs  = data.segments ?? [];
+
+  // Shift every timestamp by the running time offset so timestamps are
+  // absolute within the combined audio file.
+  const words    = rawWords.map((w) => ({ ...w, start: w.start + timeOffset, end: w.end + timeOffset }));
+  const segments = rawSegs.map( (s) => ({ ...s, start: s.start + timeOffset, end: s.end + timeOffset }));
+
+  // Whisper's verbose_json includes a top-level `duration` field for the
+  // chunk; fall back to the last word/segment end if it's missing.
+  const duration =
+    data.duration ??
+    (rawWords.length > 0
+      ? rawWords[rawWords.length - 1].end
+      : rawSegs.length > 0
+        ? rawSegs[rawSegs.length - 1].end
+        : 0);
+
+  return { words, segments, duration };
+}
+
 export async function alignAudio(
-  audioPath: string,
+  audioChunks: AudioChunk[],
   text: string
 ): Promise<{ segments: Segment[]; audioDurationSeconds: number }> {
   const apiKey = process.env.TTS_API_KEY;
@@ -360,45 +432,31 @@ export async function alignAudio(
   if (!apiKey) return { segments: [], audioDurationSeconds: 0 };
 
   try {
-    const absolutePath = join(process.cwd(), audioPath);
-    const audioBuffer = await readFile(absolutePath);
-    const audioBlob = new Blob([audioBuffer], { type: "audio/mpeg" });
+    // ── Per-chunk Whisper transcription ──────────────────────────────────────
+    // All chunks are transcribed in parallel.  Each chunk is a self-contained
+    // MP3 whose timestamps start at t=0, so Whisper's word detector works on
+    // clean, uninterrupted audio — no ID3-splice issues.  Each result carries
+    // a `duration` field; we accumulate those to compute absolute offsets
+    // before merging into the combined word/segment arrays below.
+    const chunkResults = await Promise.all(
+      audioChunks.map((chunk) =>
+        transcribeChunk(chunk.text, chunk.buffer, 0, apiKey, baseUrl)
+      )
+    );
 
-    const formData = new FormData();
-    formData.append("file", audioBlob, "audio.mp3");
-    formData.append("model", "whisper-1");
-    formData.append("response_format", "verbose_json");
-    // Both granularities:
-    //   segment → accurate sentence-level start/end boundaries
-    //   word    → accurate per-word timestamps within each sentence
-    formData.append("timestamp_granularities[]", "word");
-    formData.append("timestamp_granularities[]", "segment");
-    // Providing the source text as prompt biases Whisper to follow the
-    // original vocabulary so word sequences stay close to the source,
-    // minimising alignment drift ("per cent" rather than "percent", etc.)
-    const prompt = text.replace(/•/g, "").replace(/\s+/g, " ").trim().slice(0, 900);
-    formData.append("prompt", prompt);
-
-    const response = await fetch(`${baseUrl}/audio/transcriptions`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      console.error("Whisper alignment failed:", response.status);
-      return { segments: [], audioDurationSeconds: 0 };
+    // Compute cumulative offsets from reported chunk durations and re-apply.
+    let cumOffset = 0;
+    const whisperWords:    WhisperWord[]    = [];
+    const whisperSegments: WhisperSegment[] = [];
+    for (const result of chunkResults) {
+      const off = cumOffset;
+      for (const w of result.words)    whisperWords.push(   { ...w, start: w.start + off, end: w.end + off });
+      for (const s of result.segments) whisperSegments.push({ ...s, start: s.start + off, end: s.end + off });
+      cumOffset += result.duration;
     }
+    const totalDuration = cumOffset;
 
-    const data = (await response.json()) as {
-      words?:    WhisperWord[];
-      segments?: WhisperSegment[];
-    };
-
-    const whisperWords    = data.words    ?? [];
-    const whisperSegments = data.segments ?? [];
-
-    if (whisperWords.length === 0) return { segments: [], audioDurationSeconds: 0 };
+    if (whisperWords.length === 0) return { segments: [], audioDurationSeconds: totalDuration };
 
     const sourceSentences = splitIntoSentences(text);
     if (sourceSentences.length === 0) return { segments: [], audioDurationSeconds: 0 };
@@ -513,7 +571,9 @@ export async function alignAudio(
       }
     }
 
-    return { segments, audioDurationSeconds: audioEnd };
+    // Use totalDuration (sum of per-chunk Whisper durations) as the canonical
+    // audio length; it matches what the browser will actually play.
+    return { segments, audioDurationSeconds: totalDuration };
   } catch (error) {
     console.error("Audio alignment error:", error);
     return { segments: [], audioDurationSeconds: 0 };
