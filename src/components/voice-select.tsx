@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Mic } from "lucide-react";
-import { VOICE_OPTIONS } from "@/lib/constants";
+import { VOICE_MAP, VOICE_OPTIONS } from "@/lib/constants";
 
 interface VoiceSelectProps {
   value: string;
@@ -30,7 +30,7 @@ export function VoiceSelect({ value, onValueChange }: VoiceSelectProps) {
         <SelectContent>
           {VOICE_OPTIONS.map((voice) => (
             <SelectItem key={voice} value={voice}>
-              {voice}
+              {voice} ({VOICE_MAP[voice]})
             </SelectItem>
           ))}
         </SelectContent>
