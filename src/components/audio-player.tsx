@@ -133,7 +133,7 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
   if (!src) {
     return (
       <Card>
-        <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+        <CardContent className="flex flex-col items-center justify-center py-6 text-muted-foreground">
           <Volume2 className="size-12 mb-3 opacity-30" />
           <p className="text-sm">Generated audio will appear here</p>
         </CardContent>
@@ -143,7 +143,7 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
 
   return (
     <Card>
-      <CardContent className="space-y-3 pt-6">
+      <CardContent className="space-y-3 pt-2">
         {title && (
           <p className="text-sm font-medium truncate">{title}</p>
         )}
