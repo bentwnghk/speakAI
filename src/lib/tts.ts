@@ -3,7 +3,7 @@ import { join } from "path";
 import { nanoid } from "nanoid";
 
 import { VOICE_MAP, VOICE_OPTIONS } from "./constants";
-import type { Segment } from "@/types/karaoke";
+import type { Segment, WordTimestamp } from "@/types/karaoke";
 
 export { VOICE_MAP, VOICE_OPTIONS };
 
@@ -189,39 +189,169 @@ interface WhisperWord {
   end: number;
 }
 
+interface WhisperSegment {
+  text: string;
+  start: number;
+  end: number;
+}
+
 /** A token is "speakable" if it contains at least one alphanumeric character.
  *  Filters out bullets (•), em dashes (—), bare colons, etc. */
 function isSpeakableWord(token: string): boolean {
   return /[a-zA-Z0-9]/.test(token);
 }
 
-/** Lowercase and strip non-alphanumeric characters for fuzzy word matching. */
-function normalizeForMatching(word: string): string {
-  return word.toLowerCase().replace(/[^a-z0-9]/g, "");
+/**
+ * Split source text into sentences by line.
+ * Each non-empty line becomes its own sentence — matches how Whisper
+ * naturally pauses between lines of text.
+ */
+function splitIntoSentences(text: string): string[] {
+  const result: string[] = [];
+  for (const line of text.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed && isSpeakableWord(trimmed)) {
+      result.push(trimmed);
+    }
+  }
+  return result.length > 0 ? result : [text.trim()].filter(Boolean);
+}
+
+/** Return the ordered list of speakable whitespace-split tokens from a sentence. */
+function getSpeakableWords(sentence: string): string[] {
+  return sentence.split(/\s+/).filter(isSpeakableWord);
 }
 
 /**
- * Search forward in whisperWords from fromIdx for the first word that
- * fuzzy-matches the first speakable token in lineText.
- * Returns the index if found, -1 otherwise.
+ * Map N source speakable words onto M Whisper word timestamps using
+ * character-position proportional alignment.
+ *
+ * This handles vocabulary mismatches that survive even with a Whisper prompt:
+ *   "per cent" (2 src words, 7 chars) → "percent" (1 whisper word, 7 chars)
+ *   "gap-year"  (1 src word,  8 chars) → "gap" "year" (2 whisper words, 7 chars)
+ *
+ * Each source word is assigned a [start, end] time by interpolating within
+ * the Whisper word(s) that occupy the same proportional character position.
  */
-function findLineStartInWhisper(
-  whisperWords: WhisperWord[],
-  lineText: string,
-  fromIdx: number
-): number {
-  const firstToken = lineText.split(/\s+/).find(isSpeakableWord);
-  if (!firstToken) return -1;
-  const target = normalizeForMatching(firstToken);
-  if (!target) return -1;
+function mapWordsToTimings(
+  sourceWords: string[],
+  whisperWords: WhisperWord[]
+): WordTimestamp[] {
+  const N = sourceWords.length;
+  const M = whisperWords.length;
+  if (N === 0 || M === 0) return [];
 
-  for (let i = fromIdx; i < whisperWords.length; i++) {
-    const w = normalizeForMatching(whisperWords[i].word);
-    if (w === target || w.startsWith(target) || target.startsWith(w)) {
-      return i;
-    }
+  // Cumulative char counts for source words
+  const srcCum = [0];
+  for (const w of sourceWords) srcCum.push(srcCum[srcCum.length - 1] + w.length);
+  const srcTotal = srcCum[N];
+
+  // Cumulative char counts for Whisper words (minimum 1 to avoid zero-div)
+  const wCum = [0];
+  for (const w of whisperWords) {
+    const len = Math.max(w.word.trim().length, 1);
+    wCum.push(wCum[wCum.length - 1] + len);
   }
-  return -1;
+  const wTotal = wCum[M];
+
+  const result: WordTimestamp[] = [];
+
+  for (let i = 0; i < N; i++) {
+    const fStart = srcCum[i] / srcTotal;
+    const fEnd   = srcCum[i + 1] / srcTotal;
+
+    // Map source char fractions → Whisper char space
+    const wFStart = fStart * wTotal;
+    const wFEnd   = fEnd   * wTotal;
+
+    // Whisper word index whose range contains wFStart
+    let wsi = 0;
+    while (wsi < M - 1 && wCum[wsi + 1] <= wFStart) wsi++;
+
+    // Whisper word index whose range contains wFEnd
+    let wei = M - 1;
+    while (wei > 0 && wCum[wei] >= wFEnd) wei--;
+
+    // Interpolate start time within Whisper word wsi
+    const wsRange = wCum[wsi + 1] - wCum[wsi];
+    const wsRel   = wsRange > 0 ? Math.max(0, (wFStart - wCum[wsi]) / wsRange) : 0;
+    const actualStart =
+      whisperWords[wsi].start + wsRel * (whisperWords[wsi].end - whisperWords[wsi].start);
+
+    // Interpolate end time within Whisper word wei
+    const weRange = wCum[wei + 1] - wCum[wei];
+    const weRel   = weRange > 0 ? Math.min(1, (wFEnd - wCum[wei]) / weRange) : 1;
+    const actualEnd =
+      whisperWords[wei].start + weRel * (whisperWords[wei].end - whisperWords[wei].start);
+
+    result.push({
+      word:  sourceWords[i],
+      start: actualStart,
+      end:   Math.max(actualEnd, actualStart + 0.05), // guarantee non-zero duration
+    });
+  }
+
+  return result;
+}
+
+/**
+ * Re-scale a sentence's Whisper word timestamps so the first word starts at
+ * exactly segStart and the last word ends at exactly segEnd.
+ *
+ * Why this matters for fast voices:
+ *   Whisper's word-level detector becomes less precise as speech speeds up —
+ *   word boundaries can drift by 100–300 ms relative to the true audio
+ *   position.  Sentence (segment) boundaries are estimated at a coarser
+ *   acoustic resolution and are considerably more reliable.  Anchoring the
+ *   word timestamps to those known-good boundaries corrects the drift while
+ *   preserving the relative ordering and proportions of words within the
+ *   sentence.
+ */
+function normalizeWordTimingsToSegment(
+  words: WhisperWord[],
+  segStart: number,
+  segEnd: number
+): WhisperWord[] {
+  if (words.length === 0) return [];
+  if (words.length === 1) return [{ ...words[0], start: segStart, end: segEnd }];
+
+  const rawStart    = words[0].start;
+  const rawEnd      = words[words.length - 1].end;
+  const rawDuration = rawEnd - rawStart;
+  if (rawDuration <= 0) return words;
+
+  const segDuration = segEnd - segStart;
+  return words.map((w) => ({
+    ...w,
+    start: segStart + ((w.start - rawStart) / rawDuration) * segDuration,
+    end:   segStart + ((w.end   - rawStart) / rawDuration) * segDuration,
+  }));
+}
+
+/**
+ * Fallback: distribute [startTime, endTime] proportionally by character length.
+ * Used only when Whisper returns no words for a sentence's time range.
+ */
+function distributeTimingToWords(
+  sentenceText: string,
+  startTime: number,
+  endTime: number
+): WordTimestamp[] {
+  const words = getSpeakableWords(sentenceText);
+  if (words.length === 0) return [];
+
+  const duration   = endTime - startTime;
+  const totalChars = words.reduce((sum, w) => sum + w.length, 0);
+  const result: WordTimestamp[] = [];
+  let currentTime = startTime;
+
+  for (const word of words) {
+    const wordDuration =
+      totalChars > 0 ? (word.length / totalChars) * duration : duration / words.length;
+    result.push({ word, start: currentTime, end: currentTime + wordDuration });
+    currentTime += wordDuration;
+  }
+  return result;
 }
 
 /**
@@ -239,13 +369,14 @@ async function transcribeChunk(
   timeOffset: number,
   apiKey: string,
   baseUrl: string,
-): Promise<{ words: WhisperWord[]; duration: number }> {
+): Promise<{ words: WhisperWord[]; segments: WhisperSegment[]; duration: number }> {
   const audioBlob = new Blob([buffer], { type: "audio/mpeg" });
   const formData = new FormData();
   formData.append("file", audioBlob, "audio.mp3");
   formData.append("model", "whisper-1");
   formData.append("response_format", "verbose_json");
   formData.append("timestamp_granularities[]", "word");
+  formData.append("timestamp_granularities[]", "segment");
   // Use this chunk's own text as the prompt so Whisper's vocabulary bias is
   // tight — a 900-char window of the full text may not even reach this chunk.
   const prompt = chunkText.replace(/•/g, "").replace(/\s+/g, " ").trim().slice(0, 900);
@@ -259,26 +390,34 @@ async function transcribeChunk(
 
   if (!response.ok) {
     console.error("Whisper chunk transcription failed:", response.status);
-    return { words: [], duration: 0 };
+    return { words: [], segments: [], duration: 0 };
   }
 
   const data = (await response.json()) as {
     words?:    WhisperWord[];
+    segments?: WhisperSegment[];
     duration?: number;
   };
 
-  const rawWords = data.words ?? [];
+  const rawWords = data.words    ?? [];
+  const rawSegs  = data.segments ?? [];
 
   // Shift every timestamp by the running time offset so timestamps are
   // absolute within the combined audio file.
-  const words = rawWords.map((w) => ({ ...w, start: w.start + timeOffset, end: w.end + timeOffset }));
+  const words    = rawWords.map((w) => ({ ...w, start: w.start + timeOffset, end: w.end + timeOffset }));
+  const segments = rawSegs.map( (s) => ({ ...s, start: s.start + timeOffset, end: s.end + timeOffset }));
 
-  // verbose_json always includes a top-level `duration`; fall back to the
-  // last word's end time if it is somehow absent.
+  // Whisper's verbose_json includes a top-level `duration` field for the
+  // chunk; fall back to the last word/segment end if it's missing.
   const duration =
-    data.duration ?? (rawWords.length > 0 ? rawWords[rawWords.length - 1].end : 0);
+    data.duration ??
+    (rawWords.length > 0
+      ? rawWords[rawWords.length - 1].end
+      : rawSegs.length > 0
+        ? rawSegs[rawSegs.length - 1].end
+        : 0);
 
-  return { words, duration };
+  return { words, segments, duration };
 }
 
 export async function alignAudio(
@@ -294,81 +433,145 @@ export async function alignAudio(
 
   try {
     // ── Per-chunk Whisper transcription ──────────────────────────────────────
-    // Each chunk is transcribed independently against its own clean MP3,
-    // avoiding the ID3-splice timestamp problem that occurs when concatenated
-    // buffers are sent as one file.
+    // All chunks are transcribed in parallel.  Each chunk is a self-contained
+    // MP3 whose timestamps start at t=0, so Whisper's word detector works on
+    // clean, uninterrupted audio — no ID3-splice issues.  Each result carries
+    // a `duration` field; we accumulate those to compute absolute offsets
+    // before merging into the combined word/segment arrays below.
     const chunkResults = await Promise.all(
       audioChunks.map((chunk) =>
         transcribeChunk(chunk.text, chunk.buffer, 0, apiKey, baseUrl)
       )
     );
 
-    // Merge word arrays, shifting each chunk's timestamps by the cumulative
-    // duration of all preceding chunks so every timestamp is absolute.
+    // Compute cumulative offsets from reported chunk durations and re-apply.
     let cumOffset = 0;
-    const whisperWords: WhisperWord[] = [];
+    const whisperWords:    WhisperWord[]    = [];
+    const whisperSegments: WhisperSegment[] = [];
     for (const result of chunkResults) {
       const off = cumOffset;
-      for (const w of result.words)
-        whisperWords.push({ ...w, start: w.start + off, end: w.end + off });
+      for (const w of result.words)    whisperWords.push(   { ...w, start: w.start + off, end: w.end + off });
+      for (const s of result.segments) whisperSegments.push({ ...s, start: s.start + off, end: s.end + off });
       cumOffset += result.duration;
     }
     const totalDuration = cumOffset;
 
-    if (whisperWords.length === 0)
-      return { segments: [], audioDurationSeconds: totalDuration };
+    if (whisperWords.length === 0) return { segments: [], audioDurationSeconds: totalDuration };
 
-    // ── Line → Whisper word grouping ─────────────────────────────────────────
-    // Strategy: Whisper's own word timestamps are used directly as display
-    // text and timing — no remapping or drift correction needed.  We recover
-    // the original paragraph/line structure by finding where each non-empty
-    // source line starts in the Whisper word stream via first-token matching,
-    // then assign all Whisper words up to the next line's start to that
-    // segment.  One segment is produced per speakable source line.
-    const speakableLines = text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && isSpeakableWord(line));
+    const sourceSentences = splitIntoSentences(text);
+    if (sourceSentences.length === 0) return { segments: [], audioDurationSeconds: 0 };
 
-    if (speakableLines.length === 0)
-      return { segments: [], audioDurationSeconds: totalDuration };
+    // Best estimate of the true audio end: last word end or last segment end,
+    // whichever is later.  Used as the upper bound for Strategy B and as the
+    // return value when Strategy A is active.
+    const audioEnd = whisperSegments.length > 0
+      ? Math.max(
+          whisperWords[whisperWords.length - 1].end,
+          whisperSegments[whisperSegments.length - 1].end,
+        )
+      : whisperWords[whisperWords.length - 1].end;
 
-    // Find the Whisper-word index at which each speakable source line begins.
-    const lineStartIndices: number[] = [];
-    let searchFrom = 0;
-    for (const line of speakableLines) {
-      const found = findLineStartInWhisper(whisperWords, line, searchFrom);
-      const startIdx = found !== -1 ? found : searchFrom;
-      lineStartIndices.push(startIdx);
-      // Advance the search cursor so the next line is never placed before this
-      // one (guarantees monotonically increasing indices).
-      searchFrom = Math.min(startIdx + 1, whisperWords.length);
-    }
+    // ── Sentence timing ──────────────────────────────────────────────────────
+    const sentenceTimings: { start: number; end: number }[] = [];
 
-    // Build one segment per speakable source line using the boundary indices.
-    const segments: Segment[] = [];
-    for (let i = 0; i < speakableLines.length; i++) {
-      const startIdx = lineStartIndices[i];
-      const endIdx =
-        i < speakableLines.length - 1
-          ? lineStartIndices[i + 1]
-          : whisperWords.length;
-
-      const segWords = whisperWords.slice(startIdx, endIdx);
-      if (segWords.length === 0) continue;
-
-      segments.push({
-        text: segWords.map((w) => w.word).join(" "),
-        startTime: segWords[0].start,
-        endTime: segWords[segWords.length - 1].end,
-        words: segWords.map((w) => ({
-          word: w.word,
-          start: w.start,
-          end: w.end,
-        })),
+    // A 1-to-1 mapping is only safe when Whisper segmented the audio the same
+    // way as our source-sentence split.  We validate this by checking that
+    // each Whisper segment's text length is within 2× of its paired source
+    // sentence.  A larger ratio means Whisper merged or split differently —
+    // common when a heading has no terminal punctuation (it gets absorbed into
+    // the next segment) and another long sentence gets split to keep the total
+    // count equal, making the 1-to-1 assignment silently wrong.
+    const segmentsAlignWithSentences =
+      whisperSegments.length === sourceSentences.length &&
+      sourceSentences.every((src, i) => {
+        const srcLen = src.trim().length;
+        const wsLen  = whisperSegments[i].text.trim().length;
+        return wsLen <= srcLen * 2 && srcLen <= wsLen * 2;
       });
+
+    if (segmentsAlignWithSentences) {
+      // Confirmed 1-to-1 match — use Whisper segment timing directly.
+      for (const ws of whisperSegments) {
+        sentenceTimings.push({ start: ws.start, end: ws.end });
+      }
+    } else {
+      // Count mismatch: distribute source-sentence boundaries proportionally
+      // across the full audio timeline.
+      //
+      // Always anchor at t=0, not at whisperSegments[0].start.
+      // Whisper can omit segments/words for the very beginning of audio —
+      // short title lines, the opening sentence, etc. — so its first segment
+      // start is often several seconds into the audio.  TTS has no leading
+      // silence; speech begins at t≈0, so 0 is the correct origin regardless
+      // of what Whisper reports.
+      const timelineStart = 0;
+      // Use the best available estimate for the true audio end: the maximum
+      // of Whisper's per-chunk reported duration, the last word end, and the
+      // last segment end.
+      const timelineEnd = Math.max(
+        totalDuration,
+        audioEnd,
+      );
+      const timelineDuration = Math.max(timelineEnd - timelineStart, 0.01);
+
+      const sentenceWordCounts = sourceSentences.map((s) => getSpeakableWords(s).length);
+      const totalSrcWords = sentenceWordCounts.reduce((a, b) => a + b, 0);
+
+      let cumSrcWords = 0;
+      for (let i = 0; i < sourceSentences.length; i++) {
+        cumSrcWords += sentenceWordCounts[i];
+
+        const tStart = i === 0 ? timelineStart : sentenceTimings[i - 1].end;
+        // Proportional end time within the segment timeline
+        const tEnd = timelineStart + (cumSrcWords / totalSrcWords) * timelineDuration;
+        sentenceTimings.push({ start: tStart, end: Math.max(tEnd, tStart + 0.01) });
+      }
+      // Clamp the last sentence to the true audio end
+      if (sentenceTimings.length > 0) {
+        sentenceTimings[sentenceTimings.length - 1].end = timelineEnd;
+      }
     }
 
+    // ── Per-word timing ──────────────────────────────────────────────────────
+    // For each source sentence, collect the Whisper words whose centre time
+    // falls within the sentence's range, then map source speakable words onto
+    // those Whisper words via character-position alignment.
+    // Words displayed are always from the SOURCE TEXT — Whisper words are used
+    // only as timing guides, never as display text.
+    const segments: Segment[] = [];
+
+    for (let i = 0; i < sourceSentences.length; i++) {
+      const { start, end } = sentenceTimings[i];
+      const speakable = getSpeakableWords(sourceSentences[i]);
+      if (speakable.length === 0) continue;
+
+      const sentenceWhisperWords = whisperWords.filter((w) => {
+        const centre = (w.start + w.end) / 2;
+        return centre >= start && centre <= end;
+      });
+
+      // Re-anchor the word timestamps to the sentence boundaries before
+      // mapping.  This corrects word-level drift that Whisper produces for
+      // fast speech, while preserving the relative proportions between words.
+      const anchoredWords = normalizeWordTimingsToSegment(sentenceWhisperWords, start, end);
+
+      const timedWords =
+        anchoredWords.length > 0
+          ? mapWordsToTimings(speakable, anchoredWords)
+          : distributeTimingToWords(sourceSentences[i], start, end);
+
+      if (timedWords.length > 0) {
+        segments.push({
+          text:      sourceSentences[i],
+          startTime: start,
+          endTime:   end,
+          words:     timedWords,
+        });
+      }
+    }
+
+    // Use totalDuration (sum of per-chunk Whisper durations) as the canonical
+    // audio length; it matches what the browser will actually play.
     return { segments, audioDurationSeconds: totalDuration };
   } catch (error) {
     console.error("Audio alignment error:", error);
