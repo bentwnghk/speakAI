@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,6 +43,7 @@ export function TtsForm() {
   const [audioSegments, setAudioSegments] = useState<Segment[]>([]);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [karaokeActive, setKaraokeActive] = useState(false);
 
   const handleFilesSelected = useCallback(async (newFiles: File[]) => {
     if (newFiles.length === 0) {
@@ -162,7 +163,13 @@ export function TtsForm() {
   };
 
   const displayText = inputMethod === "upload" ? extractedText : text;
-  const showKaraoke = isAudioPlaying && audioSegments.length > 0 && audioSrc;
+  const showKaraoke = karaokeActive && audioSegments.length > 0 && audioSrc;
+
+  useEffect(() => {
+    if (isAudioPlaying) {
+      setKaraokeActive(true);
+    }
+  }, [isAudioPlaying]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -270,6 +277,8 @@ export function TtsForm() {
           createdAt={audioCreatedAt}
           onTimeUpdate={setAudioCurrentTime}
           onPlayStateChange={setIsAudioPlaying}
+          onStop={() => setKaraokeActive(false)}
+          onEnded={() => setKaraokeActive(false)}
         />
 
         <Link href="/history" className="block">

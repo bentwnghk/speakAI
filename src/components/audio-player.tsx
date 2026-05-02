@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Download, Volume2 } from "lucide-react";
+import { Play, Pause, StopCircle, Download, Volume2 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
 interface AudioPlayerProps {
@@ -12,6 +12,8 @@ interface AudioPlayerProps {
   createdAt?: string;
   onTimeUpdate?: (currentTime: number) => void;
   onPlayStateChange?: (isPlaying: boolean) => void;
+  onStop?: () => void;
+  onEnded?: () => void;
 }
 
 function formatDownloadTimestamp(dateStr: string): string {
@@ -29,7 +31,7 @@ function formatDownloadTimestamp(dateStr: string): string {
     .replace(/[/:, ]/g, "-");
 }
 
-export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateChange }: AudioPlayerProps) {
+export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateChange, onStop, onEnded }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -45,21 +47,22 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
       setCurrentTime(t);
       onTimeUpdate?.(t);
     };
-    const onEnded = () => {
+    const onEndedHandler = () => {
       setIsPlaying(false);
       onPlayStateChange?.(false);
+      onEnded?.();
     };
 
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("timeupdate", onTimeUpdateHandler);
-    audio.addEventListener("ended", onEnded);
+    audio.addEventListener("ended", onEndedHandler);
 
     return () => {
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("timeupdate", onTimeUpdateHandler);
-      audio.removeEventListener("ended", onEnded);
+      audio.removeEventListener("ended", onEndedHandler);
     };
-  }, [src, onTimeUpdate, onPlayStateChange]);
+  }, [src, onTimeUpdate, onPlayStateChange, onEnded]);
 
   useEffect(() => {
     setIsPlaying(false);
@@ -80,6 +83,18 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
     const newState = !isPlaying;
     setIsPlaying(newState);
     onPlayStateChange?.(newState);
+  };
+
+  const handleStop = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+    setIsPlaying(false);
+    setCurrentTime(0);
+    onPlayStateChange?.(false);
+    onTimeUpdate?.(0);
+    onStop?.();
   };
 
   const handleSeek = (value: number[]) => {
@@ -161,6 +176,16 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
             ) : (
               <Play className="size-4" />
             )}
+          </Button>
+
+          <Button
+            variant="outline"
+            size="icon"
+            className="shrink-0 rounded-full"
+            onClick={handleStop}
+            disabled={!isPlaying && currentTime === 0}
+          >
+            <StopCircle className="size-4" />
           </Button>
 
           <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">
