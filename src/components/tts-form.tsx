@@ -133,7 +133,7 @@ export function TtsForm() {
           speed,
           title:
             inputMethod === "upload" && uploadedFileName
-              ? `Audio - ${uploadedFileName}`
+              ? uploadedFileName
               : undefined,
         }),
       });

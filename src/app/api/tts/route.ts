@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     const generationTitle =
       title?.trim() ||
-      `Audio - ${text.trim().slice(0, 30).replace(/\n/g, " ")}${text.trim().length > 30 ? "..." : ""}`;
+      `${text.trim().slice(0, 30).replace(/\n/g, " ")}${text.trim().length > 30 ? "..." : ""}`;
 
     const [generation] = await db
       .insert(generations)
