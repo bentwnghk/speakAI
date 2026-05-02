@@ -189,40 +189,9 @@ interface WhisperWord {
   end: number;
 }
 
-/** A token is "speakable" if it contains at least one alphanumeric character.
- *  Filters out bullets (•), em dashes (—), bare colons, etc. */
-function isSpeakableWord(token: string): boolean {
-  return /[a-zA-Z0-9]/.test(token);
-}
 
-/** Lowercase and strip non-alphanumeric characters for fuzzy word matching. */
-function normalizeForMatching(word: string): string {
-  return word.toLowerCase().replace(/[^a-z0-9]/g, "");
-}
 
-/**
- * Search forward in whisperWords from fromIdx for the first word that
- * fuzzy-matches the first speakable token in lineText.
- * Returns the index if found, -1 otherwise.
- */
-function findLineStartInWhisper(
-  whisperWords: WhisperWord[],
-  lineText: string,
-  fromIdx: number
-): number {
-  const firstToken = lineText.split(/\s+/).find(isSpeakableWord);
-  if (!firstToken) return -1;
-  const target = normalizeForMatching(firstToken);
-  if (!target) return -1;
 
-  for (let i = fromIdx; i < whisperWords.length; i++) {
-    const w = normalizeForMatching(whisperWords[i].word);
-    if (w === target || w.startsWith(target) || target.startsWith(w)) {
-      return i;
-    }
-  }
-  return -1;
-}
 
 /**
  * Transcribe a single audio chunk with Whisper and return word/segment
@@ -282,8 +251,7 @@ async function transcribeChunk(
 }
 
 export async function alignAudio(
-  audioChunks: AudioChunk[],
-  text: string
+  audioChunks: AudioChunk[]
 ): Promise<{ segments: Segment[]; audioDurationSeconds: number }> {
   const apiKey = process.env.TTS_API_KEY;
   const baseUrl = (
@@ -318,58 +286,16 @@ export async function alignAudio(
     if (whisperWords.length === 0)
       return { segments: [], audioDurationSeconds: totalDuration };
 
-    // ── Line → Whisper word grouping ─────────────────────────────────────────
-    // Strategy: Whisper's own word timestamps are used directly as display
-    // text and timing — no remapping or drift correction needed.  We recover
-    // the original paragraph/line structure by finding where each non-empty
-    // source line starts in the Whisper word stream via first-token matching,
-    // then assign all Whisper words up to the next line's start to that
-    // segment.  One segment is produced per speakable source line.
-    const speakableLines = text
-      .split("\n")
-      .map((line) => line.trim())
-      .filter((line) => line && isSpeakableWord(line));
+    // Return one flat segment containing every Whisper word.
+    // Timing is Whisper's own — perfectly accurate, zero remapping.
+    const segment: Segment = {
+      text: whisperWords.map((w) => w.word).join(" "),
+      startTime: whisperWords[0].start,
+      endTime: whisperWords[whisperWords.length - 1].end,
+      words: whisperWords.map((w) => ({ word: w.word, start: w.start, end: w.end })),
+    };
 
-    if (speakableLines.length === 0)
-      return { segments: [], audioDurationSeconds: totalDuration };
-
-    // Find the Whisper-word index at which each speakable source line begins.
-    const lineStartIndices: number[] = [];
-    let searchFrom = 0;
-    for (const line of speakableLines) {
-      const found = findLineStartInWhisper(whisperWords, line, searchFrom);
-      const startIdx = found !== -1 ? found : searchFrom;
-      lineStartIndices.push(startIdx);
-      // Advance the search cursor so the next line is never placed before this
-      // one (guarantees monotonically increasing indices).
-      searchFrom = Math.min(startIdx + 1, whisperWords.length);
-    }
-
-    // Build one segment per speakable source line using the boundary indices.
-    const segments: Segment[] = [];
-    for (let i = 0; i < speakableLines.length; i++) {
-      const startIdx = lineStartIndices[i];
-      const endIdx =
-        i < speakableLines.length - 1
-          ? lineStartIndices[i + 1]
-          : whisperWords.length;
-
-      const segWords = whisperWords.slice(startIdx, endIdx);
-      if (segWords.length === 0) continue;
-
-      segments.push({
-        text: segWords.map((w) => w.word).join(" "),
-        startTime: segWords[0].start,
-        endTime: segWords[segWords.length - 1].end,
-        words: segWords.map((w) => ({
-          word: w.word,
-          start: w.start,
-          end: w.end,
-        })),
-      });
-    }
-
-    return { segments, audioDurationSeconds: totalDuration };
+    return { segments: [segment], audioDurationSeconds: totalDuration };
   } catch (error) {
     console.error("Audio alignment error:", error);
     return { segments: [], audioDurationSeconds: 0 };
