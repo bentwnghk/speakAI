@@ -96,6 +96,7 @@ export function HistoryList() {
     useState<Generation | null>(null);
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+  const [karaokeActive, setKaraokeActive] = useState(false);
 
   useEffect(() => {
     if (session) {
@@ -182,7 +183,7 @@ export function HistoryList() {
 
   if (loadedGeneration) {
     const showKaraoke =
-      isAudioPlaying &&
+      karaokeActive &&
       loadedGeneration.segments &&
       loadedGeneration.segments.length > 0;
 
@@ -196,6 +197,7 @@ export function HistoryList() {
               setLoadedGeneration(null);
               setAudioCurrentTime(0);
               setIsAudioPlaying(false);
+              setKaraokeActive(false);
             }}
           >
             <ArrowLeft className="size-4" />
@@ -234,7 +236,12 @@ export function HistoryList() {
           title={loadedGeneration.title}
           createdAt={loadedGeneration.createdAt}
           onTimeUpdate={setAudioCurrentTime}
-          onPlayStateChange={setIsAudioPlaying}
+          onPlayStateChange={(playing) => {
+            setIsAudioPlaying(playing);
+            if (playing) setKaraokeActive(true);
+          }}
+          onStop={() => setKaraokeActive(false)}
+          onEnded={() => setKaraokeActive(false)}
         />
 
         <div className="flex items-center gap-3 flex-wrap">
@@ -318,6 +325,7 @@ export function HistoryList() {
                 onClick={() => {
                   setAudioCurrentTime(0);
                   setIsAudioPlaying(false);
+                  setKaraokeActive(false);
                   setLoadedGeneration(gen);
                 }}
                 title="Load session"
