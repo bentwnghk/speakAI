@@ -3,6 +3,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  real,
   text,
   timestamp,
   varchar,
@@ -81,5 +82,39 @@ export const generations = pgTable("generation", {
   audioPath: text("audioPath").notNull(),
   segments: text("segments"),
   ttsCost: text("ttsCost"),
+  createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+});
+
+export const credits = pgTable("credits", {
+  userId: text("userId")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  balance: real("balance").notNull().default(0),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
+});
+
+export const creditTransactions = pgTable("credit_transactions", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  amount: real("amount").notNull(),
+  type: varchar("type", { length: 30 }).notNull(),
+  description: text("description"),
+  stripeSessionId: text("stripeSessionId"),
+  createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+});
+
+export const purchases = pgTable("purchases", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("userId")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  stripeSessionId: text("stripeSessionId").notNull().unique(),
+  stripePaymentIntentId: text("stripePaymentIntentId"),
+  planName: varchar("planName", { length: 20 }).notNull(),
+  creditsAmount: real("creditsAmount").notNull(),
+  amountHKD: real("amountHKD").notNull(),
+  status: varchar("status", { length: 20 }).notNull().default("pending"),
   createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 });

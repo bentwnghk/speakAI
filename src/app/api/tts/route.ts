@@ -4,12 +4,15 @@ import { generateTtsAudio, VOICE_MAP, alignAudio } from "@/lib/tts";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
 import { eq, desc, count } from "drizzle-orm";
+import { deductCredits, getUserBalance } from "@/lib/db/credits";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const userId = session.user.id;
 
   try {
     const body = (await request.json()) as {
@@ -34,13 +37,51 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const balance = await getUserBalance(userId);
+    const estimatedCost = Math.max(
+      (text.length / 1_000_000) * 15 * 7.8 + 0.01,
+      0.01
+    );
+
+    if (balance < estimatedCost) {
+      return NextResponse.json(
+        {
+          error: "Insufficient credits",
+          creditsNeeded: estimatedCost,
+          currentBalance: balance,
+        },
+        { status: 402 }
+      );
+    }
+
     const result = await generateTtsAudio(text, voice, speed);
 
-    const { segments, audioDurationSeconds } = await alignAudio(result.audioPath, text);
+    const { segments, audioDurationSeconds } = await alignAudio(
+      result.audioPath,
+      text
+    );
 
     const ttsCost = parseFloat(result.cost);
     const whisperCost = (audioDurationSeconds / 60) * 0.006 * 7.8;
     const totalCost = (ttsCost + whisperCost).toFixed(2);
+    const totalCostNum = parseFloat(totalCost);
+
+    const deduction = await deductCredits(
+      userId,
+      totalCostNum,
+      `TTS generation: "${text.trim().slice(0, 50)}"`
+    );
+
+    if (!deduction.success) {
+      return NextResponse.json(
+        {
+          error: deduction.error,
+          creditsNeeded: totalCostNum,
+          currentBalance: deduction.balance,
+        },
+        { status: 402 }
+      );
+    }
 
     const segmentsJson = segments.length > 0 ? JSON.stringify(segments) : null;
 
@@ -51,7 +92,7 @@ export async function POST(request: NextRequest) {
     const [generation] = await db
       .insert(generations)
       .values({
-        userId: session.user.id,
+        userId,
         title: generationTitle,
         transcript: text,
         voice: (VOICE_MAP[voice] || "nova") as
@@ -77,6 +118,8 @@ export async function POST(request: NextRequest) {
       audioUrl: `/api/audio/${generation.id}`,
       segments: segments.length > 0 ? segments : undefined,
       ttsCost: totalCost,
+      creditsUsed: totalCostNum,
+      remainingCredits: deduction.balance,
       createdAt: generation.createdAt,
     });
   } catch (error) {
@@ -95,7 +138,10 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const page = Math.max(1, Number(searchParams.get("page")) || 1);
-  const limit = Math.min(100, Math.max(1, Number(searchParams.get("limit")) || 10));
+  const limit = Math.min(
+    100,
+    Math.max(1, Number(searchParams.get("limit")) || 10)
+  );
   const offset = (page - 1) * limit;
 
   const whereClause = eq(generations.userId, session.user.id);
@@ -124,7 +170,9 @@ export async function GET(request: NextRequest) {
       voice: g.voice,
       speed: g.speed,
       audioUrl: `/api/audio/${g.id}`,
-      segments: g.segments ? (JSON.parse(g.segments) as unknown[]) : undefined,
+      segments: g.segments
+        ? (JSON.parse(g.segments) as unknown[])
+        : undefined,
       ttsCost: g.ttsCost,
       createdAt: g.createdAt,
     })),

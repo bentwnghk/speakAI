@@ -53,13 +53,14 @@ src/
 │   ├── (dashboard)/            # Authenticated route group (server-side auth guard in layout)
 │   │   ├── layout.tsx          # Dashboard layout (Header, auth check, footer)
 │   │   ├── page.tsx            # Main TTS generation page
+│   │   ├── credits/            # Credit purchase page with Stripe
 │   │   └── history/            # Generation history listing
 │   └── api/                    # API route handlers (see Backend section)
 ├── components/
-│   ├── auth-provider.tsx       # Client provider: SessionProvider wrapper
+│   ├── auth-provider.tsx       # Client provider: SessionProvider + CreditsProvider wrapper
 │   ├── audio-player.tsx        # Audio playback with karaoke-style highlighting
 │   ├── file-upload.tsx         # File upload (PDF, DOCX, TXT, images)
-│   ├── header.tsx              # App header with navigation
+│   ├── header.tsx              # App header with navigation + credits display
 │   ├── history-list.tsx        # Generation history list component
 │   ├── karaoke-text.tsx        # Word-by-word karaoke text display
 │   ├── speed-slider.tsx        # Speed control slider
@@ -75,11 +76,15 @@ src/
 │   ├── pdf-client.ts           # Client-side PDF processing (pdfjs-dist)
 │   ├── file-parser.ts          # Server-side file text extraction (DOCX, TXT, images)
 │   ├── tts.ts                  # TTS generation + Whisper-based audio alignment
+│   ├── stripe.ts               # Stripe client singleton + credit plan definitions
 │   └── db/
 │       ├── index.ts            # Drizzle ORM setup (postgres-js driver, schema export)
-│       └── schema.ts           # 5 tables: user, account, session, verification_token, generation
+│       ├── schema.ts           # 8 tables: user, account, session, verification_token, generation, credits, credit_transactions, purchases
+│       └── credits.ts          # Credit engine: grant, deduct, refund, purchase operations
 ├── sw/
 │   └── index.ts                # Serwist service worker for PWA offline support
+├── hooks/
+│   └── use-credits.tsx         # React context for credit balance (app-wide)
 └── types/
     ├── karaoke.ts              # WordTimestamp, Segment types for karaoke display
     └── pdf-parse.d.ts          # Type declarations for pdf-parse
@@ -139,12 +144,43 @@ The project uses **next-auth v5 (beta.25)** with **Google OAuth** as the sole pr
 
 ---
 
+## Credits & Payment System
+
+### Overview
+
+- **1 credit = HK$1.00** (stored as `REAL` with 2 decimal places).
+- Each new user receives **3 free credits** on first sign-in (configurable via `WELCOME_CREDITS` env var).
+- Each TTS generation consumes credits equal to the generation cost in HK$.
+- Credits are deducted after successful generation; refunds are issued on failure.
+
+### Credit Engine (`src/lib/db/credits.ts`)
+
+- **`ensureCreditsRecord(userId)`**: Creates credits row with welcome bonus on first sign-in. Called from NextAuth `signIn` event.
+- **`deductCredits(userId, amount, description)`**: Atomically decrements balance, records a `generation` transaction. Returns 402 if insufficient.
+- **`refundCredits(userId, amount, description)`**: Increments balance, records a `refund` transaction.
+- **`addCreditsFromPurchase(...)`**: Used by Stripe webhook to credit purchased amounts. Idempotent (upserts purchase record).
+
+### Stripe Integration (`src/lib/stripe.ts`)
+
+- **Plans**: 2 plans — Starter (HK$15 for 15 credits) and Best Value (HK$45 for 50 credits). Configurable via env vars.
+- **Checkout flow**: POST `/api/stripe/checkout` → creates Stripe Checkout Session → inserts `pending` purchase → redirects to Stripe.
+- **Webhook**: POST `/api/stripe/webhook` handles `checkout.session.completed` (credits user) and `checkout.session.expired` (marks failed).
+- **No auth** on webhook route — Stripe signs requests with `STRIPE_WEBHOOK_SECRET`.
+
+### Client-Side
+
+- **`useCredits()` hook** (`src/hooks/use-credits.tsx`): React context providing `balance`, `loading`, `refreshBalance()`. Wrapped by `CreditsProvider` in `AuthProvider`.
+- **Header**: Shows remaining credits (HK$ balance) as a button linking to `/credits`, right after History.
+- **Credits page** (`/credits`): Displays balance, 2 plan cards with purchase buttons, success/cancel banners, and purchase history table.
+
+---
+
 ## Database (PostgreSQL + Drizzle ORM)
 
 The project uses **PostgreSQL 16** with **Drizzle ORM**.
 
 - **Connection**: `postgres-js` driver configured in `src/lib/db/index.ts`.
-- **Schema**: All tables defined in `src/lib/db/schema.ts` (5 tables: `user`, `account`, `session`, `verification_token`, `generation`). The `generation` table stores TTS generation history with voice (as a Postgres enum), speed, audio path, karaoke segments (JSON), and cost.
+- **Schema**: All tables defined in `src/lib/db/schema.ts` (8 tables: `user`, `account`, `session`, `verification_token`, `generation`, `credits`, `credit_transactions`, `purchases`). The `generation` table stores TTS generation history with voice (as a Postgres enum), speed, audio path, karaoke segments (JSON), and cost. The `credits` table stores per-user balance (1:1 with users). `credit_transactions` is an append-only ledger. `purchases` tracks Stripe payment lifecycle.
 - **Migrations**: SQL migration files in `scripts/` (e.g., `init-db.sql`, `add-segments-column.sql`). Drizzle migrations in `drizzle/`.
 - **Config**: `drizzle.config.ts` at project root.
 
@@ -193,6 +229,13 @@ Refer to `.env.example` for all available environment variables (~7 variables).
 | `VISION_API_KEY` | API key for image OCR (falls back to `TTS_API_KEY`) |
 | `VISION_BASE_URL` | Base URL for vision model (falls back to `TTS_BASE_URL`) |
 | `VISION_MODEL` | Vision model name (default: `gpt-4.1-mini`) |
+| `STRIPE_SECRET_KEY` | Stripe secret key for payment processing |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
+| `WELCOME_CREDITS` | Free credits for new users (default: `3`) |
+| `STRIPE_PLAN_A_CREDITS` | Credits in Starter plan (default: `15`) |
+| `STRIPE_PLAN_A_PRICE_HKD` | Price in HKD for Starter plan (default: `15`) |
+| `STRIPE_PLAN_B_CREDITS` | Credits in Best Value plan (default: `50`) |
+| `STRIPE_PLAN_B_PRICE_HKD` | Price in HKD for Best Value plan (default: `45`) |
 
 - **Never commit** `.env` or `.env.local` files.
 
@@ -207,17 +250,22 @@ API routes are in `src/app/api/`. Key endpoints:
 | Route | Methods | Purpose |
 | --- | --- | --- |
 | `/api/auth/[...nextauth]` | GET/POST | NextAuth handler |
-| `/api/tts` | POST | Generate TTS audio from text |
+| `/api/tts` | POST | Generate TTS audio from text (deducts credits) |
 | `/api/tts` | GET | List user's TTS generations |
 | `/api/extract-text` | POST | Extract text from uploaded file (FormData) |
 | `/api/generations/[id]` | GET | Get single generation details |
 | `/api/generations/[id]` | PATCH | Update generation title |
 | `/api/generations/[id]` | DELETE | Delete generation and its audio file |
 | `/api/audio/[id]` | GET | Serve audio file (supports Range requests for seeking) |
+| `/api/stripe/checkout` | POST | Create Stripe Checkout Session |
+| `/api/stripe/webhook` | POST | Handle Stripe webhooks (no auth — Stripe signs requests) |
+| `/api/stripe/plans` | GET | Return available credit plans |
+| `/api/user/credits` | GET | Return user's credit balance |
+| `/api/user/purchases` | GET | Return user's purchase history |
 
 ### 2. API Patterns
 
-- All API routes (except `/api/auth/*`) require authentication via `auth()` check.
+- All API routes (except `/api/auth/*` and `/api/stripe/webhook`) require authentication via `auth()` check.
 - Return `NextResponse.json()` with appropriate HTTP status codes.
 - Audio serving supports HTTP Range requests for efficient seeking in the audio player.
 

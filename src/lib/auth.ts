@@ -4,6 +4,7 @@ import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "./db";
 import { users } from "./db/schema";
 import { eq } from "drizzle-orm";
+import { ensureCreditsRecord } from "./db/credits";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: {
@@ -27,6 +28,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
   pages: {
     signIn: "/login",
+  },
+  events: {
+    async signIn({ user }) {
+      if (user.id) {
+        await ensureCreditsRecord(user.id);
+      }
+    },
   },
   callbacks: {
     session({ session, token }) {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import {
   AudioWaveform,
+  Coins,
   History,
   LogOut,
   User,
@@ -18,9 +19,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useCredits } from "@/hooks/use-credits";
 
 export function Header() {
   const { data: session } = useSession();
+  const { balance } = useCredits();
 
   return (
     <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
@@ -32,12 +35,20 @@ export function Header() {
 
         <nav className="flex items-center gap-2">
           {session && (
-            <Link href="/history">
-              <Button variant="ghost" size="sm">
-                <History className="size-4" />
-                History
-              </Button>
-            </Link>
+            <>
+              <Link href="/history">
+                <Button variant="ghost" size="sm">
+                  <History className="size-4" />
+                  History
+                </Button>
+              </Link>
+              <Link href="/credits">
+                <Button variant="ghost" size="sm">
+                  <Coins className="size-4" />
+                  {balance !== null ? balance.toFixed(2) : "..."}
+                </Button>
+              </Link>
+            </>
           )}
 
           {session?.user ? (
