@@ -56,7 +56,10 @@ export async function POST(request: NextRequest) {
 
     const result = await generateTtsAudio(text, voice, speed);
 
-    const { segments, audioDurationSeconds } = await alignAudio(result.chunks);
+    const { segments, audioDurationSeconds } = await alignAudio(
+      result.chunks,
+      text
+    );
 
     const ttsCost = parseFloat(result.cost);
     const whisperCost = (audioDurationSeconds / 60) * 0.006 * 7.8;
