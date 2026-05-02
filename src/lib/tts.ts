@@ -378,8 +378,19 @@ export async function alignAudio(
     const sourceSentences = splitIntoSentences(text);
     if (sourceSentences.length === 0) return { segments: [], audioDurationSeconds: 0 };
 
-    const audioStart = whisperWords[0].start;
-    const audioEnd   = whisperWords[whisperWords.length - 1].end;
+    // Prefer segment-level boundaries for the overall timeline: they are more
+    // reliable than word timestamps because Whisper's word-level detector can
+    // have gaps (e.g. the first N paragraphs return no words), whereas segment
+    // timestamps always cover the full audio.
+    const audioStart = whisperSegments.length > 0
+      ? Math.min(whisperWords[0].start, whisperSegments[0].start)
+      : whisperWords[0].start;
+    const audioEnd = whisperSegments.length > 0
+      ? Math.max(
+          whisperWords[whisperWords.length - 1].end,
+          whisperSegments[whisperSegments.length - 1].end,
+        )
+      : whisperWords[whisperWords.length - 1].end;
 
     // ── Sentence timing ──────────────────────────────────────────────────────
     const sentenceTimings: { start: number; end: number }[] = [];
@@ -405,32 +416,37 @@ export async function alignAudio(
         sentenceTimings.push({ start: ws.start, end: ws.end });
       }
     } else {
-      // Count mismatch: project each source sentence's word count onto the
-      // Whisper word sequence to find sentence boundary timestamps.
-      // This uses real Whisper timing data rather than character-count math,
-      // so it stays accurate regardless of voice speed.
+      // Count mismatch: distribute source-sentence boundaries proportionally
+      // across the full audio timeline.
+      //
+      // IMPORTANT: we use the SEGMENT timeline (whisperSegments) as the time
+      // axis, not whisperWords[0].start.  Whisper's word-level timestamps can
+      // start mid-audio when the first N paragraphs have no word-level data —
+      // anchoring to whisperWords[0].start would shift every sentence into the
+      // wrong part of the audio (e.g. sentences 1-5 all getting timestamps at
+      // "Tin Hau Festival" time).  Segment-level boundaries always span the
+      // full audio and are therefore the correct anchor.
+      const timelineStart = whisperSegments.length > 0 ? whisperSegments[0].start : audioStart;
+      const timelineEnd   = whisperSegments.length > 0
+        ? whisperSegments[whisperSegments.length - 1].end
+        : audioEnd;
+      const timelineDuration = Math.max(timelineEnd - timelineStart, 0.01);
+
       const sentenceWordCounts = sourceSentences.map((s) => getSpeakableWords(s).length);
-      const totalSrcWords  = sentenceWordCounts.reduce((a, b) => a + b, 0);
-      const totalWWords    = whisperWords.length;
+      const totalSrcWords = sentenceWordCounts.reduce((a, b) => a + b, 0);
 
       let cumSrcWords = 0;
       for (let i = 0; i < sourceSentences.length; i++) {
         cumSrcWords += sentenceWordCounts[i];
 
-        // Whisper word index that corresponds to the end of this source sentence
-        const wEndIdx = Math.min(
-          Math.round((cumSrcWords / totalSrcWords) * totalWWords) - 1,
-          totalWWords - 1
-        );
-        const clampedEnd = Math.max(wEndIdx, 0);
-
-        const segStart = i === 0 ? audioStart : sentenceTimings[i - 1].end;
-        const segEnd   = Math.max(whisperWords[clampedEnd].end, segStart + 0.01);
-        sentenceTimings.push({ start: segStart, end: segEnd });
+        const tStart = i === 0 ? timelineStart : sentenceTimings[i - 1].end;
+        // Proportional end time within the segment timeline
+        const tEnd = timelineStart + (cumSrcWords / totalSrcWords) * timelineDuration;
+        sentenceTimings.push({ start: tStart, end: Math.max(tEnd, tStart + 0.01) });
       }
       // Clamp the last sentence to the true audio end
       if (sentenceTimings.length > 0) {
-        sentenceTimings[sentenceTimings.length - 1].end = audioEnd;
+        sentenceTimings[sentenceTimings.length - 1].end = timelineEnd;
       }
     }
 
