@@ -461,13 +461,9 @@ export async function alignAudio(
     const sourceSentences = splitIntoSentences(text);
     if (sourceSentences.length === 0) return { segments: [], audioDurationSeconds: 0 };
 
-    // Prefer segment-level boundaries for the overall timeline: they are more
-    // reliable than word timestamps because Whisper's word-level detector can
-    // have gaps (e.g. the first N paragraphs return no words), whereas segment
-    // timestamps always cover the full audio.
-    const audioStart = whisperSegments.length > 0
-      ? Math.min(whisperWords[0].start, whisperSegments[0].start)
-      : whisperWords[0].start;
+    // Best estimate of the true audio end: last word end or last segment end,
+    // whichever is later.  Used as the upper bound for Strategy B and as the
+    // return value when Strategy A is active.
     const audioEnd = whisperSegments.length > 0
       ? Math.max(
           whisperWords[whisperWords.length - 1].end,
@@ -502,17 +498,20 @@ export async function alignAudio(
       // Count mismatch: distribute source-sentence boundaries proportionally
       // across the full audio timeline.
       //
-      // IMPORTANT: we use the SEGMENT timeline (whisperSegments) as the time
-      // axis, not whisperWords[0].start.  Whisper's word-level timestamps can
-      // start mid-audio when the first N paragraphs have no word-level data —
-      // anchoring to whisperWords[0].start would shift every sentence into the
-      // wrong part of the audio (e.g. sentences 1-5 all getting timestamps at
-      // "Tin Hau Festival" time).  Segment-level boundaries always span the
-      // full audio and are therefore the correct anchor.
-      const timelineStart = whisperSegments.length > 0 ? whisperSegments[0].start : audioStart;
-      const timelineEnd   = whisperSegments.length > 0
-        ? whisperSegments[whisperSegments.length - 1].end
-        : audioEnd;
+      // Always anchor at t=0, not at whisperSegments[0].start.
+      // Whisper can omit segments/words for the very beginning of audio —
+      // short title lines, the opening sentence, etc. — so its first segment
+      // start is often several seconds into the audio.  TTS has no leading
+      // silence; speech begins at t≈0, so 0 is the correct origin regardless
+      // of what Whisper reports.
+      const timelineStart = 0;
+      // Use the best available estimate for the true audio end: the maximum
+      // of Whisper's per-chunk reported duration, the last word end, and the
+      // last segment end.
+      const timelineEnd = Math.max(
+        totalDuration,
+        audioEnd,
+      );
       const timelineDuration = Math.max(timelineEnd - timelineStart, 0.01);
 
       const sentenceWordCounts = sourceSentences.map((s) => getSpeakableWords(s).length);
