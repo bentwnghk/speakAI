@@ -11,42 +11,67 @@ export function splitText(text: string, maxChunkSize = 4000): string[] {
   const chunks: string[] = [];
   const paragraphs = text.split("\n\n");
 
-  for (const paragraph of paragraphs) {
-    if (!paragraph.trim()) continue;
+  // Accumulator for paragraphs that are being batched into one chunk.
+  // Paragraphs are joined with "\n\n" so the TTS engine gets natural
+  // paragraph-break pauses and the resulting audio is one continuous stream
+  // with no ID3-header splice points that would confuse Whisper's timestamper.
+  let currentChunk = "";
 
-    if (paragraph.length <= maxChunkSize) {
-      chunks.push(paragraph);
-    } else {
-      const sentences = paragraph.split(/(?<=[.!?])\s+/);
-      let currentChunk = "";
+  const flushChunk = () => {
+    if (currentChunk) {
+      chunks.push(currentChunk);
+      currentChunk = "";
+    }
+  };
+
+  for (const paragraph of paragraphs) {
+    const trimmed = paragraph.trim();
+    if (!trimmed) continue;
+
+    if (trimmed.length > maxChunkSize) {
+      // This single paragraph is too long for one API call.
+      // Flush whatever was accumulated, then split the paragraph internally.
+      flushChunk();
+      const sentences = trimmed.split(/(?<=[.!?])\s+/);
+      let sentenceChunk = "";
       for (const sentence of sentences) {
         if (sentence.length > maxChunkSize) {
+          if (sentenceChunk) { chunks.push(sentenceChunk); sentenceChunk = ""; }
           const words = sentence.split(" ");
+          let wordChunk = "";
           for (const word of words) {
-            if (currentChunk.length + word.length + 1 > maxChunkSize) {
-              chunks.push(currentChunk);
-              currentChunk = word;
+            if (wordChunk.length + word.length + 1 > maxChunkSize) {
+              chunks.push(wordChunk);
+              wordChunk = word;
             } else {
-              currentChunk += (currentChunk ? " " : "") + word;
+              wordChunk += (wordChunk ? " " : "") + word;
             }
           }
-          if (currentChunk) {
-            chunks.push(currentChunk);
-            currentChunk = "";
-          }
-        } else if (currentChunk.length + sentence.length + 1 > maxChunkSize) {
-          chunks.push(currentChunk);
-          currentChunk = sentence;
+          if (wordChunk) chunks.push(wordChunk);
+        } else if (sentenceChunk.length + sentence.length + 1 > maxChunkSize) {
+          chunks.push(sentenceChunk);
+          sentenceChunk = sentence;
         } else {
-          currentChunk += (currentChunk ? " " : "") + sentence;
+          sentenceChunk += (sentenceChunk ? " " : "") + sentence;
         }
       }
-      if (currentChunk) {
-        chunks.push(currentChunk);
+      if (sentenceChunk) chunks.push(sentenceChunk);
+    } else {
+      // Normal paragraph: accumulate with previous ones as long as the
+      // combined length stays within the limit.  This keeps short texts in a
+      // single TTS call, producing one unbroken MP3 that Whisper can timestamp
+      // reliably from the very first word.
+      const joined = currentChunk ? `${currentChunk}\n\n${trimmed}` : trimmed;
+      if (joined.length > maxChunkSize) {
+        flushChunk();
+        currentChunk = trimmed;
+      } else {
+        currentChunk = joined;
       }
     }
   }
 
+  flushChunk();
   return chunks;
 }
 
