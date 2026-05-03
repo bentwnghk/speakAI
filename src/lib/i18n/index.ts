@@ -9,7 +9,7 @@ const dictionaries = {
 } as const satisfies Record<Locale, TranslationKeys>;
 
 export function getDictionary(locale: Locale): TranslationKeys {
-  return (dictionaries[locale] ?? dictionaries.en) as TranslationKeys;
+  return dictionaries[locale] ?? dictionaries.en;
 }
 
 export type { TranslationKeys };

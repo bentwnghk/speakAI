@@ -1,6 +1,7 @@
 BEGIN;
 
 DROP TABLE IF EXISTS "generation" CASCADE;
+DROP TABLE IF EXISTS "user_settings" CASCADE;
 DROP TABLE IF EXISTS "session" CASCADE;
 DROP TABLE IF EXISTS "account" CASCADE;
 DROP TABLE IF EXISTS "verification_token" CASCADE;
@@ -87,6 +88,13 @@ CREATE TABLE "purchases" (
   "amountHKD" REAL NOT NULL,
   "status" VARCHAR(20) NOT NULL DEFAULT 'pending',
   "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE "user_settings" (
+  "userId" TEXT NOT NULL PRIMARY KEY REFERENCES "user"("id") ON DELETE CASCADE,
+  "theme" VARCHAR(10) NOT NULL DEFAULT 'system',
+  "locale" VARCHAR(10) NOT NULL DEFAULT 'en',
+  "updatedAt" TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
 COMMIT;
