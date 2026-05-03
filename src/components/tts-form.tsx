@@ -299,7 +299,7 @@ export function TtsForm() {
         />
 
         <Link href="/history" className="block">
-          <Button variant="outline" className="w-full">
+          <Button variant="outline" size="lg" className="w-full">
             <History className="size-4" />
             {t.tts.viewHistory}
           </Button>
