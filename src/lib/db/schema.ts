@@ -64,10 +64,10 @@ export const verificationTokens = pgTable(
 export const voiceEnum = pgEnum("voice", [
   "nova",
   "alloy",
-  "fable",
-  "echo",
-  "shimmer",
-  "onyx",
+  "phoebe",
+  "adam",
+  "ava",
+  "ollie",
 ]);
 
 export const generations = pgTable("generation", {

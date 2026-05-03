@@ -93,10 +93,10 @@ export async function POST(request: NextRequest) {
         voice: (VOICE_MAP[voice] || "nova") as
           | "nova"
           | "alloy"
-          | "fable"
-          | "echo"
-          | "shimmer"
-          | "onyx",
+          | "phoebe"
+          | "adam"
+          | "ava"
+          | "ollie",
         speed,
         audioPath: result.audioPath,
         segments: segmentsJson,
