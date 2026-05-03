@@ -544,83 +544,60 @@ export async function alignAudio(
     // ── Sentence timing ──────────────────────────────────────────────────────
     const sentenceTimings: { start: number; end: number }[] = [];
 
-    // A 1-to-1 mapping is only safe when Whisper segmented the audio the same
-    // way as our source-sentence split.  We validate this by checking that
-    // each Whisper segment's text length is within 2× of its paired source
-    // sentence.  A larger ratio means Whisper merged or split differently —
-    // common when a heading has no terminal punctuation (it gets absorbed into
-    // the next segment) and another long sentence gets split to keep the total
-    // count equal, making the 1-to-1 assignment silently wrong.
-    const segmentsAlignWithSentences =
-      whisperSegments.length === sourceSentences.length &&
-      sourceSentences.every((src, i) => {
-        const srcLen = src.trim().length;
-        const wsLen  = whisperSegments[i].text.trim().length;
-        return wsLen <= srcLen * 2 && srcLen <= wsLen * 2;
-      });
+    // We used to attempt a direct 1-to-1 mapping when whisperSegments.length
+    // equalled sourceSentences.length and every paired length was within 2×.
+    // That path caused catastrophic failures on long texts: after sentence-
+    // level splitting both counts converge near the same number (~40 for a
+    // ~1 500-word article), and the permissive 2× length guard cannot detect
+    // subtle 1-position misalignments.  Even a single merged or split segment
+    // from Whisper shifts every subsequent assignment by one, producing the
+    // characteristic "paragraph-long offset shrinking toward the end" pattern.
+    //
+    // The proportional Whisper-word approach below is robust to any count
+    // relationship between source sentences and Whisper segments — it reads
+    // the actual per-word timestamps from Whisper and maps each sentence
+    // boundary to the word at the same proportional position in the transcript.
+    // Texts where counts happened to match (and fail) now use this path too,
+    // with no observable quality loss over the direct mapping.
 
-    if (segmentsAlignWithSentences) {
-      // Confirmed 1-to-1 match — use Whisper segment timing directly.
-      // TTS has no leading silence so speech begins at t≈0; force the first
-      // sentence to start there regardless of what Whisper reports (Whisper
-      // routinely places its first segment start at 0.1–0.3 s due to its
-      // internal silence-detection heuristic).
-      for (let i = 0; i < whisperSegments.length; i++) {
-        const ws = whisperSegments[i];
-        sentenceTimings.push({
-          start: i === 0 ? 0 : ws.start,
-          end: ws.end,
-        });
-      }
-    } else {
-      // Count mismatch — distribute source-sentence boundaries across the
-      // audio timeline using *actual Whisper word timestamps* as anchors
-      // rather than a purely proportional interpolation.
-      //
-      // For each sentence boundary at cumulative source-word fraction F, we
-      // locate the Whisper word at the same proportional position in the
-      // Whisper word list and use its `end` time.  This is far more accurate
-      // than linear interpolation because the Whisper words already carry the
-      // true per-word speech timing for this audio.
-      //
-      // Always anchor at t=0 — TTS has no leading silence; speech begins at
-      // t≈0, so 0 is the correct origin regardless of what Whisper reports.
-      const timelineEnd = Math.max(totalDuration, audioEnd);
+    const timelineEnd = Math.max(totalDuration, audioEnd);
 
-      const sentenceWordCounts = sourceSentences.map((s) => getSpeakableWords(s).length);
-      const totalSrcWords = sentenceWordCounts.reduce((a, b) => a + b, 0);
+    const sentenceWordCounts = sourceSentences.map((s) => getSpeakableWords(s).length);
+    const totalSrcWords = sentenceWordCounts.reduce((a, b) => a + b, 0);
 
-      let cumSrcWords = 0;
-      for (let i = 0; i < sourceSentences.length; i++) {
-        cumSrcWords += sentenceWordCounts[i];
+    let cumSrcWords = 0;
+    for (let i = 0; i < sourceSentences.length; i++) {
+      cumSrcWords += sentenceWordCounts[i];
 
-        const tStart = i === 0 ? 0 : sentenceTimings[i - 1].end;
+      // tStart for sentence i is the tEnd of sentence i-1, which equals the
+      // Whisper word end at the previous cumulative fraction.  The first
+      // sentence always starts at t=0 (TTS has no leading silence).
+      const tStart = i === 0 ? 0 : sentenceTimings[i - 1].end;
 
-        let tEnd: number;
-        if (i === sourceSentences.length - 1) {
-          // Last sentence always runs to the true audio end.
-          tEnd = timelineEnd;
+      let tEnd: number;
+      if (i === sourceSentences.length - 1) {
+        // Last sentence always runs to the true audio end.
+        tEnd = timelineEnd;
+      } else {
+        const fraction = cumSrcWords / totalSrcWords;
+        if (whisperWords.length > 0) {
+          // Locate the Whisper word at this proportional position and use its
+          // end time as the sentence boundary.
+          const targetIdx = Math.min(
+            Math.max(0, Math.round(fraction * whisperWords.length) - 1),
+            whisperWords.length - 1,
+          );
+          tEnd = whisperWords[targetIdx].end;
         } else {
-          const fraction = cumSrcWords / totalSrcWords;
-          if (whisperWords.length > 0) {
-            // Find the Whisper word at this proportional position and use its
-            // end time as the sentence boundary.  clamp to valid range.
-            const targetIdx = Math.min(
-              Math.max(0, Math.round(fraction * whisperWords.length) - 1),
-              whisperWords.length - 1,
-            );
-            tEnd = whisperWords[targetIdx].end;
-          } else {
-            tEnd = fraction * timelineEnd;
-          }
+          tEnd = fraction * timelineEnd;
         }
+      }
 
-        sentenceTimings.push({ start: tStart, end: Math.max(tEnd, tStart + 0.01) });
-      }
-      // Clamp the last sentence to the true audio end (safety net).
-      if (sentenceTimings.length > 0) {
-        sentenceTimings[sentenceTimings.length - 1].end = timelineEnd;
-      }
+      sentenceTimings.push({ start: tStart, end: Math.max(tEnd, tStart + 0.01) });
+    }
+    // Clamp the last sentence to the true audio end (safety net).
+    if (sentenceTimings.length > 0) {
+      sentenceTimings[sentenceTimings.length - 1].end = timelineEnd;
     }
 
     // ── Per-word timing ──────────────────────────────────────────────────────
