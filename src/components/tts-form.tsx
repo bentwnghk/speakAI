@@ -45,12 +45,14 @@ export function TtsForm() {
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [karaokeActive, setKaraokeActive] = useState(false);
+  const [accumulatedVisionCost, setAccumulatedVisionCost] = useState(0);
   const { refreshBalance } = useCredits();
 
   const handleFilesSelected = useCallback(async (newFiles: File[]) => {
     if (newFiles.length === 0) {
       setExtractedText("");
       setUploadedFileName("");
+      setAccumulatedVisionCost(0);
       return;
     }
 
@@ -77,8 +79,11 @@ export function TtsForm() {
           const err = (await res.json()) as { error?: string };
           throw new Error(err.error ?? "Text extraction failed");
         }
-        const data = (await res.json()) as { text: string };
+        const data = (await res.json()) as { text: string; visionCost?: number };
         allTexts.push(data.text);
+        if (data.visionCost) {
+          setAccumulatedVisionCost((prev) => prev + data.visionCost!);
+        }
       }
 
       for (const pdfFile of pdfFiles) {
@@ -97,8 +102,11 @@ export function TtsForm() {
               const err = (await res.json()) as { error?: string };
               throw new Error(err.error ?? "OCR failed for scanned PDF page");
             }
-            const data = (await res.json()) as { text: string };
+            const data = (await res.json()) as { text: string; visionCost?: number };
             allTexts.push(data.text);
+            if (data.visionCost) {
+              setAccumulatedVisionCost((prev) => prev + data.visionCost!);
+            }
           }
         }
       }
@@ -133,6 +141,7 @@ export function TtsForm() {
           text: inputText,
           voice,
           speed,
+          visionCost: inputMethod === "upload" ? accumulatedVisionCost : 0,
           title:
             inputMethod === "upload" && uploadedFileName
               ? uploadedFileName
@@ -156,6 +165,7 @@ export function TtsForm() {
         { duration: 5000 }
       );
       void refreshBalance();
+      setAccumulatedVisionCost(0);
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Audio generation failed"

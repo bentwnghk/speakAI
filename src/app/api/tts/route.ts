@@ -20,8 +20,9 @@ export async function POST(request: NextRequest) {
       voice: string;
       speed: number;
       title?: string;
+      visionCost?: number;
     };
-    const { text, voice, speed, title } = body;
+    const { text, voice, speed, title, visionCost = 0 } = body;
 
     if (!text?.trim()) {
       return NextResponse.json(
@@ -40,13 +41,14 @@ export async function POST(request: NextRequest) {
     const processedText = normalizeHeadingPunctuation(text);
 
     const balance = await getUserBalance(userId);
-    const estimatedCost = estimateTtsCost(processedText);
+    const estimatedTtsCost = estimateTtsCost(processedText);
+    const estimatedTotalCost = estimatedTtsCost + visionCost;
 
-    if (balance < estimatedCost) {
+    if (balance < estimatedTotalCost) {
       return NextResponse.json(
         {
           error: "Insufficient credits",
-          creditsNeeded: estimatedCost,
+          creditsNeeded: estimatedTotalCost,
           currentBalance: balance,
         },
         { status: 402 }
@@ -56,13 +58,13 @@ export async function POST(request: NextRequest) {
     const result = await generateTtsAudio(processedText, voice, speed);
 
     const ttsCost = parseFloat(result.cost);
-    const totalCost = ttsCost.toFixed(2);
-    const totalCostNum = parseFloat(totalCost);
+    const totalCostNum = Math.round((ttsCost + visionCost) * 100) / 100;
+    const totalCost = totalCostNum.toFixed(2);
 
     const deduction = await deductCredits(
       userId,
       totalCostNum,
-      `TTS generation: "${text.trim().slice(0, 50)}"`
+      `TTS generation${visionCost > 0 ? ` (+HK$${visionCost.toFixed(2)} vision)` : ""}: "${text.trim().slice(0, 50)}"`
     );
 
     if (!deduction.success) {

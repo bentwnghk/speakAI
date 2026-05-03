@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
     await writeFile(tmpPath, buffer);
 
     try {
-      const text = await extractTextFromFile(tmpPath);
-      return NextResponse.json({ text, fileName: file.name });
+      const result = await extractTextFromFile(tmpPath);
+      return NextResponse.json({ text: result.text, fileName: file.name, visionCost: result.visionCostHkd });
     } finally {
       await unlink(tmpPath).catch(() => {});
     }

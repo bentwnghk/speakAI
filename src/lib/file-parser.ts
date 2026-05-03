@@ -1,21 +1,44 @@
 import { readFile } from "fs/promises";
 import { extname } from "path";
 
-async function extractFromDocx(filePath: string): Promise<string> {
+const VISION_INPUT_PRICE_PER_1M = Number(
+  process.env.VISION_PRICE_INPUT_PER_1M_TOKENS ?? "0.40",
+);
+const VISION_OUTPUT_PRICE_PER_1M = Number(
+  process.env.VISION_PRICE_OUTPUT_PER_1M_TOKENS ?? "1.60",
+);
+const USD_TO_HKD = 7.8;
+
+export function estimateVisionCostHkd(
+  promptTokens: number,
+  completionTokens: number,
+): number {
+  const inputUsd = (promptTokens / 1_000_000) * VISION_INPUT_PRICE_PER_1M;
+  const outputUsd = (completionTokens / 1_000_000) * VISION_OUTPUT_PRICE_PER_1M;
+  return Math.max((inputUsd + outputUsd) * USD_TO_HKD, 0.01);
+}
+
+export interface ExtractionResult {
+  text: string;
+  visionCostHkd: number;
+}
+
+async function extractFromDocx(filePath: string): Promise<ExtractionResult> {
   const mammoth = await import("mammoth");
   const buffer = await readFile(filePath);
   const result = await mammoth.extractRawText({ buffer });
-  return result.value;
+  return { text: result.value, visionCostHkd: 0 };
 }
 
-async function extractFromTxt(filePath: string): Promise<string> {
-  return readFile(filePath, "utf-8");
+async function extractFromTxt(filePath: string): Promise<ExtractionResult> {
+  const text = await readFile(filePath, "utf-8");
+  return { text, visionCostHkd: 0 };
 }
 
 async function extractFromImage(
   filePath: string,
   buffer: Buffer
-): Promise<string> {
+): Promise<ExtractionResult> {
   const { generateText } = await import("ai");
   const { createOpenAI } = await import("@ai-sdk/openai");
 
@@ -40,7 +63,7 @@ async function extractFromImage(
         ? "image/jpeg"
         : "image/png";
 
-  const { text } = await generateText({
+  const { text, usage } = await generateText({
     model: openai(process.env.VISION_MODEL || "gpt-4.1-mini"),
     messages: [
       {
@@ -69,12 +92,15 @@ Instructions:
     temperature: 0,
   });
 
-  return text;
+  return {
+    text,
+    visionCostHkd: estimateVisionCostHkd(usage.promptTokens, usage.completionTokens),
+  };
 }
 
 export async function extractTextFromFile(
   filePath: string
-): Promise<string> {
+): Promise<ExtractionResult> {
   const ext = extname(filePath).toLowerCase();
   const supportedImageExts = [".jpg", ".jpeg", ".png"];
 
