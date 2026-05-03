@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Poppins, Inter } from "next/font/google";
+import { Poppins, Inter, Noto_Sans_SC } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
 import { UserSettingsProvider } from "@/hooks/use-settings";
 import { Toaster } from "@/components/ui/sonner";
@@ -15,6 +15,12 @@ const poppins = Poppins({
 const inter = Inter({
   subsets: ["latin"],
   variable: "--inter",
+  display: "swap",
+});
+
+const notoSansSC = Noto_Sans_SC({
+  subsets: ["latin"],
+  variable: "--noto-sans-sc",
   display: "swap",
 });
 
@@ -50,7 +56,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${inter.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${inter.variable} ${notoSansSC.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
