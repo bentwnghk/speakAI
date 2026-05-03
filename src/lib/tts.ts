@@ -491,28 +491,31 @@ export async function alignAudio(
 
     if (segmentsAlignWithSentences) {
       // Confirmed 1-to-1 match — use Whisper segment timing directly.
-      for (const ws of whisperSegments) {
-        sentenceTimings.push({ start: ws.start, end: ws.end });
+      // TTS has no leading silence so speech begins at t≈0; force the first
+      // sentence to start there regardless of what Whisper reports (Whisper
+      // routinely places its first segment start at 0.1–0.3 s due to its
+      // internal silence-detection heuristic).
+      for (let i = 0; i < whisperSegments.length; i++) {
+        const ws = whisperSegments[i];
+        sentenceTimings.push({
+          start: i === 0 ? 0 : ws.start,
+          end: ws.end,
+        });
       }
     } else {
-      // Count mismatch: distribute source-sentence boundaries proportionally
-      // across the full audio timeline.
+      // Count mismatch — distribute source-sentence boundaries across the
+      // audio timeline using *actual Whisper word timestamps* as anchors
+      // rather than a purely proportional interpolation.
       //
-      // Always anchor at t=0, not at whisperSegments[0].start.
-      // Whisper can omit segments/words for the very beginning of audio —
-      // short title lines, the opening sentence, etc. — so its first segment
-      // start is often several seconds into the audio.  TTS has no leading
-      // silence; speech begins at t≈0, so 0 is the correct origin regardless
-      // of what Whisper reports.
-      const timelineStart = 0;
-      // Use the best available estimate for the true audio end: the maximum
-      // of Whisper's per-chunk reported duration, the last word end, and the
-      // last segment end.
-      const timelineEnd = Math.max(
-        totalDuration,
-        audioEnd,
-      );
-      const timelineDuration = Math.max(timelineEnd - timelineStart, 0.01);
+      // For each sentence boundary at cumulative source-word fraction F, we
+      // locate the Whisper word at the same proportional position in the
+      // Whisper word list and use its `end` time.  This is far more accurate
+      // than linear interpolation because the Whisper words already carry the
+      // true per-word speech timing for this audio.
+      //
+      // Always anchor at t=0 — TTS has no leading silence; speech begins at
+      // t≈0, so 0 is the correct origin regardless of what Whisper reports.
+      const timelineEnd = Math.max(totalDuration, audioEnd);
 
       const sentenceWordCounts = sourceSentences.map((s) => getSpeakableWords(s).length);
       const totalSrcWords = sentenceWordCounts.reduce((a, b) => a + b, 0);
@@ -521,12 +524,30 @@ export async function alignAudio(
       for (let i = 0; i < sourceSentences.length; i++) {
         cumSrcWords += sentenceWordCounts[i];
 
-        const tStart = i === 0 ? timelineStart : sentenceTimings[i - 1].end;
-        // Proportional end time within the segment timeline
-        const tEnd = timelineStart + (cumSrcWords / totalSrcWords) * timelineDuration;
+        const tStart = i === 0 ? 0 : sentenceTimings[i - 1].end;
+
+        let tEnd: number;
+        if (i === sourceSentences.length - 1) {
+          // Last sentence always runs to the true audio end.
+          tEnd = timelineEnd;
+        } else {
+          const fraction = cumSrcWords / totalSrcWords;
+          if (whisperWords.length > 0) {
+            // Find the Whisper word at this proportional position and use its
+            // end time as the sentence boundary.  clamp to valid range.
+            const targetIdx = Math.min(
+              Math.max(0, Math.round(fraction * whisperWords.length) - 1),
+              whisperWords.length - 1,
+            );
+            tEnd = whisperWords[targetIdx].end;
+          } else {
+            tEnd = fraction * timelineEnd;
+          }
+        }
+
         sentenceTimings.push({ start: tStart, end: Math.max(tEnd, tStart + 0.01) });
       }
-      // Clamp the last sentence to the true audio end
+      // Clamp the last sentence to the true audio end (safety net).
       if (sentenceTimings.length > 0) {
         sentenceTimings[sentenceTimings.length - 1].end = timelineEnd;
       }
@@ -567,6 +588,45 @@ export async function alignAudio(
           endTime:   end,
           words:     timedWords,
         });
+      }
+    }
+
+    // ── Global gap-filling pass ──────────────────────────────────────────────
+    // After all per-segment word timings are computed, walk the flat word list
+    // and extend each word's `end` to meet the next word's `start`.  This
+    // eliminates the sub-frame silences between words where no word would
+    // otherwise be highlighted (the "flash-off" flicker visible on screen).
+    // We also snap the very first word to t=0 so the highlight is live from
+    // the moment audio starts — Whisper commonly places the first word at
+    // ~0.05–0.2 s even though TTS speech begins at t≈0.
+    //
+    // Each word object is copied (not mutated) before modification so the
+    // original timing data stored in each Segment is replaced cleanly.
+    {
+      // Build a flat, independent copy of all word objects.
+      const flatWords: WordTimestamp[] = [];
+      for (const seg of segments) {
+        for (const w of seg.words) flatWords.push({ ...w });
+      }
+
+      // Snap first word to t=0.
+      if (flatWords.length > 0 && flatWords[0].start > 0) {
+        flatWords[0].start = 0;
+      }
+
+      // Fill every gap: extend word[i].end to word[i+1].start.
+      for (let i = 0; i < flatWords.length - 1; i++) {
+        if (flatWords[i].end < flatWords[i + 1].start) {
+          flatWords[i].end = flatWords[i + 1].start;
+        }
+      }
+
+      // Write the gap-filled words back into each segment.
+      let flatIdx = 0;
+      for (const seg of segments) {
+        const count = seg.words.length;
+        seg.words = flatWords.slice(flatIdx, flatIdx + count);
+        flatIdx += count;
       }
     }
 

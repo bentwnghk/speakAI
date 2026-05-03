@@ -41,25 +41,60 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
     const audio = audioRef.current;
     if (!audio) return;
 
-    const onLoadedMetadata = () => setDuration(audio.duration);
-    const onTimeUpdateHandler = () => {
+    let rafId: number | null = null;
+
+    // Poll audio.currentTime via requestAnimationFrame (~60 fps) while the
+    // audio is playing.  This gives the karaoke highlight sub-frame accuracy
+    // instead of the ~4 Hz resolution of the `timeupdate` event, eliminating
+    // visible word-skipping on fast speech.
+    const tick = () => {
+      const t = audio.currentTime;
+      setCurrentTime(t);
+      onTimeUpdate?.(t);
+      rafId = requestAnimationFrame(tick);
+    };
+
+    const startRaf = () => {
+      if (rafId === null) rafId = requestAnimationFrame(tick);
+    };
+
+    const stopRaf = () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
+    const onPlay = () => startRaf();
+
+    const onPause = () => {
+      stopRaf();
+      // Sync once after pause so the seek bar and karaoke reflect the exact
+      // position where the user stopped.
       const t = audio.currentTime;
       setCurrentTime(t);
       onTimeUpdate?.(t);
     };
+
+    const onLoadedMetadata = () => setDuration(audio.duration);
+
     const onEndedHandler = () => {
+      stopRaf();
       setIsPlaying(false);
       onPlayStateChange?.(false);
       onEnded?.();
     };
 
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
-    audio.addEventListener("timeupdate", onTimeUpdateHandler);
     audio.addEventListener("ended", onEndedHandler);
 
     return () => {
+      stopRaf();
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
-      audio.removeEventListener("timeupdate", onTimeUpdateHandler);
       audio.removeEventListener("ended", onEndedHandler);
     };
   }, [src, onTimeUpdate, onPlayStateChange, onEnded]);
