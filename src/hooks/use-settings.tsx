@@ -42,25 +42,20 @@ function applyTheme(theme: Theme) {
 }
 
 export function UserSettingsProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "system";
-    return (localStorage.getItem(THEME_STORAGE_KEY) as Theme) || "system";
-  });
-  const [locale, setLocaleState] = useState<Locale>(() => {
-    if (typeof window === "undefined") return "en";
-    return (localStorage.getItem(LOCALE_STORAGE_KEY) as Locale) || "en";
-  });
+  const [theme, setThemeState] = useState<Theme>("system");
+  const [locale, setLocaleState] = useState<Locale>("en");
   const [loading, setLoading] = useState(true);
   const { status } = useSession();
   const hasFetchedRef = useRef(false);
 
   const t = getDictionary(locale);
 
-  // Apply theme to DOM whenever it changes.
+  // Apply theme to DOM whenever state changes.
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
 
+  // Listen for OS preference changes when in system mode.
   useEffect(() => {
     if (theme === "system") {
       const mq = window.matchMedia("(prefers-color-scheme: dark)");
@@ -69,6 +64,19 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
       return () => mq.removeEventListener("change", handler);
     }
   }, [theme]);
+
+  // Read persisted preferences from localStorage. Runs after the effects above
+  // so that applyTheme("light"/"dark") here wins over the applyTheme("system")
+  // called by the [theme] effect on the same initial render.
+  useEffect(() => {
+    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
+    const savedLocale = localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null;
+    if (savedTheme) {
+      setThemeState(savedTheme);
+      applyTheme(savedTheme); // override immediately, don't wait for re-render
+    }
+    if (savedLocale) setLocaleState(savedLocale);
+  }, []);
 
   useEffect(() => {
     if (status === "authenticated" && !hasFetchedRef.current) {
