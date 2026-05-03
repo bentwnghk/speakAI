@@ -77,9 +77,11 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
         .then((res) => (res.ok ? res.json() : null))
         .then((data: { theme?: string; locale?: string } | null) => {
           if (data?.theme && ["system", "light", "dark"].includes(data.theme)) {
-            setThemeState(data.theme as Theme);
-            localStorage.setItem(THEME_STORAGE_KEY, data.theme);
-            applyTheme(data.theme as Theme);
+            const localTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
+            const resolved = localTheme ?? (data.theme as Theme);
+            setThemeState(resolved);
+            localStorage.setItem(THEME_STORAGE_KEY, resolved);
+            applyTheme(resolved);
           }
           if (data?.locale && ["en", "zh-TW"].includes(data.locale)) {
             setLocaleState(data.locale as Locale);
