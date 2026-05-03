@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useEffect, useState } from "react";
 import { motion, useInView } from "motion/react";
 import {
   Upload,
@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   Captions,
   BookOpen,
+  Pencil,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -222,6 +223,18 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onSignIn }: LandingPageProps) {
+  const [welcomeInfo, setWelcomeInfo] = useState<{
+    welcomeCredits: number;
+    approxGenerations: number;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/user/welcome-info")
+      .then((res) => res.json() as Promise<{ welcomeCredits: number; approxGenerations: number }>)
+      .then((data) => setWelcomeInfo(data))
+      .catch(() => {});
+  }, []);
+
   const features = [
     {
       icon: Upload,
@@ -277,18 +290,19 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       key: "history",
       color: "text-amber-600 dark:text-amber-400",
       title: "Generation History",
-      desc: "Access all your past audio generations anytime with full playback and download support.",
+      desc: "Access all your past audio generations from any device — just sign in to pick up where you left off.",
     },
   ];
 
   const journey = [
     { num: 1, icon: FileText, key: "input", label: "Upload or Type Text" },
-    { num: 2, icon: Mic, key: "voice", label: "Choose Voice & Speed" },
-    { num: 3, icon: Brain, key: "generate", label: "AI Generates Audio" },
-    { num: 4, icon: Headphones, key: "listen", label: "Listen to Audio" },
-    { num: 5, icon: BookOpen, key: "read", label: "Read Along with Karaoke" },
-    { num: 6, icon: Download, key: "download", label: "Download MP3" },
-    { num: 7, icon: History, key: "history", label: "Review History" },
+    { num: 2, icon: Pencil, key: "edit", label: "Edit Extracted Text" },
+    { num: 3, icon: Mic, key: "voice", label: "Choose Voice & Speed" },
+    { num: 4, icon: Brain, key: "generate", label: "AI Generates Audio" },
+    { num: 5, icon: Headphones, key: "listen", label: "Listen to Audio" },
+    { num: 6, icon: BookOpen, key: "read", label: "Read Along with Karaoke" },
+    { num: 7, icon: Download, key: "download", label: "Download MP3" },
+    { num: 8, icon: History, key: "history", label: "Review History" },
   ];
 
   const capabilities = [
@@ -301,6 +315,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
     "Audio Download",
     "Playback Controls",
     "Generation History",
+    "Access from Any Device",
   ];
 
   return (
@@ -380,7 +395,11 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             className="mt-6 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm text-white/80 text-sm"
           >
             <Sparkles className="h-4 w-4 text-indigo-400" />
-            <span>Free to use — just sign in with Google</span>
+            <span>
+              {welcomeInfo
+                ? `${welcomeInfo.welcomeCredits} free credits on sign up — enough for ~${welcomeInfo.approxGenerations} audio generations`
+                : "Free credits on sign up — just sign in with Google"}
+            </span>
           </motion.div>
         </motion.div>
       </section>
