@@ -87,7 +87,7 @@ const zhTW: TranslationKeys = {
     bestValue: "最超值",
     credits: "積分",
     perCredit: "每積分 HK${price}",
-    saveCompared: "比基礎方案節省 {pct}%",
+    saveCompared: "比 Starter 方案節省 {pct}%",
     buyCredits: "購買 {count} 積分",
     redirecting: "正在跳轉...",
     purchaseHistory: "購買記錄",
