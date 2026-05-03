@@ -1,8 +1,22 @@
 import type { Metadata, Viewport } from "next";
+import { Poppins, Plus_Jakarta_Sans } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
 import { UserSettingsProvider } from "@/hooks/use-settings";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
+
+const poppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--poppins",
+  display: "swap",
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--plus-jakarta",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Mr.🆖 SpeakAI - AI Text to Speech",
@@ -36,7 +50,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${plusJakartaSans.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>

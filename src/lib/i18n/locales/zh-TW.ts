@@ -28,7 +28,7 @@ const zhTW: TranslationKeys = {
       "高亮",
       "朗讀",
     ],
-    footerBuiltBy: "由 Mr.🆖 為學習英語的學生用心打造。",
+    footerBuiltBy: "Mr.🆖 為學習英語的學生用 ❤️ 打造",
     footerPoweredBy: "技術支援",
   },
   tts: {
