@@ -42,21 +42,21 @@ function applyTheme(theme: Theme) {
 }
 
 export function UserSettingsProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("system");
-  const [locale, setLocaleState] = useState<Locale>("en");
+  const [theme, setThemeState] = useState<Theme>(() => {
+    if (typeof window === "undefined") return "system";
+    return (localStorage.getItem(THEME_STORAGE_KEY) as Theme) || "system";
+  });
+  const [locale, setLocaleState] = useState<Locale>(() => {
+    if (typeof window === "undefined") return "en";
+    return (localStorage.getItem(LOCALE_STORAGE_KEY) as Locale) || "en";
+  });
   const [loading, setLoading] = useState(true);
   const { status } = useSession();
   const hasFetchedRef = useRef(false);
 
   const t = getDictionary(locale);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-    const savedLocale = localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null;
-    if (savedTheme) setThemeState(savedTheme);
-    if (savedLocale) setLocaleState(savedLocale);
-  }, []);
-
+  // Apply theme to DOM whenever it changes.
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
@@ -77,11 +77,13 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
         .then((res) => (res.ok ? res.json() : null))
         .then((data: { theme?: string; locale?: string } | null) => {
           if (data?.theme && ["system", "light", "dark"].includes(data.theme)) {
-            const localTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
-            const resolved = localTheme ?? (data.theme as Theme);
-            setThemeState(resolved);
-            localStorage.setItem(THEME_STORAGE_KEY, resolved);
-            applyTheme(resolved);
+            // Only apply server theme if the user has no local preference saved.
+            const hasLocalTheme = !!localStorage.getItem(THEME_STORAGE_KEY);
+            if (!hasLocalTheme) {
+              setThemeState(data.theme as Theme);
+              localStorage.setItem(THEME_STORAGE_KEY, data.theme);
+              applyTheme(data.theme as Theme);
+            }
           }
           if (data?.locale && ["en", "zh-TW"].includes(data.locale)) {
             setLocaleState(data.locale as Locale);
@@ -112,6 +114,7 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
     (newTheme: Theme) => {
       setThemeState(newTheme);
       localStorage.setItem(THEME_STORAGE_KEY, newTheme);
+      applyTheme(newTheme);
       void persistSetting({ theme: newTheme });
     },
     [persistSetting]
