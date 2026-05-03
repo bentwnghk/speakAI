@@ -272,59 +272,16 @@ function isSpeakableWord(token: string): boolean {
 }
 
 /**
- * Regex that matches a sentence boundary *within* a paragraph line.
- *
- * A boundary is the position between:
- *   • terminal punctuation (.?!) optionally followed by a closing quote, AND
- *   • one or more whitespace characters, AND
- *   • an uppercase letter or opening quotation mark.
- *
- * The positive lookbehind requires the period to be preceded by ≥ 2
- * consecutive lowercase letters.  This excludes abbreviation dots whose
- * word ends in a single uppercase or single lowercase letter:
- *   "Dr."  → "r"  — only 1 lowercase before "."  → NOT split  ✓
- *   "U.S." → "S"  — uppercase before "."          → NOT split  ✓
- *   "vs."  → "s"  — only 1 lowercase before "."  → NOT split  ✓
- *   "lives." → "es" — 2+ lowercase before "."    → split       ✓
- *   "time."  → "me" — 2+ lowercase before "."    → split       ✓
- *
- * Bare ? and ! are always sentence-enders regardless of context
- * (they are never used in abbreviations).
- *
- * Unicode closing quotes U+201D ("), U+2019 (') and plain ASCII equivalents
- * are included so `really." Next` and `done?' She` are handled correctly.
- */
-const SENTENCE_BOUNDARY_RE =
-  /(?<=[a-z]{2,}[.?!][\u201D\u2019"']?|[?!][\u201D\u2019"']?)\s+(?=[A-Z\u201C\u2018"'])/;
-
-/**
- * Split source text into individual sentences for Whisper alignment.
- *
- * Previously this function split only on newlines, treating every paragraph
- * as a single "sentence".  For a multi-paragraph text that produces ~10
- * source sentences while Whisper returns ~35–40 segments (one per actual
- * sentence), guaranteeing the count-mismatch fallback for the whole text.
- *
- * The fallback path distributes paragraph-level timing proportionally, which
- * accumulates errors across paragraphs: a small boundary error in paragraph 1
- * shifts everything in paragraph 2, and so on, producing several seconds of
- * drift by the second half of a long text.
- *
- * This version additionally splits each paragraph line at sentence boundaries
- * using SENTENCE_BOUNDARY_RE, bringing the source sentence count in line with
- * Whisper's natural segmentation.  For the typical long-form text this enables
- * the direct per-segment timestamp path and eliminates cascading drift.
+ * Split source text into sentences by line.
+ * Each non-empty line becomes its own sentence — matches how Whisper
+ * naturally pauses between lines of text.
  */
 function splitIntoSentences(text: string): string[] {
   const result: string[] = [];
   for (const line of text.split("\n")) {
     const trimmed = line.trim();
-    if (!trimmed || !isSpeakableWord(trimmed)) continue;
-
-    // Split the paragraph line at any intra-line sentence boundaries.
-    for (const part of trimmed.split(SENTENCE_BOUNDARY_RE)) {
-      const s = part.trim();
-      if (s && isSpeakableWord(s)) result.push(s);
+    if (trimmed && isSpeakableWord(trimmed)) {
+      result.push(trimmed);
     }
   }
   return result.length > 0 ? result : [text.trim()].filter(Boolean);
