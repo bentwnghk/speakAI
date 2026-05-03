@@ -238,8 +238,8 @@ export default function CreditsPage() {
           <Separator className="my-8" />
           <div>
             <h2 className="mb-4 text-xl font-semibold">Purchase History</h2>
-            <div className="rounded-md border">
-              <table className="w-full text-sm">
+            <div className="rounded-md border overflow-x-auto max-h-80 overflow-y-auto">
+              <table className="w-full min-w-[500px] text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="p-3 text-left font-medium">Date</th>

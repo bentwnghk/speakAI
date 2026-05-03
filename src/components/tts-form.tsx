@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import type { Segment } from "@/types/karaoke";
 import { processPdf } from "@/lib/pdf-client";
+import { useCredits } from "@/hooks/use-credits";
 
 interface Generation {
   id: string;
@@ -44,6 +45,7 @@ export function TtsForm() {
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [karaokeActive, setKaraokeActive] = useState(false);
+  const { refreshBalance } = useCredits();
 
   const handleFilesSelected = useCallback(async (newFiles: File[]) => {
     if (newFiles.length === 0) {
@@ -153,6 +155,7 @@ export function TtsForm() {
         `Audio generated! ${data.ttsCost ? `Cost: HK$${data.ttsCost}` : ""}`,
         { duration: 5000 }
       );
+      void refreshBalance();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Audio generation failed"
