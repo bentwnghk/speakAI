@@ -10,6 +10,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Mic } from "lucide-react";
 import { VOICE_MAP, VOICE_OPTIONS } from "@/lib/constants";
+import { useUserSettings } from "@/hooks/use-settings";
 
 interface VoiceSelectProps {
   value: string;
@@ -17,15 +18,17 @@ interface VoiceSelectProps {
 }
 
 export function VoiceSelect({ value, onValueChange }: VoiceSelectProps) {
+  const { t } = useUserSettings();
+
   return (
     <div className="space-y-2">
       <Label className="flex items-center gap-2">
         <Mic className="size-4" />
-        Voice
+        {t.tts.voice}
       </Label>
       <Select value={value} onValueChange={onValueChange}>
         <SelectTrigger>
-          <SelectValue placeholder="Select a voice" />
+          <SelectValue placeholder={t.tts.selectVoice} />
         </SelectTrigger>
         <SelectContent>
           {VOICE_OPTIONS.map((voice) => (

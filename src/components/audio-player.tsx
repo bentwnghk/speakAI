@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, StopCircle, Download, Volume2 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import { useUserSettings } from "@/hooks/use-settings";
 
 interface AudioPlayerProps {
   src: string | null;
@@ -36,11 +37,8 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const { t } = useUserSettings();
 
-  // Keep callback refs current on every render so the RAF effect closure
-  // always calls the latest prop values without needing them in its dep array.
-  // This prevents the effect from re-running (and killing the RAF loop) every
-  // time a parent re-render creates new inline arrow function props.
   const onTimeUpdateRef = useRef(onTimeUpdate);
   const onPlayStateChangeRef = useRef(onPlayStateChange);
   const onEndedRef = useRef(onEnded);
@@ -54,20 +52,10 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
 
     let rafId: number | null = null;
 
-    // Poll audio.currentTime via requestAnimationFrame (~60 fps) while the
-    // audio is playing.  This gives the karaoke highlight sub-frame accuracy
-    // instead of the ~4 Hz resolution of the `timeupdate` event, eliminating
-    // visible word-skipping on fast speech.
-    //
-    // Callbacks are accessed via refs so that the effect only re-runs when
-    // `src` changes, not whenever a parent passes a new inline arrow function.
-    // Without this, a parent re-render (e.g., isPlaying → karaokeActive →
-    // new onStop/onEnded references) would tear down and restart this effect
-    // mid-playback, killing the RAF loop before the `play` event re-fires.
     const tick = () => {
-      const t = audio.currentTime;
-      setCurrentTime(t);
-      onTimeUpdateRef.current?.(t);
+      const time = audio.currentTime;
+      setCurrentTime(time);
+      onTimeUpdateRef.current?.(time);
       rafId = requestAnimationFrame(tick);
     };
 
@@ -86,11 +74,9 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
 
     const onPause = () => {
       stopRaf();
-      // Sync once after pause so the seek bar and karaoke reflect the exact
-      // position where the user stopped.
-      const t = audio.currentTime;
-      setCurrentTime(t);
-      onTimeUpdateRef.current?.(t);
+      const time = audio.currentTime;
+      setCurrentTime(time);
+      onTimeUpdateRef.current?.(time);
     };
 
     const onLoadedMetadata = () => setDuration(audio.duration);
@@ -107,9 +93,6 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("ended", onEndedHandler);
 
-    // If the audio element is already playing when this effect runs (can
-    // happen if src didn't change but deps triggered a re-run), restart the
-    // RAF loop immediately rather than waiting for the next `play` event.
     if (!audio.paused) startRaf();
 
     return () => {
@@ -119,7 +102,7 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("ended", onEndedHandler);
     };
-  }, [src]); // Re-run only when the audio source changes.
+  }, [src]);
 
   useEffect(() => {
     setIsPlaying(false);
@@ -207,7 +190,7 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-6 text-muted-foreground">
           <Volume2 className="size-12 mb-3 opacity-30" />
-          <p className="text-sm">Generated audio will appear here</p>
+          <p className="text-sm">{t.tts.audioWillAppear}</p>
         </CardContent>
       </Card>
     );

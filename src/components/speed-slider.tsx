@@ -3,6 +3,7 @@
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Gauge } from "lucide-react";
+import { useUserSettings } from "@/hooks/use-settings";
 
 interface SpeedSliderProps {
   value: number;
@@ -10,12 +11,14 @@ interface SpeedSliderProps {
 }
 
 export function SpeedSlider({ value, onValueChange }: SpeedSliderProps) {
+  const { t } = useUserSettings();
+
   return (
     <div className="space-y-3">
       <Label className="flex items-center justify-between">
         <span className="flex items-center gap-2">
           <Gauge className="size-4" />
-          Speed
+          {t.tts.speed}
         </span>
         <span className="text-muted-foreground text-sm tabular-nums">
           {value}%

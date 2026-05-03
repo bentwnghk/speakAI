@@ -33,6 +33,7 @@ import {
 import { AudioPlayer } from "@/components/audio-player";
 import { KaraokeText } from "@/components/karaoke-text";
 import { formatVoiceBadge } from "@/lib/constants";
+import { useUserSettings } from "@/hooks/use-settings";
 import type { Segment } from "@/types/karaoke";
 
 interface Generation {
@@ -112,6 +113,7 @@ export function HistoryList() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
+  const { t } = useUserSettings();
 
   const totalPages = Math.ceil(total / limit);
 
@@ -138,14 +140,14 @@ export function HistoryList() {
         setTotal(data.total);
       }
     } catch {
-      toast.error("Failed to load history");
+      toast.error(t.history.loadFailed);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this audio?")) return;
+    if (!confirm(t.history.confirmDelete)) return;
 
     try {
       const res = await fetch(`/api/generations/${id}`, { method: "DELETE" });
@@ -161,10 +163,10 @@ export function HistoryList() {
         if (loadedGeneration?.id === id) {
           setLoadedGeneration(null);
         }
-        toast.success("Audio deleted");
+        toast.success(t.history.audioDeleted);
       }
     } catch {
-      toast.error("Failed to delete");
+      toast.error(t.history.deleteFailed);
     }
   };
 
@@ -186,10 +188,10 @@ export function HistoryList() {
             prev ? { ...prev, title: editTitle } : null
           );
         }
-        toast.success("Renamed");
+        toast.success(t.history.renamed);
       }
     } catch {
-      toast.error("Failed to rename");
+      toast.error(t.history.renameFailed);
     } finally {
       setEditingId(null);
     }
@@ -209,7 +211,7 @@ export function HistoryList() {
     return (
       <div className="text-center py-8 text-muted-foreground">
         <Volume2 className="size-8 mx-auto mb-2 opacity-30" />
-        <p className="text-sm">No audio in history yet</p>
+        <p className="text-sm">{t.history.noAudio}</p>
       </div>
     );
   }
@@ -234,7 +236,7 @@ export function HistoryList() {
             }}
           >
             <ArrowLeft className="size-4" />
-            Back to list
+            {t.history.backToList}
           </Button>
           <h2 className="text-lg font-semibold truncate">
             {loadedGeneration.title}
@@ -243,7 +245,7 @@ export function HistoryList() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Source Text</CardTitle>
+            <CardTitle className="text-base">{t.history.sourceText}</CardTitle>
           </CardHeader>
           <CardContent>
             {showKaraoke ? (
@@ -283,7 +285,7 @@ export function HistoryList() {
             onClick={() => downloadAudio(loadedGeneration)}
           >
             <Download className="size-4" />
-            Download
+            {t.common.download}
           </Button>
           <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
             <Badge variant="secondary"><Mic className="size-3" />{formatVoiceBadge(loadedGeneration.voice).split(" (")[0]}</Badge>
@@ -305,10 +307,12 @@ export function HistoryList() {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">
-          {total} item{total !== 1 ? "s" : ""}
+          {t.history.items
+            .replace("{count}", String(total))
+            .replace("{plural}", total !== 1 ? "s" : "")}
         </p>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Per page</span>
+          <span className="text-sm text-muted-foreground">{t.history.perPage}</span>
           <Select
             value={String(limit)}
             onValueChange={(val) => {
@@ -349,14 +353,14 @@ export function HistoryList() {
                     variant="secondary"
                     onClick={() => void handleRename(gen.id)}
                   >
-                    Save
+                    {t.common.save}
                   </Button>
                   <Button
                     size="sm"
                     variant="ghost"
                     onClick={() => setEditingId(null)}
                   >
-                    Cancel
+                    {t.common.cancel}
                   </Button>
                 </div>
               ) : (
@@ -388,7 +392,7 @@ export function HistoryList() {
                   setKaraokeActive(false);
                   setLoadedGeneration(gen);
                 }}
-                title="Load session"
+                title={t.history.loadSession}
               >
                 <Play className="size-4" />
               </Button>
@@ -397,7 +401,7 @@ export function HistoryList() {
                 size="icon"
                 className="size-8"
                 onClick={() => downloadAudio(gen)}
-                title="Download"
+                title={t.common.download}
               >
                 <Download className="size-4" />
               </Button>
@@ -434,10 +438,12 @@ export function HistoryList() {
             onClick={() => setPage((p) => Math.max(1, p - 1))}
           >
             <ChevronLeft className="size-4" />
-            Previous
+            {t.history.previous}
           </Button>
           <span className="text-sm text-muted-foreground px-2">
-            Page {page} of {totalPages}
+            {t.history.pageOf
+              .replace("{page}", String(page))
+              .replace("{total}", String(totalPages))}
           </span>
           <Button
             variant="outline"
@@ -445,7 +451,7 @@ export function HistoryList() {
             disabled={page >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
           >
-            Next
+            {t.history.next}
             <ChevronRight className="size-4" />
           </Button>
         </div>

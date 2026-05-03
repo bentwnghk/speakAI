@@ -105,6 +105,15 @@ export const creditTransactions = pgTable("credit_transactions", {
   createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 });
 
+export const userSettings = pgTable("user_settings", {
+  userId: text("userId")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  theme: varchar("theme", { length: 10 }).notNull().default("system"),
+  locale: varchar("locale", { length: 10 }).notNull().default("en"),
+  updatedAt: timestamp("updatedAt", { mode: "date" }).defaultNow().notNull(),
+});
+
 export const purchases = pgTable("purchases", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   userId: text("userId")

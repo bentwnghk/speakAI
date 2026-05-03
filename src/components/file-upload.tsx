@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FileUp, X, Loader2, FileText, Image as ImageIcon } from "lucide-react";
 import { SUPPORTED_EXTENSIONS } from "@/lib/constants";
+import { useUserSettings } from "@/hooks/use-settings";
 
 interface FileUploadProps {
   onFilesSelected: (files: File[]) => void | Promise<void>;
@@ -13,6 +14,7 @@ interface FileUploadProps {
 export function FileUpload({ onFilesSelected, isExtracting }: FileUploadProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const { t } = useUserSettings();
 
   const acceptStr = SUPPORTED_EXTENSIONS.join(",");
 
@@ -70,17 +72,17 @@ export function FileUpload({ onFilesSelected, isExtracting }: FileUploadProps) {
         {isExtracting ? (
           <div className="flex flex-col items-center gap-2 text-muted-foreground">
             <Loader2 className="size-8 animate-spin" />
-            <p className="text-sm">Extracting text from files...</p>
+            <p className="text-sm">{t.tts.extractTextFromFiles}</p>
           </div>
         ) : (
           <label className="flex flex-col items-center justify-center cursor-pointer w-full">
             <FileUp className="size-8 text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground text-center">
-              Drag & drop files or{" "}
-              <span className="text-primary hover:underline">browse</span>
+              {t.tts.dragDrop}{" "}
+              <span className="text-primary hover:underline">{t.tts.browse}</span>
             </p>
             <p className="text-xs text-muted-foreground/70 mt-1">
-              PDF, DOCX, TXT, JPG, PNG
+              {t.tts.supportedFormats}
             </p>
             <input
               type="file"

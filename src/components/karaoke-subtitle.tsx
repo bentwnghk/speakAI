@@ -1,10 +1,12 @@
 "use client";
 
 import { motion } from "motion/react";
-
-const words = ["Transform", "text", "into", "lifelike", "speech", "—", "read", "along", "with", "karaoke-style", "highlighting"];
+import { useUserSettings } from "@/hooks/use-settings";
 
 export function KaraokeSubtitle() {
+  const { t } = useUserSettings();
+  const words = t.dashboard.subtitle;
+
   return (
     <p className="text-muted-foreground flex flex-wrap items-center justify-center gap-x-1.5">
       {words.map((word, i) => (

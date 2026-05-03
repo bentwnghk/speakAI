@@ -18,14 +18,20 @@ export default async function DashboardLayout({
       <main className="flex-1 mx-auto w-full max-w-5xl px-4 py-6">
         {children}
       </main>
-      <footer className="border-t py-4">
-        <p className="text-center text-sm text-muted-foreground">
-          Built with ❤️ by Mr.🆖 for students learning English.
-        </p>
-        <p className="text-center text-xs text-muted-foreground mt-1">
-          Powered by <a href="https://api.mr5ai.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Mr.🆖 AI Hub</a>
-        </p>
-      </footer>
+      <DashboardFooter />
     </div>
+  );
+}
+
+function DashboardFooter() {
+  return (
+    <footer className="border-t py-4">
+      <p className="text-center text-sm text-muted-foreground">
+        Built with ❤️ by Mr.🆖 for students learning English.
+      </p>
+      <p className="text-center text-xs text-muted-foreground mt-1">
+        Powered by <a href="https://api.mr5ai.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Mr.🆖 AI Hub</a>
+      </p>
+    </footer>
   );
 }

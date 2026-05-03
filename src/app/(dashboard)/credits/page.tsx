@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useCredits } from "@/hooks/use-credits";
+import { useUserSettings } from "@/hooks/use-settings";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -57,6 +58,7 @@ export default function CreditsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { balance, refreshBalance } = useCredits();
+  const { t } = useUserSettings();
   const [plans, setPlans] = useState<PlanConfig[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
@@ -114,9 +116,9 @@ export default function CreditsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">Credits</h1>
+        <h1 className="text-3xl font-bold">{t.credits.title}</h1>
         <p className="text-muted-foreground mt-2">
-          Purchase credits to generate audio
+          {t.credits.description}
         </p>
       </div>
 
@@ -125,10 +127,10 @@ export default function CreditsPage() {
           <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
           <div>
             <p className="font-medium text-green-800 dark:text-green-200">
-              Payment successful!
+              {t.credits.paymentSuccess}
             </p>
             <p className="text-sm text-green-700 dark:text-green-300">
-              Your credits have been added to your account.
+              {t.credits.creditsAdded}
             </p>
           </div>
         </div>
@@ -138,7 +140,7 @@ export default function CreditsPage() {
         <div className="mb-6 flex items-center gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-900 dark:bg-yellow-950">
           <XCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
           <p className="text-sm text-yellow-700 dark:text-yellow-300">
-            Payment was canceled. No charges were made.
+            {t.credits.paymentCanceled}
           </p>
         </div>
       )}
@@ -148,7 +150,7 @@ export default function CreditsPage() {
         <span className="text-lg font-semibold">
           HK${balance !== null ? balance.toFixed(2) : "..."}
         </span>
-        <span className="text-muted-foreground">remaining</span>
+        <span className="text-muted-foreground">{t.credits.remaining}</span>
       </div>
 
       <div className="mb-8 grid gap-6 pt-4 md:grid-cols-2">
@@ -177,7 +179,7 @@ export default function CreditsPage() {
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge className="bg-primary px-3 py-1 text-primary-foreground">
                     <Zap className="mr-1 h-3 w-3" />
-                    Best Value
+                    {t.credits.bestValue}
                   </Badge>
                 </div>
               )}
@@ -191,7 +193,7 @@ export default function CreditsPage() {
                 </div>
                 <CardTitle className="text-xl">{plan.label}</CardTitle>
                 <CardDescription>
-                  {plan.credits} Credits (HK${plan.credits.toFixed(2)})
+                  {plan.credits} {t.credits.credits} (HK${plan.credits.toFixed(2)})
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 text-center">
@@ -201,11 +203,11 @@ export default function CreditsPage() {
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  HK${(plan.priceHKD / plan.credits).toFixed(2)} per credit
+                  {t.credits.perCredit.replace("${price}", (plan.priceHKD / plan.credits).toFixed(2))}
                 </p>
                 {plan.highlight && savedPct > 0 && (
                   <p className="text-sm font-medium text-primary">
-                    Save {savedPct}% compared to Starter
+                    {t.credits.saveCompared.replace("{pct}", String(savedPct))}
                   </p>
                 )}
                 <Button
@@ -218,12 +220,12 @@ export default function CreditsPage() {
                   {loading === plan.key ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Redirecting...
+                      {t.credits.redirecting}
                     </>
                   ) : (
                     <>
                       <ShoppingCart className="mr-2 h-4 w-4" />
-                      Buy {plan.credits} Credits
+                      {t.credits.buyCredits.replace("{count}", String(plan.credits))}
                     </>
                   )}
                 </Button>
@@ -237,16 +239,16 @@ export default function CreditsPage() {
         <>
           <Separator className="my-8" />
           <div>
-            <h2 className="mb-4 text-xl font-semibold">Purchase History</h2>
+            <h2 className="mb-4 text-xl font-semibold">{t.credits.purchaseHistory}</h2>
             <div className="rounded-md border overflow-x-auto max-h-80 overflow-y-auto">
               <table className="w-full min-w-[500px] text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="p-3 text-left font-medium">Date</th>
-                    <th className="p-3 text-left font-medium">Package</th>
-                    <th className="p-3 text-right font-medium">Amount</th>
-                    <th className="p-3 text-right font-medium">Credits</th>
-                    <th className="p-3 text-right font-medium">Status</th>
+                    <th className="p-3 text-left font-medium">{t.credits.date}</th>
+                    <th className="p-3 text-left font-medium">{t.credits.package}</th>
+                    <th className="p-3 text-right font-medium">{t.credits.amount}</th>
+                    <th className="p-3 text-right font-medium">{t.credits.credits}</th>
+                    <th className="p-3 text-right font-medium">{t.credits.status}</th>
                   </tr>
                 </thead>
                 <tbody>

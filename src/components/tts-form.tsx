@@ -16,6 +16,7 @@ import Link from "next/link";
 import type { Segment } from "@/types/karaoke";
 import { processPdf } from "@/lib/pdf-client";
 import { useCredits } from "@/hooks/use-credits";
+import { useUserSettings } from "@/hooks/use-settings";
 
 interface Generation {
   id: string;
@@ -47,6 +48,7 @@ export function TtsForm() {
   const [karaokeActive, setKaraokeActive] = useState(false);
   const [accumulatedVisionCost, setAccumulatedVisionCost] = useState(0);
   const { refreshBalance } = useCredits();
+  const { t } = useUserSettings();
 
   const handleFilesSelected = useCallback(async (newFiles: File[]) => {
     if (newFiles.length === 0) {
@@ -77,7 +79,7 @@ export function TtsForm() {
         });
         if (!res.ok) {
           const err = (await res.json()) as { error?: string };
-          throw new Error(err.error ?? "Text extraction failed");
+          throw new Error(err.error ?? t.tts.extractFailed);
         }
         const data = (await res.json()) as { text: string; visionCost?: number };
         allTexts.push(data.text);
@@ -100,7 +102,7 @@ export function TtsForm() {
             });
             if (!res.ok) {
               const err = (await res.json()) as { error?: string };
-              throw new Error(err.error ?? "OCR failed for scanned PDF page");
+              throw new Error(err.error ?? t.tts.ocrFailed);
             }
             const data = (await res.json()) as { text: string; visionCost?: number };
             allTexts.push(data.text);
@@ -113,22 +115,24 @@ export function TtsForm() {
 
       const combined = allTexts.filter(Boolean).join("\n\n");
       setExtractedText(combined);
-      toast.success(`Extracted text from ${newFiles.length} file(s)`);
+      toast.success(
+        t.tts.extractSuccess.replace("{count}", String(newFiles.length))
+      );
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to extract text"
+        error instanceof Error ? error.message : t.tts.extractFailed
       );
       setExtractedText("");
     } finally {
       setIsExtracting(false);
     }
-  }, []);
+  }, [t]);
 
   const handleGenerate = async () => {
     const inputText = inputMethod === "text" ? text : extractedText;
 
     if (!inputText?.trim()) {
-      toast.error("Please enter text or upload files first");
+      toast.error(t.tts.pleaseEnterText);
       return;
     }
 
@@ -151,7 +155,7 @@ export function TtsForm() {
 
       if (!res.ok) {
         const err = (await res.json()) as { error?: string };
-        throw new Error(err.error || "Generation failed");
+        throw new Error(err.error || t.tts.generationFailed);
       }
 
       const data = (await res.json()) as Generation;
@@ -161,14 +165,14 @@ export function TtsForm() {
       setAudioSegments(data.segments ?? []);
 
       toast.success(
-        `Audio generated! ${data.ttsCost ? `Cost: HK$${data.ttsCost}` : ""}`,
+        `${t.tts.audioGenerated}${data.ttsCost ? ` ${t.tts.cost.replace("${cost}", data.ttsCost)}` : ""}`,
         { duration: 5000 }
       );
       void refreshBalance();
       setAccumulatedVisionCost(0);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Audio generation failed"
+        error instanceof Error ? error.message : t.tts.generationFailed
       );
     } finally {
       setIsGenerating(false);
@@ -191,7 +195,7 @@ export function TtsForm() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <FileText className="size-4" />
-              Source
+              {t.tts.source}
             </CardTitle>
           </CardHeader>
           <CardContent className="max-h-[50vh] overflow-y-auto">
@@ -210,17 +214,17 @@ export function TtsForm() {
                 <TabsList className="w-full">
                   <TabsTrigger value="text" className="flex-1">
                     <Type className="size-4" />
-                    Text
+                    {t.tts.text}
                   </TabsTrigger>
                   <TabsTrigger value="upload" className="flex-1">
                     <Upload className="size-4" />
-                    Files
+                    {t.tts.files}
                   </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="text" className="mt-3">
                   <Textarea
-                    placeholder="Paste or type the text to read aloud here..."
+                    placeholder={t.tts.textPlaceholder}
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     rows={10}
@@ -235,7 +239,7 @@ export function TtsForm() {
                   {extractedText && (
                     <div className="mt-3">
                       <p className="text-xs text-muted-foreground mb-1">
-                        Edit the extracted text as needed before generating:
+                        {t.tts.editExtracted}
                       </p>
                       <Textarea
                         value={extractedText}
@@ -254,7 +258,7 @@ export function TtsForm() {
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
               <SlidersHorizontal className="size-4" />
-              Settings
+              {t.tts.settings}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -272,12 +276,12 @@ export function TtsForm() {
           {isGenerating ? (
             <>
               <Loader2 className="size-4 animate-spin" />
-              Generating...
+              {t.tts.generating}
             </>
           ) : (
             <>
               <Sparkles className="size-4" />
-              Generate Audio
+              {t.tts.generate}
             </>
           )}
         </Button>
@@ -297,7 +301,7 @@ export function TtsForm() {
         <Link href="/history" className="block">
           <Button variant="outline" className="w-full">
             <History className="size-4" />
-            View Audio History
+            {t.tts.viewHistory}
           </Button>
         </Link>
       </div>

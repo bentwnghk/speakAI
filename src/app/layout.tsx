@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { AuthProvider } from "@/components/auth-provider";
+import { UserSettingsProvider } from "@/hooks/use-settings";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
@@ -19,6 +20,16 @@ export const viewport: Viewport = {
   themeColor: "#000000",
 };
 
+const themeScript = `
+(function(){
+  try {
+    var t = localStorage.getItem('speakai-theme') || 'system';
+    var d = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme:dark)').matches);
+    if (d) document.documentElement.classList.add('dark');
+  } catch(e){}
+})();
+`.trim();
+
 export default function RootLayout({
   children,
 }: {
@@ -26,10 +37,15 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
       <body className="min-h-screen bg-background font-sans antialiased">
         <AuthProvider>
-          {children}
-          <Toaster />
+          <UserSettingsProvider>
+            {children}
+            <Toaster />
+          </UserSettingsProvider>
         </AuthProvider>
       </body>
     </html>
