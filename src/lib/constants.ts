@@ -9,6 +9,28 @@ export const VOICE_MAP: Record<string, string> = {
 
 export const VOICE_OPTIONS = Object.keys(VOICE_MAP);
 
+const OLD_VOICE_MAP: Record<string, string> = {
+  "Female 2": "fable",
+  "Male 2": "echo",
+  "Female 3": "shimmer",
+  "Male 3": "onyx",
+};
+
+const REVERSE_VOICE_MAP: Record<string, string> = {
+  ...Object.fromEntries(Object.entries(VOICE_MAP).map(([k, v]) => [v, k])),
+  ...Object.fromEntries(Object.entries(OLD_VOICE_MAP).map(([k, v]) => [v, k])),
+};
+
+export function formatVoiceBadge(voice: string): string {
+  const displayKey = REVERSE_VOICE_MAP[voice];
+  if (displayKey) {
+    const name = voice.charAt(0).toUpperCase() + voice.slice(1);
+    const gender = displayKey.split(" ")[0].toLowerCase();
+    return `${name} (${gender})`;
+  }
+  return voice;
+}
+
 export const SUPPORTED_EXTENSIONS = [
   ".txt",
   ".docx",

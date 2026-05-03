@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { AudioPlayer } from "@/components/audio-player";
 import { KaraokeText } from "@/components/karaoke-text";
+import { formatVoiceBadge } from "@/lib/constants";
 import type { Segment } from "@/types/karaoke";
 
 interface Generation {
@@ -285,7 +286,7 @@ export function HistoryList() {
             Download
           </Button>
           <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-            <Badge variant="secondary"><Mic className="size-3" />{loadedGeneration.voice}</Badge>
+            <Badge variant="secondary"><Mic className="size-3" />{formatVoiceBadge(loadedGeneration.voice).split(" (")[0]}</Badge>
             <Badge variant="outline"><Gauge className="size-3" />{loadedGeneration.speed}%</Badge>
             <span className="flex items-center gap-1">
               <Clock className="size-3" />
@@ -363,7 +364,7 @@ export function HistoryList() {
               )}
               <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
                 <Badge variant="secondary" className="text-xs gap-1">
-                  <Mic className="size-3" />{gen.voice}
+                  <Mic className="size-3" />{formatVoiceBadge(gen.voice).split(" (")[0]}
                 </Badge>
                 <Badge variant="outline" className="text-xs gap-1">
                   <Gauge className="size-3" />{gen.speed}%
