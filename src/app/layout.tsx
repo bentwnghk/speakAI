@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Poppins, Plus_Jakarta_Sans } from "next/font/google";
+import { Poppins, Inter } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
 import { UserSettingsProvider } from "@/hooks/use-settings";
 import { Toaster } from "@/components/ui/sonner";
@@ -12,9 +12,9 @@ const poppins = Poppins({
   display: "swap",
 });
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--plus-jakarta",
+  variable: "--inter",
   display: "swap",
 });
 
@@ -50,7 +50,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${plusJakartaSans.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${inter.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
