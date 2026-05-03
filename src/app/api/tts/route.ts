@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { generateTtsAudio, VOICE_MAP, alignAudio } from "@/lib/tts";
+import { generateTtsAudio, VOICE_MAP, alignAudio, normalizeHeadingPunctuation } from "@/lib/tts";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
 import { eq, desc, count } from "drizzle-orm";
@@ -54,11 +54,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const result = await generateTtsAudio(text, voice, speed);
+    // Headings without terminal punctuation are fed to TTS as-is, causing
+    // the engine to run them into the following sentence with no prosodic
+    // pause.  Whisper then merges the heading into the next segment, so the
+    // karaoke cursor skips it entirely.  Normalising before generation adds a
+    // period only to structurally isolated short lines, giving TTS a pause cue
+    // and Whisper a reliable segment boundary.  The original text is preserved
+    // for storage and display.
+    const processedText = normalizeHeadingPunctuation(text);
+
+    const result = await generateTtsAudio(processedText, voice, speed);
 
     const { segments, audioDurationSeconds } = await alignAudio(
       result.chunks,
-      text
+      processedText
     );
 
     const ttsCost = parseFloat(result.cost);

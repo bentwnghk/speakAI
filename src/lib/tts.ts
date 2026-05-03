@@ -7,6 +7,76 @@ import type { Segment, WordTimestamp } from "@/types/karaoke";
 
 export { VOICE_MAP, VOICE_OPTIONS };
 
+/**
+ * Append a period to any line that looks like a section heading — that is,
+ * a line that:
+ *   1. Is non-empty after trimming.
+ *   2. Does NOT already end with terminal punctuation (.?!:;).
+ *   3. Is short enough to be a heading (≤ 120 characters).
+ *   4. Is structurally isolated: preceded by a blank line, followed by a
+ *      blank line, or both.  Body sentences inside a paragraph are never
+ *      blank-line-delimited; headings almost always are.
+ *
+ * Why this matters for TTS + Whisper:
+ *   - A heading without punctuation causes the TTS engine to run straight
+ *     into the next sentence with no prosodic pause, making the heading
+ *     indistinguishable from body text.
+ *   - Whisper then absorbs the heading into the following segment, so the
+ *     karaoke cursor skips the heading entirely and jumps mid-sentence.
+ *   - Adding a period gives the TTS engine a natural pause cue and gives
+ *     Whisper a reliable segment boundary.
+ *
+ * Safety for karaoke display:
+ *   This function only appends "." to the last character of an existing
+ *   token — it never inserts or removes words.  The speakable-word count
+ *   per line is therefore identical between the original and processed text,
+ *   so the word-index mapping in KaraokeText stays correct when the original
+ *   text is shown and the processed text is used for alignment.
+ */
+export function normalizeHeadingPunctuation(text: string): string {
+  const lines = text.split("\n");
+  const out: string[] = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const trimmed = raw.trimEnd();
+    const content = trimmed.trim();
+
+    // Blank line — pass through unchanged.
+    if (!content) {
+      out.push(raw);
+      continue;
+    }
+
+    // Already ends with terminal punctuation — leave it alone.
+    if (/[.?!:;]$/.test(content)) {
+      out.push(raw);
+      continue;
+    }
+
+    // Too long to be a heading.  Body sentences occasionally lack a period
+    // (truncated extraction, informal writing) but are never this short.
+    if (content.length > 120) {
+      out.push(raw);
+      continue;
+    }
+
+    // Structural isolation test: at least one neighbouring line is blank.
+    // i === 0 counts as "preceded by blank" (start of document).
+    // i === last counts as "followed by blank" (end of document).
+    const prevBlank = i === 0 || !lines[i - 1].trim();
+    const nextBlank = i === lines.length - 1 || !lines[i + 1].trim();
+
+    if (prevBlank || nextBlank) {
+      out.push(trimmed + ".");
+    } else {
+      out.push(raw);
+    }
+  }
+
+  return out.join("\n");
+}
+
 export function splitText(text: string, maxChunkSize = 4000): string[] {
   const chunks: string[] = [];
   const paragraphs = text.split("\n\n");
