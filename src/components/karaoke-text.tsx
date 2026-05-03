@@ -149,7 +149,7 @@ export function KaraokeText({
                 ref={isWordActive ? activeWordRef : undefined}
                 className={`${
                   isWordActive
-                    ? "bg-yellow-300/50 dark:bg-blue-800/80 text-foreground rounded-sm font-bold -mx-0.5 px-0.5"
+                    ? "bg-yellow-300/50 dark:bg-green-500/60 text-foreground rounded-sm font-bold -mx-0.5 px-0.5"
                     : isPast
                       ? "text-muted-foreground/50 transition-colors duration-300"
                       : "transition-colors duration-300"
