@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { generateTtsAudio, VOICE_MAP, alignAudio, normalizeHeadingPunctuation } from "@/lib/tts";
+import { generateTtsAudio, VOICE_MAP, estimateTtsCost, normalizeHeadingPunctuation } from "@/lib/tts";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
 import { eq, desc, count } from "drizzle-orm";
@@ -37,11 +37,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const processedText = normalizeHeadingPunctuation(text);
+
     const balance = await getUserBalance(userId);
-    const estimatedCost = Math.max(
-      (text.length / 1_000_000) * 15 * 7.8 + 0.01,
-      0.01
-    );
+    const estimatedCost = estimateTtsCost(processedText);
 
     if (balance < estimatedCost) {
       return NextResponse.json(
@@ -54,25 +53,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Headings without terminal punctuation are fed to TTS as-is, causing
-    // the engine to run them into the following sentence with no prosodic
-    // pause.  Whisper then merges the heading into the next segment, so the
-    // karaoke cursor skips it entirely.  Normalising before generation adds a
-    // period only to structurally isolated short lines, giving TTS a pause cue
-    // and Whisper a reliable segment boundary.  The original text is preserved
-    // for storage and display.
-    const processedText = normalizeHeadingPunctuation(text);
-
     const result = await generateTtsAudio(processedText, voice, speed);
 
-    const { segments, audioDurationSeconds } = await alignAudio(
-      result.chunks,
-      processedText
-    );
-
     const ttsCost = parseFloat(result.cost);
-    const whisperCost = (audioDurationSeconds / 60) * 0.006 * 7.8;
-    const totalCost = (ttsCost + whisperCost).toFixed(2);
+    const totalCost = ttsCost.toFixed(2);
     const totalCostNum = parseFloat(totalCost);
 
     const deduction = await deductCredits(
@@ -92,7 +76,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const segmentsJson = segments.length > 0 ? JSON.stringify(segments) : null;
+    const segmentsJson = result.segments.length > 0 ? JSON.stringify(result.segments) : null;
 
     const generationTitle =
       title?.trim() ||
@@ -125,7 +109,7 @@ export async function POST(request: NextRequest) {
       voice,
       speed,
       audioUrl: `/api/audio/${generation.id}`,
-      segments: segments.length > 0 ? segments : undefined,
+      segments: result.segments.length > 0 ? result.segments : undefined,
       ttsCost: totalCost,
       creditsUsed: totalCostNum,
       remainingCredits: deduction.balance,

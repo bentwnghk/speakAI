@@ -19,7 +19,7 @@ SpeakAI is an AI-powered web application that converts text from various sources
 - **Speed Control:** Adjustable playback speed from 50% (slower) to 200% (faster) for customized listening experience
 - **Concurrent Processing:** Efficiently processes large texts by splitting into chunks and generating audio in parallel
 - **Audio History & Archives:** Browser-based storage system using IndexedDB to save, load, rename, and delete previously generated audio files
-- **Cost Estimation:** Real-time calculation and display of TTS API costs (approximately $15 per million characters)
+- **Cost Estimation:** Real-time calculation and display of Azure TTS costs (default: $16 per million characters)
 - **Robust Text Handling:** Intelligently splits text at paragraph and sentence boundaries for natural pacing
 - **User-Friendly Interface:** Built with Gradio for an intuitive web experience with responsive design
 - **API Integration:** Supports custom overlays for OpenAI and Vision API providers, plus Mr.🆖 AI Hub integration
@@ -30,7 +30,7 @@ SpeakAI is an AI-powered web application that converts text from various sources
 ## Requirements
 
 - **API Keys:**
-  - OpenAI TTS API key (set as `TTS_API_KEY` environment variable)
+  - Azure Speech key and region (set as `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION`)
   - OpenAI Vision API key (set as `VISION_API_KEY` environment variable, required for image processing)
 - **Python:** 3.12 or higher
 - **Dependencies:** Managed via `uv` package manager
@@ -53,7 +53,8 @@ SpeakAI is an AI-powered web application that converts text from various sources
 3. **Set up environment variables:**
    Create a `.env` file or export variables directly:
    ```bash
-   export TTS_API_KEY="your-openai-tts-api-key"
+   export AZURE_SPEECH_KEY="your-azure-speech-key"
+   export AZURE_SPEECH_REGION="eastus"
    export VISION_API_KEY="your-openai-vision-api-key"
    ```
 
@@ -69,7 +70,7 @@ The project includes Docker support for easy containerized deployment.
 2. **Or build manually:**
    ```bash
    docker build -t speakai .
-   docker run -p 8000:8000 -e TTS_API_KEY="your-key" -e VISION_API_KEY="your-key" speakai
+   docker run -p 8000:8000 -e AZURE_SPEECH_KEY="your-key" -e AZURE_SPEECH_REGION="eastus" -e VISION_API_KEY="your-key" speakai
    ```
 
 ## Usage
@@ -113,9 +114,13 @@ The project includes Docker support for easy containerized deployment.
 
 Customize the application by setting these environment variables:
 
-- `TTS_API_KEY`: Your OpenAI API key for text-to-speech
+- `AZURE_SPEECH_KEY`: Azure Speech resource key for text-to-speech
+- `AZURE_SPEECH_REGION`: Azure Speech resource region (for example, `eastus`)
+- `AZURE_SPEECH_VOICE_FEMALE_1` / `AZURE_SPEECH_VOICE_MALE_1`: Optional overrides for UI voice labels
+- `AZURE_SPEECH_PRICE_USD_PER_1M_CHARS`: Optional cost override for credit calculation (default: `16`)
 - `VISION_API_KEY`: Your OpenAI API key for vision/OCR
-- `TTS_BASE_URL`: Custom base URL for TTS API (optional)
+- `TTS_API_KEY`: OpenAI-compatible fallback key used by vision/OCR when `VISION_API_KEY` is not set
+- `TTS_BASE_URL`: OpenAI-compatible fallback base URL used by vision/OCR when `VISION_BASE_URL` is not set
 - `VISION_BASE_URL`: Custom base URL for Vision API (optional)
 - `SENTRY_DSN`: Sentry DSN for error logging (optional)
 
