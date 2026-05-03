@@ -37,6 +37,17 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
+  // Keep callback refs current on every render so the RAF effect closure
+  // always calls the latest prop values without needing them in its dep array.
+  // This prevents the effect from re-running (and killing the RAF loop) every
+  // time a parent re-render creates new inline arrow function props.
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+  const onPlayStateChangeRef = useRef(onPlayStateChange);
+  const onEndedRef = useRef(onEnded);
+  useEffect(() => { onTimeUpdateRef.current = onTimeUpdate; });
+  useEffect(() => { onPlayStateChangeRef.current = onPlayStateChange; });
+  useEffect(() => { onEndedRef.current = onEnded; });
+
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
@@ -47,10 +58,16 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
     // audio is playing.  This gives the karaoke highlight sub-frame accuracy
     // instead of the ~4 Hz resolution of the `timeupdate` event, eliminating
     // visible word-skipping on fast speech.
+    //
+    // Callbacks are accessed via refs so that the effect only re-runs when
+    // `src` changes, not whenever a parent passes a new inline arrow function.
+    // Without this, a parent re-render (e.g., isPlaying → karaokeActive →
+    // new onStop/onEnded references) would tear down and restart this effect
+    // mid-playback, killing the RAF loop before the `play` event re-fires.
     const tick = () => {
       const t = audio.currentTime;
       setCurrentTime(t);
-      onTimeUpdate?.(t);
+      onTimeUpdateRef.current?.(t);
       rafId = requestAnimationFrame(tick);
     };
 
@@ -73,7 +90,7 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
       // position where the user stopped.
       const t = audio.currentTime;
       setCurrentTime(t);
-      onTimeUpdate?.(t);
+      onTimeUpdateRef.current?.(t);
     };
 
     const onLoadedMetadata = () => setDuration(audio.duration);
@@ -81,14 +98,19 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
     const onEndedHandler = () => {
       stopRaf();
       setIsPlaying(false);
-      onPlayStateChange?.(false);
-      onEnded?.();
+      onPlayStateChangeRef.current?.(false);
+      onEndedRef.current?.();
     };
 
     audio.addEventListener("play", onPlay);
     audio.addEventListener("pause", onPause);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("ended", onEndedHandler);
+
+    // If the audio element is already playing when this effect runs (can
+    // happen if src didn't change but deps triggered a re-run), restart the
+    // RAF loop immediately rather than waiting for the next `play` event.
+    if (!audio.paused) startRaf();
 
     return () => {
       stopRaf();
@@ -97,7 +119,7 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("ended", onEndedHandler);
     };
-  }, [src, onTimeUpdate, onPlayStateChange, onEnded]);
+  }, [src]); // Re-run only when the audio source changes.
 
   useEffect(() => {
     setIsPlaying(false);
