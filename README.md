@@ -15,7 +15,7 @@ SpeakAI is an AI-powered web application that converts text from various sources
   - File uploads (PDF, DOCX, TXT documents)
   - Images (JPG, JPEG, PNG) with automatic text extraction using AI vision
 - **High-Quality Audio:** Generates lifelike speech using OpenAI's text-to-speech models
-- **Multiple Voices:** Choose from 6 voice options: Female 1 (nova), Male 1 (alloy), Female 2 (fable), Male 2 (echo), Female 3 (shimmer), Male 3 (onyx)
+- **Multiple Voices:** Choose from 6 voice options: Female 1 (nova), Male 1 (alloy), Female 2 (phoebe), Male 2 (adam), Female 3 (ava), Male 3 (ollie)
 - **Speed Control:** Adjustable playback speed from 50% (slower) to 200% (faster) for customized listening experience
 - **Concurrent Processing:** Efficiently processes large texts by splitting into chunks and generating audio in parallel
 - **Audio History & Archives:** Browser-based storage system using IndexedDB to save, load, rename, and delete previously generated audio files
@@ -143,10 +143,10 @@ The application includes a sophisticated browser-based storage system:
 - **Voice Options:** 6 high-quality voices available:
   - Female 1 (nova) - Default English female voice
   - Male 1 (alloy) - English male voice
-  - Female 2 (fable) - Alternative English female voice
-  - Male 2 (echo) - Alternative English male voice
-  - Female 3 (shimmer) - Alternative English female voice
-  - Male 3 (onyx) - Alternative English male voice
+  - Female 2 (phoebe) - Alternative English female voice
+  - Male 2 (adam) - Alternative English male voice
+  - Female 3 (ava) - Alternative English female voice
+  - Male 3 (ollie) - Alternative English male voice
 - **Speed Control:** Adjustable playback speed from 0.5x to 2.0x (50% to 200% in the interface)
 - **Cost Estimation:** Real-time calculation at approximately $15 per million characters for TTS
 - **Concurrent Workers:** Up to 10 parallel audio generations for optimal performance

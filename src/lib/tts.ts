@@ -9,12 +9,12 @@ import type { Segment, WordTimestamp } from "@/types/karaoke";
 export { VOICE_MAP, VOICE_OPTIONS };
 
 const AZURE_VOICE_MAP: Record<string, string> = {
-  "Female 1": "en-US-JennyNeural",
-  "Male 1": "en-US-GuyNeural",
-  "Female 2": "en-US-AriaNeural",
-  "Male 2": "en-US-DavisNeural",
-  "Female 3": "en-US-AvaNeural",
-  "Male 3": "en-US-AndrewNeural",
+  "Female 1": "en-US-NovaTurboMultilingualNeural",
+  "Male 1": "en-US-AlloyTurboMultilingualNeural",
+  "Female 2": "en-US-PhoebeMultilingualNeural",
+  "Male 2": "en-US-AdamMultilingualNeural",
+  "Female 3": "en-US-AvaMultilingualNeural",
+  "Male 3": "en-GB-OllieMultilingualNeural",
 };
 
 // ── Azure endpoint pool ──────────────────────────────────────────────────────

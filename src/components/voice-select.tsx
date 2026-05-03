@@ -30,7 +30,7 @@ export function VoiceSelect({ value, onValueChange }: VoiceSelectProps) {
         <SelectContent>
           {VOICE_OPTIONS.map((voice) => (
             <SelectItem key={voice} value={voice}>
-              {voice} ({VOICE_MAP[voice]})
+              {voice} ({VOICE_MAP[voice].charAt(0).toUpperCase()}{VOICE_MAP[voice].slice(1)})
             </SelectItem>
           ))}
         </SelectContent>

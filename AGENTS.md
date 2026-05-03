@@ -191,7 +191,7 @@ The project uses **PostgreSQL 16** with **Drizzle ORM**.
 ### Text-to-Speech
 
 - **`src/lib/tts.ts`**: Core TTS logic using **Azure Speech SDK** (`microsoft-cognitiveservices-speech-sdk`). Synthesizes MP3 audio and collects word-boundary events from the synthesis engine for karaoke timing.
-- **Voices**: 6 voices available — Jenny (Female 1), Guy (Male 1), Aria (Female 2), Davis (Male 2), Ava (Female 3), Andrew (Male 3). Mapped via `AZURE_VOICE_MAP` in `src/lib/tts.ts`. Individual voice names are overridable via env vars (e.g. `AZURE_SPEECH_VOICE_FEMALE_1`).
+- **Voices**: 6 voices available — Nova (Female 1), Alloy (Male 1), Phoebe (Female 2), Adam (Male 2), Ava (Female 3), Ollie (Male 3). Mapped via `AZURE_VOICE_MAP` in `src/lib/tts.ts`. Individual voice names are overridable via env vars (e.g. `AZURE_SPEECH_VOICE_FEMALE_1`).
 - **Text Chunking**: Long text is split into chunks (max 4000 chars) respecting paragraph and sentence boundaries. Chunks are processed **sequentially** so cumulative audio offsets are deterministic.
 - **Audio Output**: Generated MP3 files stored in `data/audio/` with nanoid-based filenames.
 

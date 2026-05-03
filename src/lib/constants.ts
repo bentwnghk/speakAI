@@ -1,10 +1,10 @@
 export const VOICE_MAP: Record<string, string> = {
   "Female 1": "nova",
   "Male 1": "alloy",
-  "Female 2": "fable",
-  "Male 2": "echo",
-  "Female 3": "shimmer",
-  "Male 3": "onyx",
+  "Female 2": "phoebe",
+  "Male 2": "adam",
+  "Female 3": "ava",
+  "Male 3": "ollie",
 };
 
 export const VOICE_OPTIONS = Object.keys(VOICE_MAP);
