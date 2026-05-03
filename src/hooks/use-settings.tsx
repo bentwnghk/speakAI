@@ -50,11 +50,6 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
 
   const t = getDictionary(locale);
 
-  // Apply theme to DOM whenever state changes.
-  useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
-
   // Listen for OS preference changes when in system mode.
   useEffect(() => {
     if (theme === "system") {
@@ -65,15 +60,20 @@ export function UserSettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [theme]);
 
-  // Read persisted preferences from localStorage. Runs after the effects above
-  // so that applyTheme("light"/"dark") here wins over the applyTheme("system")
-  // called by the [theme] effect on the same initial render.
+  // Read persisted preferences from localStorage on first mount
+  // and apply the correct theme to the DOM.  The inline script in
+  // layout.tsx already set the initial dark class based on
+  // localStorage, so we only need to correct the React state here
+  // (no class toggling needed unless OS/system mode differs from
+  // the saved preference).
   useEffect(() => {
     const savedTheme = localStorage.getItem(THEME_STORAGE_KEY) as Theme | null;
     const savedLocale = localStorage.getItem(LOCALE_STORAGE_KEY) as Locale | null;
     if (savedTheme) {
       setThemeState(savedTheme);
-      applyTheme(savedTheme); // override immediately, don't wait for re-render
+    } else {
+      // No saved preference – apply system default now
+      applyTheme("system");
     }
     if (savedLocale) setLocaleState(savedLocale);
   }, []);
