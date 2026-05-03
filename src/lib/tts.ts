@@ -17,6 +17,63 @@ const AZURE_VOICE_MAP: Record<string, string> = {
   "Male 3": "en-US-AndrewNeural",
 };
 
+// ── Azure endpoint pool ──────────────────────────────────────────────────────
+// Supports an arbitrary number of Azure Speech endpoints for round-robin load
+// distribution.  Each endpoint is a (key, region) pair read from env vars:
+//
+//   AZURE_SPEECH_KEY_1 / AZURE_SPEECH_REGION_1
+//   AZURE_SPEECH_KEY_2 / AZURE_SPEECH_REGION_2
+//   ...
+//   AZURE_SPEECH_KEY_N / AZURE_SPEECH_REGION_N
+//
+// The unnumbered AZURE_SPEECH_KEY / AZURE_SPEECH_REGION are supported as a
+// single-endpoint fallback for backward compatibility.
+//
+// Endpoints are collected at module initialisation time (once per process).
+
+interface AzureEndpoint { key: string; region: string }
+
+function loadAzureEndpoints(): AzureEndpoint[] {
+  const endpoints: AzureEndpoint[] = [];
+
+  // Scan AZURE_SPEECH_KEY_1 … AZURE_SPEECH_KEY_N (up to 20).
+  for (let i = 1; i <= 20; i++) {
+    const key    = process.env[`AZURE_SPEECH_KEY_${i}`];
+    const region = process.env[`AZURE_SPEECH_REGION_${i}`];
+    if (key && region) endpoints.push({ key, region });
+  }
+
+  // Fall back to unnumbered names when no numbered ones are present.
+  if (endpoints.length === 0) {
+    const key    = process.env.AZURE_SPEECH_KEY;
+    const region = process.env.AZURE_SPEECH_REGION;
+    if (key && region) endpoints.push({ key, region });
+  }
+
+  return endpoints;
+}
+
+const AZURE_ENDPOINTS: AzureEndpoint[] = loadAzureEndpoints();
+
+// Module-level round-robin cursor.  In a long-running Node.js process this
+// persists across requests so consecutive chunks and consecutive requests are
+// each dispatched to the next endpoint in the pool.
+let rrCursor = 0;
+
+function pickNextEndpoint(): AzureEndpoint {
+  if (AZURE_ENDPOINTS.length === 0) {
+    throw new Error(
+      "No Azure Speech endpoints configured. " +
+      "Set AZURE_SPEECH_KEY_1 + AZURE_SPEECH_REGION_1 " +
+      "(and optionally _2 … _N for a multi-endpoint pool).",
+    );
+  }
+  const ep = AZURE_ENDPOINTS[rrCursor % AZURE_ENDPOINTS.length];
+  rrCursor++;
+  return ep;
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 const configuredAzureTtsPrice = Number(
   process.env.AZURE_SPEECH_PRICE_USD_PER_1M_CHARS ?? "16",
 );
@@ -346,24 +403,19 @@ export async function generateTtsAudio(
   chunks: AudioChunk[];
   segments: Segment[];
 }> {
-  const subscriptionKey = process.env.AZURE_SPEECH_KEY;
-  const region = process.env.AZURE_SPEECH_REGION;
-
-  if (!subscriptionKey || !region) {
-    throw new Error("AZURE_SPEECH_KEY and AZURE_SPEECH_REGION must be configured");
-  }
-
+  // pickNextEndpoint() throws if the pool is empty, giving a clear startup error.
   const actualVoice = getAzureVoiceName(voice);
 
   const chunkTexts = splitText(text);
   const audioChunks: AzureAudioChunk[] = [];
 
   // Process chunks sequentially so cumulative audio offsets are deterministic.
-  // Azure word boundaries are emitted relative to each synthesized chunk; after
-  // synthesis we shift them onto the combined MP3 timeline below.
+  // Each chunk is dispatched to the next endpoint in the round-robin pool so
+  // API usage (and billing) is spread evenly across all configured endpoints.
   for (const chunk of chunkTexts) {
+    const { key, region } = pickNextEndpoint();
     audioChunks.push(
-      await synthesizeAzureChunk(chunk, actualVoice, speedPercent, subscriptionKey, region),
+      await synthesizeAzureChunk(chunk, actualVoice, speedPercent, key, region),
     );
   }
 

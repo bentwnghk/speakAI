@@ -75,7 +75,7 @@ src/
 │   ├── utils.ts                # cn() utility (clsx + tailwind-merge)
 │   ├── pdf-client.ts           # Client-side PDF processing (pdfjs-dist)
 │   ├── file-parser.ts          # Server-side file text extraction (DOCX, TXT, images)
-│   ├── tts.ts                  # TTS generation + Whisper-based audio alignment
+│   ├── tts.ts                  # TTS generation + Azure Speech word-boundary alignment + round-robin endpoint pool
 │   ├── stripe.ts               # Stripe client singleton + credit plan definitions
 │   └── db/
 │       ├── index.ts            # Drizzle ORM setup (postgres-js driver, schema export)
@@ -190,17 +190,22 @@ The project uses **PostgreSQL 16** with **Drizzle ORM**.
 
 ### Text-to-Speech
 
-- **`src/lib/tts.ts`**: Core TTS logic using OpenAI-compatible speech API (`tts-1` model).
-- **Voices**: 6 voices available — nova, alloy, fable, echo, shimmer, onyx. Mapped from display names (e.g., "Female 1" → "nova") via `VOICE_MAP` in `src/lib/constants.ts`.
-- **Text Chunking**: Long text is split into chunks (max 4000 chars) respecting paragraph and sentence boundaries. Chunks are processed in parallel (batch of 10).
+- **`src/lib/tts.ts`**: Core TTS logic using **Azure Speech SDK** (`microsoft-cognitiveservices-speech-sdk`). Synthesizes MP3 audio and collects word-boundary events from the synthesis engine for karaoke timing.
+- **Voices**: 6 voices available — Jenny (Female 1), Guy (Male 1), Aria (Female 2), Davis (Male 2), Ava (Female 3), Andrew (Male 3). Mapped via `AZURE_VOICE_MAP` in `src/lib/tts.ts`. Individual voice names are overridable via env vars (e.g. `AZURE_SPEECH_VOICE_FEMALE_1`).
+- **Text Chunking**: Long text is split into chunks (max 4000 chars) respecting paragraph and sentence boundaries. Chunks are processed **sequentially** so cumulative audio offsets are deterministic.
 - **Audio Output**: Generated MP3 files stored in `data/audio/` with nanoid-based filenames.
+
+### Endpoint Rotation (Load Balancing)
+
+- **Multi-endpoint pool**: Supports an arbitrary number of Azure Speech endpoints via numbered env vars (`AZURE_SPEECH_KEY_1` + `AZURE_SPEECH_REGION_1` through `_N`). The unnumbered `AZURE_SPEECH_KEY` / `AZURE_SPEECH_REGION` pair is a single-endpoint fallback for backward compatibility.
+- **Round-robin**: A module-level cursor (`rrCursor`) is incremented for each synthesized chunk. Chunks within a long text and across consecutive requests are dispatched to successive endpoints in the pool, evenly distributing API character costs and call volume.
+- **Configuration**: `loadAzureEndpoints()` runs once at module load, scanning `_1` through `_20`.
 
 ### Audio Alignment (Karaoke)
 
-- **Whisper API**: After TTS generation, audio is sent to Whisper (`whisper-1`) with `verbose_json` format for both word and segment timestamps.
-- **Word Alignment**: Source text is split into sentences, then mapped onto Whisper segments. Per-word timing is derived via character-position proportional alignment (`mapWordsToTimings`). This handles vocabulary mismatches between source and Whisper output.
-- **Drift Correction**: Word timestamps are re-anchored to sentence boundaries (`normalizeWordTimingsToSegment`) to correct Whisper's drift on fast speech.
-- **Fallback**: If Whisper returns no words for a sentence, timing is distributed proportionally by character length (`distributeTimingToWords`).
+- **Azure Word Boundaries**: During synthesis, the Azure Speech SDK emits `wordBoundary` events with per-word start/end timestamps. These are ground-truth timing from the same engine that produces the audio.
+- **Segment Building**: `buildSegmentsFromAzureBoundaries()` maps boundary events onto source text sentences/words. Per-word timing is derived via character-position proportional alignment (`mapWordsToTimings`) to handle minor vocabulary differences between source and synthesis output.
+- **Fallback**: If Azure returns fewer boundary events than source words for a sentence, timing is distributed proportionally by character length (`distributeTimingToWords`).
 
 ---
 
@@ -215,7 +220,7 @@ The project uses **PostgreSQL 16** with **Drizzle ORM**.
 
 ## Environment Variables
 
-Refer to `.env.example` for all available environment variables (~7 variables).
+Refer to `.env.example` for all available environment variables.
 
 | Variable | Purpose |
 | --- | --- |
@@ -224,8 +229,11 @@ Refer to `.env.example` for all available environment variables (~7 variables).
 | `AUTH_URL` | NextAuth base URL |
 | `AUTH_GOOGLE_ID` | Google OAuth client ID |
 | `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
-| `TTS_API_KEY` | OpenAI-compatible API key for TTS & Whisper |
-| `TTS_BASE_URL` | OpenAI-compatible base URL for TTS & Whisper |
+| `AZURE_SPEECH_KEY_1`…`_N` | Azure Speech subscription keys (round-robin pool) |
+| `AZURE_SPEECH_REGION_1`…`_N` | Azure Speech regions (must match corresponding `_KEY`) |
+| `AZURE_SPEECH_KEY` | Single-endpoint fallback (when no numbered vars set) |
+| `AZURE_SPEECH_REGION` | Single-endpoint fallback region |
+| `AZURE_SPEECH_PRICE_USD_PER_1M_CHARS` | Cost per 1M chars in USD (default: `16`) |
 | `VISION_API_KEY` | API key for image OCR (falls back to `TTS_API_KEY`) |
 | `VISION_BASE_URL` | Base URL for vision model (falls back to `TTS_BASE_URL`) |
 | `VISION_MODEL` | Vision model name (default: `gpt-4.1-mini`) |
