@@ -83,6 +83,7 @@ export const generations = pgTable("generation", {
   segments: text("segments"),
   ttsCost: text("ttsCost"),
   createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+  expiresAt: timestamp("expiresAt", { mode: "date" }),
 });
 
 export const credits = pgTable("credits", {

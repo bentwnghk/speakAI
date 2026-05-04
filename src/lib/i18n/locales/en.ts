@@ -74,6 +74,7 @@ const en = {
     renamed: "Renamed",
     renameFailed: "Failed to rename",
     failed: "Failed",
+    expiresIn: "{days}d left",
   },
   credits: {
     title: "Credits",

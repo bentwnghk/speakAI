@@ -3,8 +3,13 @@ import { auth } from "@/lib/auth";
 import { generateTtsAudio, VOICE_MAP, estimateTtsCost, normalizeHeadingPunctuation } from "@/lib/tts";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
-import { eq, desc, count } from "drizzle-orm";
+import { eq, desc, count, gt, and, or, isNull } from "drizzle-orm";
 import { deductCredits, getUserBalance } from "@/lib/db/credits";
+
+function getExpiresAt(): Date {
+  const days = parseInt(process.env.AUDIO_RETENTION_DAYS || "365", 10);
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -101,6 +106,7 @@ export async function POST(request: NextRequest) {
         audioPath: result.audioPath,
         segments: segmentsJson,
         ttsCost: totalCost,
+        expiresAt: getExpiresAt(),
       })
       .returning();
 
@@ -116,6 +122,7 @@ export async function POST(request: NextRequest) {
       creditsUsed: totalCostNum,
       remainingCredits: deduction.balance,
       createdAt: generation.createdAt,
+      expiresAt: generation.expiresAt,
     });
   } catch (error) {
     console.error("TTS generation error:", error);
@@ -139,7 +146,13 @@ export async function GET(request: NextRequest) {
   );
   const offset = (page - 1) * limit;
 
-  const whereClause = eq(generations.userId, session.user.id);
+  const whereClause = and(
+    eq(generations.userId, session.user.id),
+    or(
+      isNull(generations.expiresAt),
+      gt(generations.expiresAt, new Date())
+    )
+  );
 
   const [userGenerations, totalResult] = await Promise.all([
     db
@@ -170,6 +183,7 @@ export async function GET(request: NextRequest) {
         : undefined,
       ttsCost: g.ttsCost,
       createdAt: g.createdAt,
+      expiresAt: g.expiresAt,
     })),
     total,
     page,

@@ -20,6 +20,7 @@ import {
   Coins,
   ChevronLeft,
   ChevronRight,
+  Timer,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -46,6 +47,7 @@ interface Generation {
   segments?: Segment[];
   ttsCost: string | null;
   createdAt: string;
+  expiresAt: string | null;
 }
 
 function formatHongKongDateTime(dateStr: string): string {
@@ -74,6 +76,14 @@ function formatDownloadTimestamp(dateStr: string): string {
       hour12: false,
     })
     .replace(/[/:, ]/g, "-");
+}
+
+function getDaysUntilExpiry(expiresAt: string | null): number | null {
+  if (!expiresAt) return null;
+  const now = new Date();
+  const expiry = new Date(expiresAt);
+  const diffMs = expiry.getTime() - now.getTime();
+  return Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 }
 
 function downloadAudio(gen: Generation) {
@@ -221,6 +231,8 @@ export function HistoryList() {
       karaokeActive &&
       loadedGeneration.segments &&
       loadedGeneration.segments.length > 0;
+    const daysLeft = getDaysUntilExpiry(loadedGeneration.expiresAt);
+    const nearExpiry = daysLeft !== null && daysLeft <= 14;
 
     return (
       <div className="space-y-4">
@@ -241,6 +253,15 @@ export function HistoryList() {
           <h2 className="text-lg font-semibold truncate">
             {loadedGeneration.title}
           </h2>
+          {daysLeft !== null && (
+            <Badge
+              variant={nearExpiry ? "destructive" : "outline"}
+              className="text-xs shrink-0 gap-1"
+            >
+              <Timer className="size-3" />
+              {t.history.expiresIn.replace("{days}", String(daysLeft))}
+            </Badge>
+          )}
         </div>
 
         <Card>
@@ -334,100 +355,115 @@ export function HistoryList() {
         </div>
       </div>
 
-      {generations.map((gen) => (
-        <Card key={gen.id}>
-           <CardContent className="flex items-start gap-3 py-3">
-            <div className="flex-1 min-w-0 space-y-1">
-              {editingId === gen.id ? (
-                <div className="flex gap-2">
-                  <Input
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onKeyDown={(e) =>
-                      e.key === "Enter" && void handleRename(gen.id)
-                    }
-                    className="h-7 text-sm"
-                  />
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    onClick={() => void handleRename(gen.id)}
-                  >
-                    {t.common.save}
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => setEditingId(null)}
-                  >
-                    {t.common.cancel}
-                  </Button>
+      {generations.map((gen) => {
+        const daysLeft = getDaysUntilExpiry(gen.expiresAt);
+        const nearExpiry = daysLeft !== null && daysLeft <= 14;
+        return (
+          <Card key={gen.id} className={nearExpiry ? "border-red-500 border-2" : ""}>
+             <CardContent className="flex items-start gap-3 py-3">
+              <div className="flex-1 min-w-0 space-y-1">
+                {editingId === gen.id ? (
+                  <div className="flex gap-2">
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      onKeyDown={(e) =>
+                        e.key === "Enter" && void handleRename(gen.id)
+                      }
+                      className="h-7 text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => void handleRename(gen.id)}
+                    >
+                      {t.common.save}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setEditingId(null)}
+                    >
+                      {t.common.cancel}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium truncate">{gen.title}</p>
+                    {daysLeft !== null && (
+                      <Badge
+                        variant={nearExpiry ? "destructive" : "outline"}
+                        className="text-xs shrink-0 gap-1"
+                      >
+                        <Timer className="size-3" />
+                        {t.history.expiresIn.replace("{days}", String(daysLeft))}
+                      </Badge>
+                    )}
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    <Mic className="size-3" />{formatVoiceBadge(gen.voice).split(" (")[0]}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs gap-1">
+                    <Gauge className="size-3" />{gen.speed}%
+                  </Badge>
+                  <span className="flex items-center gap-1">
+                    <Clock className="size-3" />
+                    {formatHongKongDateTime(gen.createdAt)}
+                  </span>
+                  {gen.ttsCost && <span className="flex items-center gap-1"><Coins className="size-3" />HK${gen.ttsCost}</span>}
                 </div>
-              ) : (
-                <p className="text-sm font-medium truncate">{gen.title}</p>
-              )}
-              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                <Badge variant="secondary" className="text-xs gap-1">
-                  <Mic className="size-3" />{formatVoiceBadge(gen.voice).split(" (")[0]}
-                </Badge>
-                <Badge variant="outline" className="text-xs gap-1">
-                  <Gauge className="size-3" />{gen.speed}%
-                </Badge>
-                <span className="flex items-center gap-1">
-                  <Clock className="size-3" />
-                  {formatHongKongDateTime(gen.createdAt)}
-                </span>
-                {gen.ttsCost && <span className="flex items-center gap-1"><Coins className="size-3" />HK${gen.ttsCost}</span>}
               </div>
-            </div>
 
-            <div className="flex items-center gap-1 shrink-0">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => {
-                  setAudioCurrentTime(0);
-                  setIsAudioPlaying(false);
-                  setKaraokeActive(false);
-                  setLoadedGeneration(gen);
-                }}
-                title={t.history.loadSession}
-              >
-                <Play className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => downloadAudio(gen)}
-                title={t.common.download}
-              >
-                <Download className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8"
-                onClick={() => {
-                  setEditingId(gen.id);
-                  setEditTitle(gen.title);
-                }}
-              >
-                <Pencil className="size-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 text-destructive"
-                onClick={() => void handleDelete(gen.id)}
-              >
-                <Trash2 className="size-4" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => {
+                    setAudioCurrentTime(0);
+                    setIsAudioPlaying(false);
+                    setKaraokeActive(false);
+                    setLoadedGeneration(gen);
+                  }}
+                  title={t.history.loadSession}
+                >
+                  <Play className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => downloadAudio(gen)}
+                  title={t.common.download}
+                >
+                  <Download className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  onClick={() => {
+                    setEditingId(gen.id);
+                    setEditTitle(gen.title);
+                  }}
+                >
+                  <Pencil className="size-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 text-destructive"
+                  onClick={() => void handleDelete(gen.id)}
+                >
+                  <Trash2 className="size-4" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        );
+      })}
 
       {totalPages > 1 && (
         <div className="flex items-center justify-center gap-2 pt-2">

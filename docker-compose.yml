@@ -36,6 +36,7 @@ services:
       STRIPE_PLAN_A_PRICE_HKD: ${STRIPE_PLAN_A_PRICE_HKD:-15}
       STRIPE_PLAN_B_CREDITS: ${STRIPE_PLAN_B_CREDITS:-50}
       STRIPE_PLAN_B_PRICE_HKD: ${STRIPE_PLAN_B_PRICE_HKD:-45}
+      AUDIO_RETENTION_DAYS: ${AUDIO_RETENTION_DAYS:-365}
     volumes:
       - audio_data:/app/data
     depends_on:

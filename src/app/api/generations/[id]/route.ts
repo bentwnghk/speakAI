@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gt, or, isNull } from "drizzle-orm";
 
 export async function GET(
   request: NextRequest,
@@ -18,7 +18,11 @@ export async function GET(
   const [generation] = await db
     .select()
     .from(generations)
-    .where(and(eq(generations.id, id), eq(generations.userId, session.user.id)));
+    .where(and(
+      eq(generations.id, id),
+      eq(generations.userId, session.user.id),
+      or(isNull(generations.expiresAt), gt(generations.expiresAt, new Date()))
+    ));
 
   if (!generation) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -34,6 +38,7 @@ export async function GET(
     segments: generation.segments ? (JSON.parse(generation.segments) as unknown[]) : undefined,
     ttsCost: generation.ttsCost,
     createdAt: generation.createdAt,
+    expiresAt: generation.expiresAt,
   });
 }
 

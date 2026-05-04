@@ -76,6 +76,7 @@ const zhTW: TranslationKeys = {
     renamed: "已重新命名",
     renameFailed: "重新命名失敗",
     failed: "失敗",
+    expiresIn: "剩餘 {days} 天",
   },
   credits: {
     title: "積分",
