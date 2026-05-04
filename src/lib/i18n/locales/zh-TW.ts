@@ -97,6 +97,12 @@ const zhTW: TranslationKeys = {
     amount: "金額",
     status: "狀態",
   },
+  install: {
+    title: "安裝應用程式",
+    description: "添加到主畫面以快速存取",
+    button: "安裝",
+    installed: "應用程式已安裝！",
+  },
   settings: {
     title: "設定",
     theme: "主題",

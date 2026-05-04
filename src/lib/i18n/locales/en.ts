@@ -95,6 +95,12 @@ const en = {
     amount: "Amount",
     status: "Status",
   },
+  install: {
+    title: "Install App",
+    description: "Add to your home screen for quick access",
+    button: "Install",
+    installed: "App installed!",
+  },
   settings: {
     title: "Settings",
     theme: "Theme",

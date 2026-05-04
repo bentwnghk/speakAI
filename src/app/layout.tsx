@@ -3,6 +3,7 @@ import { Poppins, Inter } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
 import { UserSettingsProvider } from "@/hooks/use-settings";
 import { Toaster } from "@/components/ui/sonner";
+import { InstallPrompt } from "@/components/install-prompt";
 import "./globals.css";
 
 const poppins = Poppins({
@@ -60,6 +61,7 @@ export default function RootLayout({
           <UserSettingsProvider>
             {children}
             <Toaster />
+            <InstallPrompt />
           </UserSettingsProvider>
         </AuthProvider>
       </body>
