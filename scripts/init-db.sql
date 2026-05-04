@@ -56,7 +56,8 @@ CREATE TABLE "generation" (
   "audioPath" text NOT NULL,
   "segments" text,
   "ttsCost" text,
-  "createdAt" timestamp NOT NULL DEFAULT now()
+  "createdAt" timestamp NOT NULL DEFAULT now(),
+  "expiresAt" timestamp
 );
 
 CREATE INDEX "account_provider_idx" ON "account"("provider", "providerAccountId");
