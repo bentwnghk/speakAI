@@ -392,14 +392,21 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
 
           <motion.div
             variants={heroItemVariants}
-            className="mt-6 inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm text-white/80 text-sm"
+            className="mt-6 flex flex-col items-center gap-1.5"
           >
-            <Sparkles className="h-4 w-4 text-indigo-400" />
-            <span>
-              {welcomeInfo
-                ? `${welcomeInfo.welcomeCredits} free credits on sign up — enough for ~${welcomeInfo.approxGenerations} audio generations`
-                : "Free credits on sign up — just sign in with Google"}
-            </span>
+            <div className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm text-white/80 text-sm">
+              <Sparkles className="h-4 w-4 text-indigo-400" />
+              <span>
+                {welcomeInfo
+                  ? `${welcomeInfo.welcomeCredits} free credits on sign up — enough for ~${welcomeInfo.approxGenerations} audio generations`
+                  : "Free credits on sign up — just sign in with Google"}
+              </span>
+            </div>
+            {welcomeInfo && (
+              <p className="text-xs text-white/40">
+                Based on ~3,000 characters per generation
+              </p>
+            )}
           </motion.div>
         </motion.div>
       </section>
