@@ -228,7 +228,7 @@ export function TtsForm() {
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     rows={10}
-                    className="text-base"
+                    className="text-base md:text-base"
                   />
                 </TabsContent>
 
@@ -246,7 +246,7 @@ export function TtsForm() {
                         value={extractedText}
                         onChange={(e) => setExtractedText(e.target.value)}
                         rows={10}
-                        className="text-base"
+                        className="text-base md:text-base"
                       />
                     </div>
                   )}
