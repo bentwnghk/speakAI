@@ -260,7 +260,7 @@ export function HistoryList() {
                 value={loadedGeneration.transcript}
                 readOnly
                 rows={10}
-                className="resize-none max-h-[50vh] overflow-y-auto"
+                className="text-base resize-none max-h-[50vh] overflow-y-auto"
               />
             )}
           </CardContent>
