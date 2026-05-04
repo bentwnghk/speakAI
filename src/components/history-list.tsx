@@ -17,7 +17,7 @@ import {
   ArrowLeft,
   Mic,
   Gauge,
-  DollarSign,
+  Coins,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -295,7 +295,7 @@ export function HistoryList() {
               {formatHongKongDateTime(loadedGeneration.createdAt)}
             </span>
             {loadedGeneration.ttsCost && (
-              <span className="flex items-center gap-1"><DollarSign className="size-3" />HK${loadedGeneration.ttsCost}</span>
+              <span className="flex items-center gap-1"><Coins className="size-3" />HK${loadedGeneration.ttsCost}</span>
             )}
           </div>
         </div>
@@ -377,7 +377,7 @@ export function HistoryList() {
                   <Clock className="size-3" />
                   {formatHongKongDateTime(gen.createdAt)}
                 </span>
-                {gen.ttsCost && <span className="flex items-center gap-1"><DollarSign className="size-3" />HK${gen.ttsCost}</span>}
+                {gen.ttsCost && <span className="flex items-center gap-1"><Coins className="size-3" />HK${gen.ttsCost}</span>}
               </div>
             </div>
 
