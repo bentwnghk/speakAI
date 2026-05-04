@@ -116,7 +116,10 @@ export default function CreditsPage() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">{t.credits.title}</h1>
+        <h1 className="flex items-center justify-center gap-2 text-3xl font-bold">
+          <Coins className="h-8 w-8" />
+          {t.credits.title}
+        </h1>
         <p className="text-muted-foreground mt-2">
           {t.credits.description}
         </p>
