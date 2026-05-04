@@ -117,7 +117,7 @@ export function KaraokeText({
 
   return (
     <div
-      className={`text-sm leading-relaxed max-h-[50vh] overflow-y-auto ${className ?? ""}`}
+      className={`text-base leading-relaxed max-h-[50vh] overflow-y-auto ${className ?? ""}`}
     >
       {lines.map((lineTokens, li) => (
         <div key={li} className="min-h-[1.25em]">
