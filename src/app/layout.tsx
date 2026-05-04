@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Poppins, Inter, Noto_Sans_SC } from "next/font/google";
+import { Poppins, Inter } from "next/font/google";
 import { AuthProvider } from "@/components/auth-provider";
 import { UserSettingsProvider } from "@/hooks/use-settings";
 import { Toaster } from "@/components/ui/sonner";
@@ -18,11 +18,6 @@ const inter = Inter({
   display: "swap",
 });
 
-const notoSansSC = Noto_Sans_SC({
-  subsets: ["latin"],
-  variable: "--noto-sans-sc",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Mr.🆖 SpeakAI - AI Text to Speech",
@@ -56,7 +51,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${inter.variable} ${notoSansSC.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${poppins.variable} ${inter.variable}`}>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
