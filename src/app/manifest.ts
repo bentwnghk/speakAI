@@ -2,10 +2,10 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Mr.🆖 SpeakAI - Turn text into natural-sounding audio with karaoke-style playback",
+    name: "Mr.🆖 SpeakAI",
     short_name: "Mr.🆖 SpeakAI",
     description:
-      "Turn text from documents and images into high-quality audio with one click.",
+      "TTurn text into natural-sounding audio with karaoke-style playback.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
