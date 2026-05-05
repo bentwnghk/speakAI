@@ -21,7 +21,7 @@ const inter = Inter({
 
 
 export const metadata: Metadata = {
-  title: "Mr.🆖 SpeakAI - AI Text to Speech",
+  title: "Mr.🆖 SpeakAI - Turn text into natural-sounding audio with karaoke-style playback",
   description:
     "Turn text from documents and images into high-quality audio with one click. Convert articles, stories, and other content into clear speech for easy listening.",
   manifest: "/manifest.webmanifest",

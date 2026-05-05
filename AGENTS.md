@@ -77,14 +77,20 @@ src/
 │   ├── file-parser.ts          # Server-side file text extraction (DOCX, TXT, images)
 │   ├── tts.ts                  # TTS generation + Azure Speech word-boundary alignment + round-robin endpoint pool
 │   ├── stripe.ts               # Stripe client singleton + credit plan definitions
+│   ├── i18n/
+│   │   ├── index.ts            # getDictionary(), Locale type, TranslationKeys type
+│   │   └── locales/
+│   │       ├── en.ts           # English translations (canonical, defines TranslationKeys shape)
+│   │       └── zh-TW.ts        # Traditional Chinese translations
 │   └── db/
 │       ├── index.ts            # Drizzle ORM setup (postgres-js driver, schema export)
-│       ├── schema.ts           # 8 tables: user, account, session, verification_token, generation, credits, credit_transactions, purchases
+│       ├── schema.ts           # 9 tables: user, account, session, verification_token, generation, credits, credit_transactions, purchases, user_settings
 │       └── credits.ts          # Credit engine: grant, deduct, refund, purchase operations
 ├── sw/
 │   └── index.ts                # Serwist service worker for PWA offline support
 ├── hooks/
-│   └── use-credits.tsx         # React context for credit balance (app-wide)
+│   ├── use-credits.tsx         # React context for credit balance (app-wide)
+│   └── use-settings.tsx        # React context for theme + locale (UserSettingsProvider)
 └── types/
     ├── karaoke.ts              # WordTimestamp, Segment types for karaoke display
     └── pdf-parse.d.ts          # Type declarations for pdf-parse
@@ -180,7 +186,7 @@ The project uses **next-auth v5 (beta.25)** with **Google OAuth** as the sole pr
 The project uses **PostgreSQL 16** with **Drizzle ORM**.
 
 - **Connection**: `postgres-js` driver configured in `src/lib/db/index.ts`.
-- **Schema**: All tables defined in `src/lib/db/schema.ts` (8 tables: `user`, `account`, `session`, `verification_token`, `generation`, `credits`, `credit_transactions`, `purchases`). The `generation` table stores TTS generation history with voice (as a Postgres enum), speed, audio path, karaoke segments (JSON), and cost. The `credits` table stores per-user balance (1:1 with users). `credit_transactions` is an append-only ledger. `purchases` tracks Stripe payment lifecycle.
+- **Schema**: All tables defined in `src/lib/db/schema.ts` (9 tables: `user`, `account`, `session`, `verification_token`, `generation`, `credits`, `credit_transactions`, `purchases`, `user_settings`). The `generation` table stores TTS generation history with voice (as a Postgres enum), speed, audio path, karaoke segments (JSON), and cost. The `credits` table stores per-user balance (1:1 with users). `credit_transactions` is an append-only ledger. `purchases` tracks Stripe payment lifecycle. `user_settings` stores per-user theme and locale preferences.
 - **Migrations**: SQL migration files in `scripts/` (e.g., `init-db.sql`, `add-segments-column.sql`). Drizzle migrations in `drizzle/`.
 - **Config**: `drizzle.config.ts` at project root.
 
@@ -215,6 +221,133 @@ The project uses **PostgreSQL 16** with **Drizzle ORM**.
 2. **Server-side** (`file-parser.ts`): DOCX via `mammoth`, TXT via `fs`, images via OpenAI vision model.
 3. **API**: Files uploaded via `FormData` to `/api/extract-text`, temporarily saved to OS tmpdir, processed, then deleted.
 4. **Supported formats**: `.txt`, `.docx`, `.pdf`, `.jpg`, `.jpeg`, `.png`.
+
+---
+
+## Internationalization (i18n)
+
+The project uses a **custom-built, lightweight i18n system** with no external library. All translations are fully type-safe via TypeScript.
+
+### Architecture
+
+- **Core module**: `src/lib/i18n/index.ts` — exports `getDictionary(locale)`, `Locale` type (`"en" | "zh-TW"`), `TranslationKeys` type.
+- **Dictionaries**: TypeScript `const` objects in `src/lib/i18n/locales/`:
+  - `en.ts` — English (canonical/source; defines `TranslationKeys` shape)
+  - `zh-TW.ts` — Traditional Chinese (繁體中文; satisfies `TranslationKeys`)
+- **Type safety**: All locale files must satisfy the `TranslationKeys` type derived from `en.ts`. Adding a key to `en.ts` will cause a type error in `zh-TW.ts` until the translation is added.
+
+### Supported Locales
+
+| Code | Language |
+| --- | --- |
+| `en` | English (default) |
+| `zh-TW` | Traditional Chinese (繁體中文) |
+
+### Translation Namespaces
+
+Dictionaries are organized into namespaces: `common`, `header`, `dashboard`, `tts`, `history`, `credits`, `install`, `settings`.
+
+### Usage Patterns
+
+- **Client components**: Call `useUserSettings()` from `@/hooks/use-settings` to get `t` (the translation dictionary). Access translations via dot notation: `t.common.appName`, `t.tts.generate`.
+- **Server components**: Call `getDictionary(locale)` directly from `@/lib/i18n`.
+- **Parameterized strings**: Use JavaScript `.replace()`. Two conventions exist in the codebase — `${var}` and `{var}`. Example: `t.tts.cost.replace("${cost}", data.ttsCost)`.
+
+### Locale Resolution
+
+1. **Default**: `"en"` (React state initial value).
+2. **localStorage**: Reads key `"speakai-locale"` on mount — takes priority.
+3. **Database sync**: On auth, fetches from `GET /api/user/settings` (`user_settings.locale` column). Applied only if no localStorage preference exists.
+4. **User change**: Via Settings Dialog → updates React state, localStorage, `document.documentElement.lang` (`"zh-Hant"` for `zh-TW`), and persists via `PUT /api/user/settings`.
+5. **No URL-based routing**: No middleware, no path prefixes like `/en/...`. Locale is entirely user-preference-driven.
+
+### Adding a New Locale
+
+1. Create `src/lib/i18n/locales/<locale>.ts` importing `TranslationKeys` from `en.ts` and using `satisfies TranslationKeys`.
+2. Add the locale to the `Locale` type union and `dictionaries` map in `src/lib/i18n/index.ts`.
+3. Add a Zod enum entry in `src/app/api/user/settings/route.ts`.
+4. Add translated labels in the `settings` namespace of all locale files (e.g., `settings.langNewLocale`).
+
+---
+
+## Theme / Dark Mode
+
+The project uses a **custom dark/light mode system** (no `next-themes`). Theme is stored in three layers: localStorage (primary), PostgreSQL (cross-device), and an inline `<script>` for FOUC prevention.
+
+### Architecture
+
+- **Theme type**: `"system" | "light" | "dark"` (defined in `src/hooks/use-settings.tsx`).
+- **Application**: The `.dark` CSS class is toggled on `document.documentElement` (`<html>`).
+- **CSS variables**: OKLCH color space, defined in `src/app/globals.css`:
+  - Light mode on `:root`
+  - Dark mode on `.dark`
+  - Semantic tokens: `--background`, `--foreground`, `--card`, `--primary`, `--secondary`, `--muted`, `--accent`, `--destructive`, `--border`, `--input`, `--ring`, etc.
+- **Tailwind v4 integration**: `@custom-variant dark (&:where(.dark, .dark *))` in `globals.css` — no `tailwind.config.ts`.
+
+### FOUC Prevention
+
+An inline `<script>` in `src/app/layout.tsx` `<head>` runs synchronously before paint. It reads `localStorage('speakai-theme')`, resolves system preference via `matchMedia('(prefers-color-scheme: dark)')`, and adds/removes the `.dark` class. The `<html>` tag has `suppressHydrationWarning` for this reason.
+
+### Theme Resolution Flow
+
+1. **Page load** → inline `<script>` reads localStorage + OS preference → applies `.dark` class instantly.
+2. **React hydration** → `UserSettingsProvider` reads localStorage, updates React state. If authenticated and no local preference, fetches server settings via `GET /api/user/settings`.
+3. **User switches theme** → `setTheme()` in `use-settings.tsx`:
+   - Updates React state
+   - Writes to `localStorage('speakai-theme')`
+   - Calls `applyTheme()` to toggle `.dark` class on `<html>`
+   - Fires `PUT /api/user/settings` to persist to database
+4. **System theme live updates** (when in "system" mode) → `matchMedia` change listener re-applies theme in real-time.
+
+### Persistence Layers
+
+| Layer | Key/Column | Priority |
+| --- | --- | --- |
+| localStorage | `"speakai-theme"` | Highest (instant, always checked first) |
+| PostgreSQL | `user_settings.theme` | Secondary (synced on login if no local pref) |
+| Inline `<script>` | Reads localStorage + OS pref | FOUC prevention only |
+
+### Settings UI
+
+- **Settings Dialog** (`src/components/settings-dialog.tsx`): Shadcn `<Select>` dropdown with System/Light/Dark options.
+- **Trigger**: Settings menu item in the header user dropdown (`src/components/header.tsx`).
+
+### Provider Hierarchy
+
+```
+<AuthProvider>              (next-auth SessionProvider wrapper)
+  <UserSettingsProvider>    (provides theme, locale, t, setLocale, setTheme)
+    {children}
+    <Toaster />
+    <InstallPrompt />
+  </UserSettingsProvider>
+</AuthProvider>
+```
+
+### Conventions
+
+- Use Tailwind `dark:` classes for all new UI elements. Use the semantic CSS variables (e.g., `bg-background`, `text-foreground`, `border-border`) which automatically adapt to the active theme.
+- Avoid hardcoding colors — use the OKLCH CSS variables or Tailwind's semantic color utilities.
+- Test all UI in both light and dark modes.
+
+---
+
+## User Settings
+
+User preferences (theme and locale) are persisted in the `user_settings` table:
+
+```sql
+CREATE TABLE user_settings (
+  userId TEXT NOT NULL PRIMARY KEY REFERENCES user(id) ON DELETE CASCADE,
+  theme VARCHAR(10) NOT NULL DEFAULT 'system',
+  locale VARCHAR(10) NOT NULL DEFAULT 'en',
+  updatedAt TIMESTAMP NOT NULL DEFAULT NOW()
+);
+```
+
+- **API**: `GET/PUT /api/user/settings` (`src/app/api/user/settings/route.ts`).
+- **Hook**: `useUserSettings()` from `@/hooks/use-settings` provides `theme`, `setTheme`, `locale`, `setLocale`, `t`, `loading`.
+- **Context**: `UserSettingsProvider` wraps the app inside `AuthProvider`.
 
 ---
 
@@ -270,6 +403,8 @@ API routes are in `src/app/api/`. Key endpoints:
 | `/api/stripe/plans` | GET | Return available credit plans |
 | `/api/user/credits` | GET | Return user's credit balance |
 | `/api/user/purchases` | GET | Return user's purchase history |
+| `/api/user/settings` | GET | Return user's theme and locale preferences |
+| `/api/user/settings` | PUT | Update user's theme and/or locale preferences |
 
 ### 2. API Patterns
 
