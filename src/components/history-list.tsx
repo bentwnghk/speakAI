@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Timer,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
@@ -266,7 +267,10 @@ export function HistoryList() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{t.history.sourceText}</CardTitle>
+            <CardTitle className="text-base flex items-center gap-2">
+              <FileText className="size-4" />
+              {t.history.sourceText}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {showKaraoke ? (

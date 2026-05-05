@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, StopCircle, Download, Volume2 } from "lucide-react";
+import { Play, Pause, StopCircle, Download, Volume2, Headphones } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { useUserSettings } from "@/hooks/use-settings";
 
@@ -200,7 +200,10 @@ export function AudioPlayer({ src, title, createdAt, onTimeUpdate, onPlayStateCh
     <Card>
       <CardContent className="space-y-3 pt-2">
         {title && (
-          <p className="text-sm font-medium truncate">{title}</p>
+          <p className="text-sm font-medium flex items-center gap-2 truncate">
+            <Headphones className="size-4 shrink-0" />
+            <span className="truncate">{title}</span>
+          </p>
         )}
         <audio ref={audioRef} src={src} preload="metadata" />
 
