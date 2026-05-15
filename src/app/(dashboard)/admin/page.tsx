@@ -237,22 +237,22 @@ export default function AdminDashboardPage() {
       </div>
 
       <Tabs defaultValue="usage">
-        <TabsList>
-          <TabsTrigger value="usage" className="gap-1.5">
+        <TabsList className="flex w-full">
+          <TabsTrigger value="usage" className="flex-1 gap-1 text-xs sm:text-sm">
             <Coins className="h-4 w-4" />
             {t.admin.tabUsage}
             <Badge variant="secondary" className="ml-1 text-xs">
               {generations.length}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="purchases" className="gap-1.5">
+          <TabsTrigger value="purchases" className="flex-1 gap-1 text-xs sm:text-sm">
             <ShoppingCart className="h-4 w-4" />
             {t.admin.tabPurchases}
             <Badge variant="secondary" className="ml-1 text-xs">
               {purchases.length}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="signins" className="gap-1.5">
+          <TabsTrigger value="signins" className="flex-1 gap-1 text-xs sm:text-sm">
             <LogIn className="h-4 w-4" />
             {t.admin.tabSignIns}
             <Badge variant="secondary" className="ml-1 text-xs">
