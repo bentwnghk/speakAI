@@ -134,6 +134,7 @@ const en = {
     colCredits: "Credits",
     colStatus: "Status",
     colProvider: "Provider",
+    sourceText: "Source Text",
   },
 } as const;
 

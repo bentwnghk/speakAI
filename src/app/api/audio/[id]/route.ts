@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { auth } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { generations } from "@/lib/db/schema";
 import { eq, and, gt, or, isNull } from "drizzle-orm";
@@ -16,15 +17,18 @@ export async function GET(
   }
 
   const { id } = await params;
+  const isAdmin = isAdminEmail(session.user.email);
+
+  const conditions = [
+    eq(generations.id, id),
+    ...(isAdmin ? [] : [eq(generations.userId, session.user.id)]),
+    or(isNull(generations.expiresAt), gt(generations.expiresAt, new Date())),
+  ];
 
   const [generation] = await db
     .select()
     .from(generations)
-    .where(and(
-      eq(generations.id, id),
-      eq(generations.userId, session.user.id),
-      or(isNull(generations.expiresAt), gt(generations.expiresAt, new Date()))
-    ));
+    .where(and(...conditions));
 
   if (!generation) {
     return new Response("Not found", { status: 404 });

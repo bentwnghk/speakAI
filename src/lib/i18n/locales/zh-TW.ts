@@ -136,6 +136,7 @@ const zhTW: TranslationKeys = {
     colCredits: "積分",
     colStatus: "狀態",
     colProvider: "登入方式",
+    sourceText: "原文",
   },
 } as const;
 

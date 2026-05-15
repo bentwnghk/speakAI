@@ -6,6 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
@@ -17,6 +23,7 @@ import {
   LogIn,
 } from "lucide-react";
 import { useUserSettings } from "@/hooks/use-settings";
+import { AudioPlayer } from "@/components/audio-player";
 
 interface GenerationRow {
   id: string;
@@ -111,6 +118,41 @@ export default function AdminDashboardPage() {
   const [sSortBy, setSSortBy] = useState<SignInSortKey>("createdAt");
   const [sSortDesc, setSSortDesc] = useState(true);
   const initialLoad = useRef(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<{
+    transcript: string;
+    audioUrl: string;
+    title: string;
+    createdAt: string;
+  } | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setDetail(null);
+      return;
+    }
+    let cancelled = false;
+    setDetailLoading(true);
+    fetch(`/api/generations/${selectedId}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!cancelled && data) {
+          const d = data as { transcript: string; audioUrl: string; title: string; createdAt: string };
+          setDetail({
+            transcript: d.transcript,
+            audioUrl: d.audioUrl,
+            title: d.title,
+            createdAt: d.createdAt,
+          });
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [selectedId]);
 
   const toggleGSort = useCallback(
     (key: string) => {
@@ -338,8 +380,14 @@ export default function AdminDashboardPage() {
                       <td className="p-3 whitespace-nowrap">
                         {formatDateHK(g.createdAt)}
                       </td>
-                      <td className="p-3 max-w-[300px] truncate">
-                        {g.title}
+                      <td className="p-3 max-w-[300px]">
+                        <button
+                          type="button"
+                          className="text-left truncate hover:underline cursor-pointer w-full"
+                          onClick={() => setSelectedId(g.id)}
+                        >
+                          {g.title}
+                        </button>
                       </td>
                       <td className="p-3">
                         <Badge variant="secondary" className="capitalize">
@@ -513,6 +561,29 @@ export default function AdminDashboardPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      <Dialog open={!!selectedId} onOpenChange={(open) => { if (!open) setSelectedId(null); }}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{detail?.title}</DialogTitle>
+          </DialogHeader>
+          {detailLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : detail ? (
+            <div className="space-y-4">
+              <AudioPlayer src={detail.audioUrl} createdAt={detail.createdAt} />
+              <div>
+                <h3 className="text-sm font-medium mb-2">{t.admin.sourceText}</h3>
+                <pre className="text-sm whitespace-pre-wrap bg-muted/50 rounded-md p-4 max-h-[40vh] overflow-y-auto">
+                  {detail.transcript}
+                </pre>
+              </div>
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
