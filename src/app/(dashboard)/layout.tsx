@@ -22,7 +22,7 @@ export default async function DashboardLayout({
     const rows = await db
       .select({ locale: userSettings.locale })
       .from(userSettings)
-      .where(eq(userSettings.userId, session.user!.id!))
+      .where(eq(userSettings.userId, session.user.id))
       .limit(1);
     if (rows.length > 0 && rows[0].locale) {
       locale = rows[0].locale as Locale;
