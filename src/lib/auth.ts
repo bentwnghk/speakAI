@@ -2,9 +2,10 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "./db";
-import { users } from "./db/schema";
+import { users, signInLogs } from "./db/schema";
 import { eq } from "drizzle-orm";
 import { ensureCreditsRecord } from "./db/credits";
+import { isAdminEmail } from "./admin";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   adapter: {
@@ -30,9 +31,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     signIn: "/login",
   },
   events: {
-    async signIn({ user }) {
+    async signIn({ user, account }) {
       if (user.id) {
         await ensureCreditsRecord(user.id);
+        await db.insert(signInLogs).values({
+          userId: user.id,
+          provider: account?.provider || "unknown",
+        });
       }
     },
   },
@@ -41,11 +46,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token?.sub) {
         session.user.id = token.sub;
       }
+      if (session.user) {
+        session.user.isAdmin = (token.isAdmin as boolean) ?? false;
+      }
       return session;
     },
     jwt({ token, user }) {
       if (user) {
         token.sub = user.id;
+        token.isAdmin = isAdminEmail(user.email);
       }
       return token;
     },

@@ -9,6 +9,7 @@ import {
   History,
   LogOut,
   Settings,
+  ShieldCheck,
   User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,15 @@ export function Header() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
+                  {session.user.isAdmin && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/admin">
+                        <ShieldCheck className="size-4" />
+                        {t.admin.dashboard}
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  {session.user.isAdmin && <DropdownMenuSeparator />}
                   <DropdownMenuItem onClick={() => setSettingsOpen(true)}>
                     <Settings className="size-4" />
                     {t.settings.title}
