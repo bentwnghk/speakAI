@@ -571,7 +571,11 @@ export default function AdminDashboardPage() {
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : detail ? (
+          ) : !detail ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              {t.admin.notFound}
+            </div>
+          ) : (
             <div className="space-y-4">
               <AudioPlayer src={detail.audioUrl} createdAt={detail.createdAt} />
               <div>
@@ -581,7 +585,7 @@ export default function AdminDashboardPage() {
                 </pre>
               </div>
             </div>
-          ) : null}
+          )}
         </DialogContent>
       </Dialog>
     </div>

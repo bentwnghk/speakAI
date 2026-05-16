@@ -135,6 +135,7 @@ const en = {
     colStatus: "Status",
     colProvider: "Provider",
     sourceText: "Source Text",
+    notFound: "Generation not found.",
   },
 } as const;
 

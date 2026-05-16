@@ -22,7 +22,7 @@ export async function GET(
   const conditions = [
     eq(generations.id, id),
     ...(isAdmin ? [] : [eq(generations.userId, session.user.id)]),
-    or(isNull(generations.expiresAt), gt(generations.expiresAt, new Date())),
+    ...(isAdmin ? [] : [or(isNull(generations.expiresAt), gt(generations.expiresAt, new Date()))]),
   ];
 
   const [generation] = await db
