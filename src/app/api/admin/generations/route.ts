@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
           ilike(users.name, `%${search.trim()}%`),
           ilike(users.email, `%${search.trim()}%`),
           ilike(generations.title, `%${search.trim()}%`),
-          ilike(generations.voice, `%${search.trim()}%`),
+          sql`${generations.voice}::text ilike ${`%${search.trim()}%`}`,
         )
       : undefined;
 
