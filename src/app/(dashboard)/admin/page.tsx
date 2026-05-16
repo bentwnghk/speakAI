@@ -6,6 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -21,9 +29,14 @@ import {
   ShieldCheck,
   ShoppingCart,
   LogIn,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useUserSettings } from "@/hooks/use-settings";
 import { AudioPlayer } from "@/components/audio-player";
+
+const PAGE_SIZES = [10, 20, 30, 50, 100] as const;
+const DEFAULT_PER_PAGE = 20;
 
 interface GenerationRow {
   id: string;
@@ -104,19 +117,93 @@ function SortableTh({
   );
 }
 
+function Pagination({
+  page,
+  total,
+  perPage,
+  onPageChange,
+  onPerPageChange,
+  perPageLabel,
+  pageOfLabel,
+}: {
+  page: number;
+  total: number;
+  perPage: number;
+  onPageChange: (p: number) => void;
+  onPerPageChange: (pp: number) => void;
+  perPageLabel: string;
+  pageOfLabel: (page: number, total: number) => string;
+}) {
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  return (
+    <div className="flex items-center justify-between gap-4 text-sm">
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">{perPageLabel}</span>
+        <Select
+          value={String(perPage)}
+          onValueChange={(v) => onPerPageChange(Number(v))}
+        >
+          <SelectTrigger className="w-[70px] h-8">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZES.map((s) => (
+              <SelectItem key={s} value={String(s)}>
+                {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">
+          {pageOfLabel(page, totalPages)}
+        </span>
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-8"
+          onClick={() => onPageChange(page - 1)}
+          disabled={page <= 1}
+        >
+          <ChevronLeft className="size-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          className="size-8"
+          onClick={() => onPageChange(page + 1)}
+          disabled={page >= totalPages}
+        >
+          <ChevronRight className="size-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboardPage() {
   const { t } = useUserSettings();
   const [generations, setGenerations] = useState<GenerationRow[]>([]);
+  const [gTotal, setGTotal] = useState(0);
   const [purchases, setPurchases] = useState<PurchaseRow[]>([]);
+  const [pTotal, setPTotal] = useState(0);
   const [signIns, setSignIns] = useState<SignInRow[]>([]);
+  const [sTotal, setSTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [gSortBy, setGSortBy] = useState<GenerationSortKey>("createdAt");
   const [gSortDesc, setGSortDesc] = useState(true);
+  const [gPage, setGPage] = useState(1);
+  const [gPerPage, setGPerPage] = useState(DEFAULT_PER_PAGE);
   const [pSortBy, setPSortBy] = useState<PurchaseSortKey>("createdAt");
   const [pSortDesc, setPSortDesc] = useState(true);
+  const [pPage, setPPage] = useState(1);
+  const [pPerPage, setPPerPage] = useState(DEFAULT_PER_PAGE);
   const [sSortBy, setSSortBy] = useState<SignInSortKey>("createdAt");
   const [sSortDesc, setSSortDesc] = useState(true);
+  const [sPage, setSPage] = useState(1);
+  const [sPerPage, setSPerPage] = useState(DEFAULT_PER_PAGE);
   const initialLoad = useRef(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<{
@@ -163,6 +250,7 @@ export default function AdminDashboardPage() {
         setGSortBy(k);
         setGSortDesc(false);
       }
+      setGPage(1);
     },
     [gSortBy]
   );
@@ -176,6 +264,7 @@ export default function AdminDashboardPage() {
         setPSortBy(k);
         setPSortDesc(false);
       }
+      setPPage(1);
     },
     [pSortBy]
   );
@@ -189,6 +278,7 @@ export default function AdminDashboardPage() {
         setSSortBy(k);
         setSSortDesc(false);
       }
+      setSPage(1);
     },
     [sSortBy]
   );
@@ -201,11 +291,14 @@ export default function AdminDashboardPage() {
           sortBy: gSortBy,
           sortOrder: gSortDesc ? "desc" : "asc",
           q: search,
+          page: String(gPage),
+          perPage: String(gPerPage),
         });
         const res = await fetch(`/api/admin/generations?${params}`);
         if (res.ok && !cancelled) {
-          const data = (await res.json()) as { generations: GenerationRow[] };
+          const data = (await res.json()) as { generations: GenerationRow[]; total: number };
           setGenerations(data.generations || []);
+          setGTotal(data.total ?? 0);
         }
       } catch {}
     }
@@ -215,11 +308,14 @@ export default function AdminDashboardPage() {
         const params = new URLSearchParams({
           sortBy: pSortBy,
           sortOrder: pSortDesc ? "desc" : "asc",
+          page: String(pPage),
+          perPage: String(pPerPage),
         });
         const res = await fetch(`/api/admin/purchases?${params}`);
         if (res.ok && !cancelled) {
-          const data = (await res.json()) as { purchases: PurchaseRow[] };
+          const data = (await res.json()) as { purchases: PurchaseRow[]; total: number };
           setPurchases(data.purchases || []);
+          setPTotal(data.total ?? 0);
         }
       } catch {}
     }
@@ -229,11 +325,14 @@ export default function AdminDashboardPage() {
         const params = new URLSearchParams({
           sortBy: sSortBy,
           sortOrder: sSortDesc ? "desc" : "asc",
+          page: String(sPage),
+          perPage: String(sPerPage),
         });
         const res = await fetch(`/api/admin/sign-ins?${params}`);
         if (res.ok && !cancelled) {
-          const data = (await res.json()) as { signIns: SignInRow[] };
+          const data = (await res.json()) as { signIns: SignInRow[]; total: number };
           setSignIns(data.signIns || []);
+          setSTotal(data.total ?? 0);
         }
       } catch {}
     }
@@ -256,7 +355,7 @@ export default function AdminDashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, [gSortBy, gSortDesc, pSortBy, pSortDesc, sSortBy, sSortDesc, search]);
+  }, [gSortBy, gSortDesc, gPage, gPerPage, pSortBy, pSortDesc, pPage, pPerPage, sSortBy, sSortDesc, sPage, sPerPage, search]);
 
   if (loading) {
     return (
@@ -284,21 +383,21 @@ export default function AdminDashboardPage() {
             <Coins className="h-4 w-4" />
             {t.admin.tabUsage}
             <Badge variant="secondary" className="ml-1 text-xs">
-              {generations.length}
+              {gTotal}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="purchases" className="flex-1 gap-1 text-xs sm:text-sm">
             <ShoppingCart className="h-4 w-4" />
             {t.admin.tabPurchases}
             <Badge variant="secondary" className="ml-1 text-xs">
-              {purchases.length}
+              {pTotal}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="signins" className="flex-1 gap-1 text-xs sm:text-sm">
             <LogIn className="h-4 w-4" />
             {t.admin.tabSignIns}
             <Badge variant="secondary" className="ml-1 text-xs">
-              {signIns.length}
+              {sTotal}
             </Badge>
           </TabsTrigger>
         </TabsList>
@@ -310,7 +409,7 @@ export default function AdminDashboardPage() {
               type="text"
               placeholder={t.admin.searchPlaceholder}
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setGPage(1); }}
               className="pl-9"
             />
           </div>
@@ -326,88 +425,99 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="rounded-md border overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <SortableTh
-                      label={t.admin.colUser}
-                      sortKey="userName"
-                      activeSortKey={gSortBy}
-                      isDesc={gSortDesc}
-                      onSort={toggleGSort}
-                    />
-                    <SortableTh
-                      label={t.admin.colDate}
-                      sortKey="createdAt"
-                      activeSortKey={gSortBy}
-                      isDesc={gSortDesc}
-                      onSort={toggleGSort}
-                    />
-                    <SortableTh
-                      label={t.admin.colTitle}
-                      sortKey="title"
-                      activeSortKey={gSortBy}
-                      isDesc={gSortDesc}
-                      onSort={toggleGSort}
-                    />
-                    <SortableTh
-                      label={t.admin.colVoice}
-                      sortKey="voice"
-                      activeSortKey={gSortBy}
-                      isDesc={gSortDesc}
-                      onSort={toggleGSort}
-                    />
-                    <th className="p-3 text-left font-medium">
-                      {t.admin.colCost}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {generations.map((g) => (
-                    <tr
-                      key={g.id}
-                      className="border-b last:border-0 hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="p-3">
-                        <div className="font-medium">
-                          {g.userName || "Unknown"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {g.email}
-                        </div>
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        {formatDateHK(g.createdAt)}
-                      </td>
-                      <td className="p-3 max-w-[300px]">
-                        <button
-                          type="button"
-                          className="text-left truncate hover:underline cursor-pointer w-full"
-                          onClick={() => setSelectedId(g.id)}
-                        >
-                          {g.title}
-                        </button>
-                      </td>
-                      <td className="p-3">
-                        <Badge variant="secondary" className="capitalize">
-                          {g.voice}
-                        </Badge>
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        {g.ttsCost ? (
-                          <span className="text-sm">
-                            HK${g.ttsCost}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
+            <>
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <SortableTh
+                        label={t.admin.colUser}
+                        sortKey="userName"
+                        activeSortKey={gSortBy}
+                        isDesc={gSortDesc}
+                        onSort={toggleGSort}
+                      />
+                      <SortableTh
+                        label={t.admin.colDate}
+                        sortKey="createdAt"
+                        activeSortKey={gSortBy}
+                        isDesc={gSortDesc}
+                        onSort={toggleGSort}
+                      />
+                      <SortableTh
+                        label={t.admin.colTitle}
+                        sortKey="title"
+                        activeSortKey={gSortBy}
+                        isDesc={gSortDesc}
+                        onSort={toggleGSort}
+                      />
+                      <SortableTh
+                        label={t.admin.colVoice}
+                        sortKey="voice"
+                        activeSortKey={gSortBy}
+                        isDesc={gSortDesc}
+                        onSort={toggleGSort}
+                      />
+                      <th className="p-3 text-left font-medium">
+                        {t.admin.colCost}
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {generations.map((g) => (
+                      <tr
+                        key={g.id}
+                        className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                      >
+                        <td className="p-3">
+                          <div className="font-medium">
+                            {g.userName || "Unknown"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {g.email}
+                          </div>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {formatDateHK(g.createdAt)}
+                        </td>
+                        <td className="p-3 max-w-[300px]">
+                          <button
+                            type="button"
+                            className="text-left truncate hover:underline cursor-pointer w-full"
+                            onClick={() => setSelectedId(g.id)}
+                          >
+                            {g.title}
+                          </button>
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="secondary" className="capitalize">
+                            {g.voice}
+                          </Badge>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {g.ttsCost ? (
+                            <span className="text-sm">
+                              HK${g.ttsCost}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                page={gPage}
+                total={gTotal}
+                perPage={gPerPage}
+                onPageChange={setGPage}
+                onPerPageChange={(pp) => { setGPerPage(pp); setGPage(1); }}
+                perPageLabel={t.admin.perPage}
+                pageOfLabel={(p, tp) => t.admin.pageOf.replace("{page}", String(p)).replace("{total}", String(tp))}
+              />
+            </>
           )}
         </TabsContent>
 
@@ -419,86 +529,97 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="rounded-md border overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <SortableTh
-                      label={t.admin.colUser}
-                      sortKey="userName"
-                      activeSortKey={pSortBy}
-                      isDesc={pSortDesc}
-                      onSort={togglePSort}
-                    />
-                    <SortableTh
-                      label={t.admin.colDate}
-                      sortKey="createdAt"
-                      activeSortKey={pSortBy}
-                      isDesc={pSortDesc}
-                      onSort={togglePSort}
-                    />
-                    <SortableTh
-                      label={t.admin.colPackage}
-                      sortKey="planName"
-                      activeSortKey={pSortBy}
-                      isDesc={pSortDesc}
-                      onSort={togglePSort}
-                    />
-                    <SortableTh
-                      label={t.admin.colAmount}
-                      sortKey="amountHKD"
-                      activeSortKey={pSortBy}
-                      isDesc={pSortDesc}
-                      onSort={togglePSort}
-                    />
-                    <th className="p-3 text-left font-medium">
-                      {t.admin.colCredits}
-                    </th>
-                    <th className="p-3 text-left font-medium">
-                      {t.admin.colStatus}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {purchases.map((p) => (
-                    <tr
-                      key={p.id}
-                      className="border-b last:border-0 hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="p-3">
-                        <div className="font-medium">
-                          {p.userName || "Unknown"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {p.email}
-                        </div>
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        {formatDateHK(p.createdAt)}
-                      </td>
-                      <td className="p-3">{p.planName}</td>
-                      <td className="p-3 whitespace-nowrap font-medium">
-                        HK${p.amountHKD.toFixed(2)}
-                      </td>
-                      <td className="p-3">{p.creditsAmount}</td>
-                      <td className="p-3">
-                        <Badge
-                          variant={
-                            p.status === "completed"
-                              ? "default"
-                              : p.status === "pending"
-                                ? "secondary"
-                                : "destructive"
-                          }
-                        >
-                          {p.status}
-                        </Badge>
-                      </td>
+            <>
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <SortableTh
+                        label={t.admin.colUser}
+                        sortKey="userName"
+                        activeSortKey={pSortBy}
+                        isDesc={pSortDesc}
+                        onSort={togglePSort}
+                      />
+                      <SortableTh
+                        label={t.admin.colDate}
+                        sortKey="createdAt"
+                        activeSortKey={pSortBy}
+                        isDesc={pSortDesc}
+                        onSort={togglePSort}
+                      />
+                      <SortableTh
+                        label={t.admin.colPackage}
+                        sortKey="planName"
+                        activeSortKey={pSortBy}
+                        isDesc={pSortDesc}
+                        onSort={togglePSort}
+                      />
+                      <SortableTh
+                        label={t.admin.colAmount}
+                        sortKey="amountHKD"
+                        activeSortKey={pSortBy}
+                        isDesc={pSortDesc}
+                        onSort={togglePSort}
+                      />
+                      <th className="p-3 text-left font-medium">
+                        {t.admin.colCredits}
+                      </th>
+                      <th className="p-3 text-left font-medium">
+                        {t.admin.colStatus}
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {purchases.map((p) => (
+                      <tr
+                        key={p.id}
+                        className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                      >
+                        <td className="p-3">
+                          <div className="font-medium">
+                            {p.userName || "Unknown"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {p.email}
+                          </div>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {formatDateHK(p.createdAt)}
+                        </td>
+                        <td className="p-3">{p.planName}</td>
+                        <td className="p-3 whitespace-nowrap font-medium">
+                          HK${p.amountHKD.toFixed(2)}
+                        </td>
+                        <td className="p-3">{p.creditsAmount}</td>
+                        <td className="p-3">
+                          <Badge
+                            variant={
+                              p.status === "completed"
+                                ? "default"
+                                : p.status === "pending"
+                                  ? "secondary"
+                                  : "destructive"
+                            }
+                          >
+                            {p.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                page={pPage}
+                total={pTotal}
+                perPage={pPerPage}
+                onPageChange={setPPage}
+                onPerPageChange={(pp) => { setPPerPage(pp); setPPage(1); }}
+                perPageLabel={t.admin.perPage}
+                pageOfLabel={(p, tp) => t.admin.pageOf.replace("{page}", String(p)).replace("{total}", String(tp))}
+              />
+            </>
           )}
         </TabsContent>
 
@@ -510,54 +631,65 @@ export default function AdminDashboardPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="rounded-md border overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <SortableTh
-                      label={t.admin.colUser}
-                      sortKey="userName"
-                      activeSortKey={sSortBy}
-                      isDesc={sSortDesc}
-                      onSort={toggleSSort}
-                    />
-                    <SortableTh
-                      label={t.admin.colDateTime}
-                      sortKey="createdAt"
-                      activeSortKey={sSortBy}
-                      isDesc={sSortDesc}
-                      onSort={toggleSSort}
-                    />
-                    <th className="p-3 text-left font-medium">
-                      {t.admin.colProvider}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {signIns.map((s) => (
-                    <tr
-                      key={s.id}
-                      className="border-b last:border-0 hover:bg-muted/30 transition-colors"
-                    >
-                      <td className="p-3">
-                        <div className="font-medium">
-                          {s.userName || "Unknown"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {s.email}
-                        </div>
-                      </td>
-                      <td className="p-3 whitespace-nowrap">
-                        {formatDateHK(s.createdAt)}
-                      </td>
-                      <td className="p-3">
-                        <Badge variant="secondary">{s.provider}</Badge>
-                      </td>
+            <>
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <SortableTh
+                        label={t.admin.colUser}
+                        sortKey="userName"
+                        activeSortKey={sSortBy}
+                        isDesc={sSortDesc}
+                        onSort={toggleSSort}
+                      />
+                      <SortableTh
+                        label={t.admin.colDateTime}
+                        sortKey="createdAt"
+                        activeSortKey={sSortBy}
+                        isDesc={sSortDesc}
+                        onSort={toggleSSort}
+                      />
+                      <th className="p-3 text-left font-medium">
+                        {t.admin.colProvider}
+                      </th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {signIns.map((s) => (
+                      <tr
+                        key={s.id}
+                        className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                      >
+                        <td className="p-3">
+                          <div className="font-medium">
+                            {s.userName || "Unknown"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {s.email}
+                          </div>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {formatDateHK(s.createdAt)}
+                        </td>
+                        <td className="p-3">
+                          <Badge variant="secondary">{s.provider}</Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                page={sPage}
+                total={sTotal}
+                perPage={sPerPage}
+                onPageChange={setSPage}
+                onPerPageChange={(pp) => { setSPerPage(pp); setSPage(1); }}
+                perPageLabel={t.admin.perPage}
+                pageOfLabel={(p, tp) => t.admin.pageOf.replace("{page}", String(p)).replace("{total}", String(tp))}
+              />
+            </>
           )}
         </TabsContent>
       </Tabs>

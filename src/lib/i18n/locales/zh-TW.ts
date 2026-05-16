@@ -138,6 +138,8 @@ const zhTW: TranslationKeys = {
     colProvider: "登入方式",
     sourceText: "原文",
     notFound: "找不到生成記錄。",
+    perPage: "每頁",
+    pageOf: "第 {page} 頁，共 {total} 頁",
   },
 } as const;
 

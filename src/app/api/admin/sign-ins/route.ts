@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { signInLogs, users } from "@/lib/db/schema";
-import { desc, asc, sql } from "drizzle-orm";
+import { desc, asc, sql, count } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -15,6 +15,8 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const perPage = Math.min(100, Math.max(1, parseInt(searchParams.get("perPage") || "20", 10)));
 
     const orderColumn =
       sortBy === "userName"
@@ -23,19 +25,27 @@ export async function GET(req: NextRequest) {
 
     const orderFn = sortOrder === "asc" ? asc : desc;
 
-    const rows = await db
-      .select({
-        id: signInLogs.id,
-        userName: users.name,
-        email: users.email,
-        provider: signInLogs.provider,
-        createdAt: signInLogs.createdAt,
-      })
-      .from(signInLogs)
-      .innerJoin(users, sql`${signInLogs.userId} = ${users.id}`)
-      .orderBy(orderFn(orderColumn));
+    const [rows, [{ total }]] = await Promise.all([
+      db
+        .select({
+          id: signInLogs.id,
+          userName: users.name,
+          email: users.email,
+          provider: signInLogs.provider,
+          createdAt: signInLogs.createdAt,
+        })
+        .from(signInLogs)
+        .innerJoin(users, sql`${signInLogs.userId} = ${users.id}`)
+        .orderBy(orderFn(orderColumn))
+        .limit(perPage)
+        .offset((page - 1) * perPage),
+      db
+        .select({ total: count() })
+        .from(signInLogs)
+        .innerJoin(users, sql`${signInLogs.userId} = ${users.id}`),
+    ]);
 
-    return NextResponse.json({ signIns: rows });
+    return NextResponse.json({ signIns: rows, total, page, perPage });
   } catch (error) {
     console.error("Admin sign-ins GET error:", error);
     return NextResponse.json(

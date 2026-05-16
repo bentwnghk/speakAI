@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { generations, users } from "@/lib/db/schema";
-import { desc, asc, sql, ilike, or } from "drizzle-orm";
+import { desc, asc, sql, ilike, or, count } from "drizzle-orm";
 
 export async function GET(req: NextRequest) {
   try {
@@ -16,8 +16,10 @@ export async function GET(req: NextRequest) {
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
     const search = searchParams.get("q") || "";
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const perPage = Math.min(100, Math.max(1, parseInt(searchParams.get("perPage") || "20", 10)));
 
-    const query = db
+    const baseQuery = db
       .select({
         id: generations.id,
         userName: users.name,
@@ -30,14 +32,14 @@ export async function GET(req: NextRequest) {
       .from(generations)
       .innerJoin(users, sql`${generations.userId} = ${users.id}`);
 
-    const conditions = search.trim()
-      ? [
+    const where = search.trim()
+      ? or(
           ilike(users.name, `%${search.trim()}%`),
           ilike(users.email, `%${search.trim()}%`),
           ilike(generations.title, `%${search.trim()}%`),
           ilike(generations.voice, `%${search.trim()}%`),
-        ]
-      : [];
+        )
+      : undefined;
 
     const orderColumn =
       sortBy === "userName"
@@ -50,13 +52,18 @@ export async function GET(req: NextRequest) {
 
     const orderFn = sortOrder === "asc" ? asc : desc;
 
-    const rows = conditions.length
-      ? await query
-          .where(or(...conditions))
-          .orderBy(orderFn(orderColumn))
-      : await query.orderBy(orderFn(orderColumn));
+    const [rows, [{ total }]] = await Promise.all([
+      where
+        ? baseQuery.where(where).orderBy(orderFn(orderColumn)).limit(perPage).offset((page - 1) * perPage)
+        : baseQuery.orderBy(orderFn(orderColumn)).limit(perPage).offset((page - 1) * perPage),
+      db
+        .select({ total: count() })
+        .from(generations)
+        .innerJoin(users, sql`${generations.userId} = ${users.id}`)
+        .where(where),
+    ]);
 
-    return NextResponse.json({ generations: rows });
+    return NextResponse.json({ generations: rows, total, page, perPage });
   } catch (error) {
     console.error("Admin generations GET error:", error);
     return NextResponse.json(

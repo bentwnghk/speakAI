@@ -136,6 +136,8 @@ const en = {
     colProvider: "Provider",
     sourceText: "Source Text",
     notFound: "Generation not found.",
+    perPage: "Per page",
+    pageOf: "Page {page} of {total}",
   },
 } as const;
 
