@@ -5,6 +5,15 @@ import { db } from "@/lib/db";
 import { generations, users } from "@/lib/db/schema";
 import { desc, asc, sql, ilike, or, count } from "drizzle-orm";
 
+const cumulativeSubquery = db
+  .select({
+    userId: generations.userId,
+    cumulativeCost: sql<string>`coalesce(sum(${generations.ttsCost}::numeric), 0)`.as("cumulative_cost"),
+  })
+  .from(generations)
+  .groupBy(generations.userId)
+  .as("cum");
+
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
@@ -28,9 +37,11 @@ export async function GET(req: NextRequest) {
         voice: generations.voice,
         createdAt: generations.createdAt,
         ttsCost: generations.ttsCost,
+        cumulativeCost: cumulativeSubquery.cumulativeCost,
       })
       .from(generations)
-      .innerJoin(users, sql`${generations.userId} = ${users.id}`);
+      .innerJoin(users, sql`${generations.userId} = ${users.id}`)
+      .leftJoin(cumulativeSubquery, sql`${generations.userId} = ${cumulativeSubquery.userId}`);
 
     const where = search.trim()
       ? or(

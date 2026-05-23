@@ -46,6 +46,7 @@ interface GenerationRow {
   voice: string;
   createdAt: string;
   ttsCost: string | null;
+  cumulativeCost: string;
 }
 
 interface PurchaseRow {
@@ -461,6 +462,9 @@ export default function AdminDashboardPage() {
                       <th className="p-3 text-left font-medium">
                         {t.admin.colCost}
                       </th>
+                      <th className="p-3 text-left font-medium">
+                        {t.admin.colCumulative}
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -502,6 +506,9 @@ export default function AdminDashboardPage() {
                           ) : (
                             <span className="text-muted-foreground">—</span>
                           )}
+                        </td>
+                        <td className="p-3 whitespace-nowrap text-sm font-medium">
+                          HK${parseFloat(g.cumulativeCost).toFixed(2)}
                         </td>
                       </tr>
                     ))}
