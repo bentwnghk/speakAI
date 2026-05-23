@@ -5,14 +5,7 @@ import { db } from "@/lib/db";
 import { generations, users } from "@/lib/db/schema";
 import { desc, asc, sql, ilike, or, count } from "drizzle-orm";
 
-const cumulativeSubquery = db
-  .select({
-    userId: generations.userId,
-    cumulativeCost: sql<string>`coalesce(sum(${generations.ttsCost}::numeric), 0)`.as("cumulative_cost"),
-  })
-  .from(generations)
-  .groupBy(generations.userId)
-  .as("cum");
+const cumulativeSql = sql<string>`coalesce(sum(${generations.ttsCost}::numeric) over (partition by ${generations.userId} order by ${generations.createdAt} asc rows between unbounded preceding and current row), 0)`.as("cumulative_cost");
 
 export async function GET(req: NextRequest) {
   try {
@@ -37,11 +30,10 @@ export async function GET(req: NextRequest) {
         voice: generations.voice,
         createdAt: generations.createdAt,
         ttsCost: generations.ttsCost,
-        cumulativeCost: cumulativeSubquery.cumulativeCost,
+        cumulativeCost: cumulativeSql,
       })
       .from(generations)
-      .innerJoin(users, sql`${generations.userId} = ${users.id}`)
-      .leftJoin(cumulativeSubquery, sql`${generations.userId} = ${cumulativeSubquery.userId}`);
+      .innerJoin(users, sql`${generations.userId} = ${users.id}`);
 
     const where = search.trim()
       ? or(
