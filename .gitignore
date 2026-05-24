@@ -47,6 +47,9 @@ public/sw.js
 public/sw.js.map
 public/swe-worker-*.js
 
+# graphify
+/graphify-out/
+
 # old python
 *.pyc
 __pycache__/
