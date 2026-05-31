@@ -9,9 +9,15 @@ import { mkdir, writeFile } from "fs/promises";
 import { join } from "path";
 import { nanoid } from "nanoid";
 
-const ASSESSMENT_COST_HKD = parseFloat(
-  process.env.ASSESSMENT_COST_HKD || "0.50"
+const ASSESSMENT_PRICE_USD_PER_HOUR = parseFloat(
+  process.env.ASSESSMENT_PRICE_USD_PER_HOUR || "1.00"
 );
+const USD_TO_HKD = 7.8;
+
+function calculateCost(durationMs: number): number {
+  const cost = (durationMs / 3_600_000) * ASSESSMENT_PRICE_USD_PER_HOUR * USD_TO_HKD;
+  return Math.round(Math.max(cost, 0.01) * 100) / 100;
+}
 
 function getExpiresAt(): Date {
   const days = parseInt(process.env.RECORDING_RETENTION_DAYS || process.env.AUDIO_RETENTION_DAYS || "365", 10);
@@ -55,9 +61,11 @@ export async function POST(request: Request) {
 
     const audioFile = formData.get("audio") as File | null;
 
+    const cost = calculateCost(data.durationMs);
+
     const deductResult = await deductCredits(
       userId,
-      ASSESSMENT_COST_HKD,
+      cost,
       `Speaking assessment: "${data.referenceText.slice(0, 50)}${data.referenceText.length > 50 ? "..." : ""}"`
     );
 
@@ -98,7 +106,7 @@ export async function POST(request: Request) {
           phonemes: data.phonemes ?? null,
           syllables: data.syllables ?? null,
           audioPath,
-          cost: ASSESSMENT_COST_HKD,
+          cost,
           expiresAt: audioPath ? getExpiresAt() : null,
         })
         .returning({ id: assessments.id });
@@ -107,11 +115,11 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         id: savedId,
-        cost: ASSESSMENT_COST_HKD,
+        cost,
         balance: deductResult.balance,
       });
     } catch (dbError) {
-      await refundCredits(userId, ASSESSMENT_COST_HKD, "Assessment save failed - refund");
+      await refundCredits(userId, cost, "Assessment save failed - refund");
       throw dbError;
     }
   } catch (error) {

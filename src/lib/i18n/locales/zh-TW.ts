@@ -151,7 +151,7 @@ const zhTW: TranslationKeys = {
     referenceText: "參考文本",
     referencePlaceholder: "在此貼上或輸入您想練習朗讀的文字...",
     wordCount: "{count} 個單詞",
-    estimatedCost: "預計費用：HK${cost}",
+    estimatedCost: "約 HK${cost}/分鐘",
     modeLabel: "辨識模式",
     modeAuto: "自動偵測結束",
     modeManual: "手動停止",

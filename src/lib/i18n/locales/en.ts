@@ -149,7 +149,7 @@ const en = {
     referenceText: "Reference Text",
     referencePlaceholder: "Paste or type the text you want to practice reading aloud...",
     wordCount: "{count} words",
-    estimatedCost: "Estimated cost: HK${cost}",
+    estimatedCost: "Approx. HK${cost}/min",
     modeLabel: "Recognition Mode",
     modeAuto: "Auto-detect end",
     modeManual: "Manual stop",

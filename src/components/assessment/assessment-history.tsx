@@ -9,6 +9,7 @@ import {
   Download,
   Volume2,
   Timer,
+  Coins,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -294,6 +295,10 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
           <Badge variant="outline">
             {t.duration.replace("{seconds}", String(Math.round(detail.durationMs / 1000)))}
           </Badge>
+          <span className="flex items-center gap-1">
+            <Coins className="size-3" />
+            HK${detail.cost.toFixed(2)}
+          </span>
         </div>
       </div>
     );
@@ -340,6 +345,10 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
                   <span className="flex items-center gap-1">
                     <Clock className="size-3" />
                     {formatDate(item.createdAt)}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Coins className="size-3" />
+                    HK${item.cost.toFixed(2)}
                   </span>
                 </div>
               </div>

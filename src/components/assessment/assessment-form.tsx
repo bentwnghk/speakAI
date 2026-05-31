@@ -64,7 +64,7 @@ interface JsonResult {
   NBest?: JsonNBest[];
 }
 
-export function AssessmentForm({ cost }: { cost: number }) {
+export function AssessmentForm({ pricePerMinHkd }: { pricePerMinHkd: number }) {
   const { t } = useUserSettings();
   const { refreshBalance } = useCredits();
   const at = t.assessment as Record<string, string>;
@@ -558,7 +558,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
             <span>
               {at.wordCount.replace("{count}", String(wordCount))}{" "}
               &middot;{" "}
-              {at.estimatedCost.replace("${cost}", cost.toFixed(2))}
+              {at.estimatedCost.replace("${cost}", pricePerMinHkd.toFixed(2))}
             </span>
           </div>
 
