@@ -92,7 +92,7 @@ function WordInfoBar({
 
 export function TranscriptView({ words, t }: TranscriptViewProps) {
   const [tappedIdx, setTappedIdx] = useState<number | null>(null);
-  const accuracyBuckets = { excellent: 0, good: 0, fair: 0, poor: 0 };
+  const accuracyBuckets = { excellent: 0, good: 0, fair: 0 };
 
   useEffect(() => {
     if (tappedIdx === null) return;
@@ -124,7 +124,7 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
               if (score >= 90) accuracyBuckets.excellent++;
               else if (score >= 80) accuracyBuckets.good++;
               else if (score >= 60) accuracyBuckets.fair++;
-              else accuracyBuckets.poor++;
+
             }
 
             const style = isError
@@ -191,12 +191,6 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
             {t.accuracyFair ?? "Fair"} (60&ndash;79)
           </span>
           <span>{accuracyBuckets.fair}</span>
-        </span>
-        <span className="flex items-center gap-1">
-          <span className="inline-block rounded px-1 py-px text-red-600 dark:text-red-400 bg-red-500/10">
-            {t.accuracyPoor ?? "Poor"} (&lt;60)
-          </span>
-          <span>{accuracyBuckets.poor}</span>
         </span>
 
         {(Object.keys(ERROR_STYLES) as Exclude<ErrorType, "None">[]).map((type) => {
