@@ -84,7 +84,7 @@ const zhTW: TranslationKeys = {
   },
   credits: {
     title: "積分",
-    description: "購買積分以生成語音",
+    description: "購買積分以生成語音或進行口語評估",
     paymentSuccess: "付款成功！",
     creditsAdded: "積分已添加到您的帳戶。",
     paymentCanceled: "付款已取消，未收取任何費用。",

@@ -82,7 +82,7 @@ const en = {
   },
   credits: {
     title: "Credits",
-    description: "Purchase credits to generate audio",
+    description: "Purchase credits to generate audio or take speaking assessment",
     paymentSuccess: "Payment successful!",
     creditsAdded: "Your credits have been added to your account.",
     paymentCanceled: "Payment was canceled. No charges were made.",
