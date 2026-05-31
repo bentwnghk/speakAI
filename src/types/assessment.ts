@@ -91,5 +91,6 @@ export interface SavedAssessment {
   phonemes: PhonemeResult[][] | null;
   syllables: SyllableResult[][] | null;
   cost: number;
+  expiresAt: string | null;
   createdAt: string;
 }

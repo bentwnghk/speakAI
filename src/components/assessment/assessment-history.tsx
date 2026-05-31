@@ -51,15 +51,17 @@ interface HistoryItem {
   createdAt: string;
 }
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "Just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleString("en-HK", {
+    timeZone: "Asia/Hong_Kong",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
 }
 
 function getDaysUntilExpiry(expiresAt: string | null): number | null {
@@ -169,6 +171,8 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
         ? words
         : words.filter((w) => w.PronunciationAssessment.ErrorType === errorFilter);
     const hasAudio = !!detail.id;
+    const daysLeft = getDaysUntilExpiry(detail.expiresAt ?? null);
+    const nearExpiry = daysLeft !== null && daysLeft <= 14;
 
     return (
       <div className="space-y-4">
@@ -188,6 +192,15 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
             {detail.referenceText.slice(0, 50)}
             {detail.referenceText.length > 50 ? "..." : ""}
           </h2>
+          {daysLeft !== null && (
+            <Badge
+              variant={nearExpiry ? "destructive" : "outline"}
+              className="text-xs shrink-0 gap-1"
+            >
+              <Timer className="size-3" />
+              {t.expiresIn?.replace("{days}", String(daysLeft)) ?? `${daysLeft}d left`}
+            </Badge>
+          )}
         </div>
 
         <ScoreOverview scores={scores} t={t} />
@@ -275,7 +288,7 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Clock className="size-3" />
-            {timeAgo(detail.createdAt)}
+            {formatDate(detail.createdAt)}
           </span>
           <Badge variant="outline">{t.score.replace("{score}", String(Math.round(detail.pronScore)))}</Badge>
           <Badge variant="outline">
@@ -326,7 +339,7 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
                   </Badge>
                   <span className="flex items-center gap-1">
                     <Clock className="size-3" />
-                    {timeAgo(item.createdAt)}
+                    {formatDate(item.createdAt)}
                   </span>
                 </div>
               </div>
