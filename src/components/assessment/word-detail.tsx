@@ -173,16 +173,25 @@ function NBestDetail({
   expected: string;
   t: Record<string, string>;
 }) {
+  const [show, setShow] = useState(false);
   const topSpoken = nbest[0];
   const isDifferent = topSpoken && topSpoken.Phoneme !== expected;
 
   return (
     <div className="group relative ml-1">
-      <span className="cursor-help text-xs text-muted-foreground underline decoration-dotted">
+      <span
+        className="cursor-help text-xs text-muted-foreground underline decoration-dotted select-none"
+        onClick={() => setShow((s) => !s)}
+      >
         {isDifferent ? `/ ${topSpoken.Phoneme}/` : ""}
       </span>
       {isDifferent && (
-        <div className="pointer-events-none absolute bottom-full right-0 z-10 mb-1 hidden w-max rounded bg-popover px-2 py-1 text-xs shadow-lg group-hover:block">
+        <div
+          className={cn(
+            "absolute bottom-full right-0 z-10 mb-1 w-max rounded bg-popover px-2 py-1 text-xs shadow-lg",
+            show ? "block" : "hidden group-hover:block"
+          )}
+        >
           <div className="font-medium">{t.phonemeSpoken}:</div>
           {nbest.slice(0, 3).map((nb, k) => (
             <div key={k} className="flex gap-2">

@@ -25,7 +25,7 @@ import {
   ArrowDown,
   Search,
   Loader2,
-  Coins,
+  Volume2,
   ShieldCheck,
   ShoppingCart,
   LogIn,
@@ -473,10 +473,17 @@ export default function AdminDashboardPage() {
       <Tabs defaultValue="usage">
         <TabsList className="flex w-full">
           <TabsTrigger value="usage" className="flex-1 gap-1 text-xs sm:text-sm">
-            <Coins className="h-4 w-4" />
+            <Volume2 className="h-4 w-4" />
             {t.admin.tabUsage}
             <Badge variant="secondary" className="ml-1 text-xs">
               {gTotal}
+            </Badge>
+          </TabsTrigger>
+          <TabsTrigger value="assessments" className="flex-1 gap-1 text-xs sm:text-sm">
+            <Mic className="h-4 w-4" />
+            {t.admin.tabAssessments}
+            <Badge variant="secondary" className="ml-1 text-xs">
+              {aTotal}
             </Badge>
           </TabsTrigger>
           <TabsTrigger value="purchases" className="flex-1 gap-1 text-xs sm:text-sm">
@@ -491,13 +498,6 @@ export default function AdminDashboardPage() {
             {t.admin.tabSignIns}
             <Badge variant="secondary" className="ml-1 text-xs">
               {sTotal}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="assessments" className="flex-1 gap-1 text-xs sm:text-sm">
-            <Mic className="h-4 w-4" />
-            {t.admin.tabAssessments}
-            <Badge variant="secondary" className="ml-1 text-xs">
-              {aTotal}
             </Badge>
           </TabsTrigger>
         </TabsList>
@@ -620,6 +620,147 @@ export default function AdminDashboardPage() {
                 perPage={gPerPage}
                 onPageChange={setGPage}
                 onPerPageChange={(pp) => { setGPerPage(pp); setGPage(1); }}
+                perPageLabel={t.admin.perPage}
+                pageOfLabel={(p, tp) => t.admin.pageOf.replace("{page}", String(p)).replace("{total}", String(tp))}
+              />
+            </>
+          )}
+        </TabsContent>
+
+        <TabsContent value="assessments" className="mt-4 space-y-4">
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder={t.admin.searchAssessments}
+              value={aSearch}
+              onChange={(e) => { setASearch(e.target.value); setAPage(1); }}
+              className="pl-9"
+            />
+          </div>
+
+          {assessmentRows.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <p className="text-muted-foreground">
+                  {aSearch
+                    ? t.admin.noAssessmentsMatch.replace("{search}", aSearch)
+                    : t.admin.noAssessments}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="rounded-md border overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <SortableTh
+                        label={t.admin.colUser}
+                        sortKey="userName"
+                        activeSortKey={aSortBy}
+                        isDesc={aSortDesc}
+                        onSort={toggleASort}
+                      />
+                      <SortableTh
+                        label={t.admin.colDate}
+                        sortKey="createdAt"
+                        activeSortKey={aSortBy}
+                        isDesc={aSortDesc}
+                        onSort={toggleASort}
+                      />
+                      <th className="p-3 text-left font-medium">
+                        {t.admin.colReferenceText}
+                      </th>
+                      <SortableTh
+                        label={t.admin.colPronScore}
+                        sortKey="pronScore"
+                        activeSortKey={aSortBy}
+                        isDesc={aSortDesc}
+                        onSort={toggleASort}
+                      />
+                      <th className="p-3 text-left font-medium">
+                        {t.admin.colScores}
+                      </th>
+                      <th className="p-3 text-left font-medium">
+                        {t.admin.colDuration}
+                      </th>
+                      <SortableTh
+                        label={t.admin.colCost}
+                        sortKey="cost"
+                        activeSortKey={aSortBy}
+                        isDesc={aSortDesc}
+                        onSort={toggleASort}
+                      />
+                      <th className="p-3 text-left font-medium">
+                        {t.admin.colCumulative}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {assessmentRows.map((a) => (
+                      <tr
+                        key={a.id}
+                        className="border-b last:border-0 hover:bg-muted/30 transition-colors"
+                      >
+                        <td className="p-3">
+                          <div className="font-medium">
+                            {a.userName || "Unknown"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {a.email}
+                          </div>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          {formatDateHK(a.createdAt)}
+                        </td>
+                        <td className="p-3 max-w-[250px]">
+                          <button
+                            type="button"
+                            className="text-left truncate hover:underline cursor-pointer w-full"
+                            onClick={() => setSelectedAssessmentId(a.id)}
+                          >
+                            {a.referenceText}
+                          </button>
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          <Badge variant={a.pronScore >= 80 ? "default" : a.pronScore >= 60 ? "secondary" : "destructive"}>
+                            {Math.round(a.pronScore)}
+                          </Badge>
+                        </td>
+                        <td className="p-3 whitespace-nowrap text-xs text-muted-foreground">
+                          <span title="Accuracy">A:{Math.round(a.accuracyScore)}</span>
+                          {" "}
+                          <span title="Fluency">F:{Math.round(a.fluencyScore)}</span>
+                          {" "}
+                          <span title="Completeness">C:{Math.round(a.completenessScore)}</span>
+                          {a.prosodyScore != null && (
+                            <>
+                              {" "}
+                              <span title="Prosody">P:{Math.round(a.prosodyScore)}</span>
+                            </>
+                          )}
+                        </td>
+                        <td className="p-3 whitespace-nowrap text-xs">
+                          {(a.durationMs / 1000).toFixed(1)}s
+                        </td>
+                        <td className="p-3 whitespace-nowrap">
+                          HK${a.cost.toFixed(2)}
+                        </td>
+                        <td className="p-3 whitespace-nowrap text-sm font-medium">
+                          HK${parseFloat(a.cumulativeCost).toFixed(2)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <Pagination
+                page={aPage}
+                total={aTotal}
+                perPage={aPerPage}
+                onPageChange={setAPage}
+                onPerPageChange={(pp) => { setAPerPage(pp); setAPage(1); }}
                 perPageLabel={t.admin.perPage}
                 pageOfLabel={(p, tp) => t.admin.pageOf.replace("{page}", String(p)).replace("{total}", String(tp))}
               />
@@ -792,147 +933,6 @@ export default function AdminDashboardPage() {
                 perPage={sPerPage}
                 onPageChange={setSPage}
                 onPerPageChange={(pp) => { setSPerPage(pp); setSPage(1); }}
-                perPageLabel={t.admin.perPage}
-                pageOfLabel={(p, tp) => t.admin.pageOf.replace("{page}", String(p)).replace("{total}", String(tp))}
-              />
-            </>
-          )}
-        </TabsContent>
-
-        <TabsContent value="assessments" className="mt-4 space-y-4">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder={t.admin.searchAssessments}
-              value={aSearch}
-              onChange={(e) => { setASearch(e.target.value); setAPage(1); }}
-              className="pl-9"
-            />
-          </div>
-
-          {assessmentRows.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground">
-                  {aSearch
-                    ? t.admin.noAssessmentsMatch.replace("{search}", aSearch)
-                    : t.admin.noAssessments}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <div className="rounded-md border overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <SortableTh
-                        label={t.admin.colUser}
-                        sortKey="userName"
-                        activeSortKey={aSortBy}
-                        isDesc={aSortDesc}
-                        onSort={toggleASort}
-                      />
-                      <SortableTh
-                        label={t.admin.colDate}
-                        sortKey="createdAt"
-                        activeSortKey={aSortBy}
-                        isDesc={aSortDesc}
-                        onSort={toggleASort}
-                      />
-                      <th className="p-3 text-left font-medium">
-                        {t.admin.colReferenceText}
-                      </th>
-                      <SortableTh
-                        label={t.admin.colPronScore}
-                        sortKey="pronScore"
-                        activeSortKey={aSortBy}
-                        isDesc={aSortDesc}
-                        onSort={toggleASort}
-                      />
-                      <th className="p-3 text-left font-medium">
-                        {t.admin.colScores}
-                      </th>
-                      <th className="p-3 text-left font-medium">
-                        {t.admin.colDuration}
-                      </th>
-                      <SortableTh
-                        label={t.admin.colCost}
-                        sortKey="cost"
-                        activeSortKey={aSortBy}
-                        isDesc={aSortDesc}
-                        onSort={toggleASort}
-                      />
-                      <th className="p-3 text-left font-medium">
-                        {t.admin.colCumulative}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {assessmentRows.map((a) => (
-                      <tr
-                        key={a.id}
-                        className="border-b last:border-0 hover:bg-muted/30 transition-colors"
-                      >
-                        <td className="p-3">
-                          <div className="font-medium">
-                            {a.userName || "Unknown"}
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {a.email}
-                          </div>
-                        </td>
-                        <td className="p-3 whitespace-nowrap">
-                          {formatDateHK(a.createdAt)}
-                        </td>
-                        <td className="p-3 max-w-[250px]">
-                          <button
-                            type="button"
-                            className="text-left truncate hover:underline cursor-pointer w-full"
-                            onClick={() => setSelectedAssessmentId(a.id)}
-                          >
-                            {a.referenceText}
-                          </button>
-                        </td>
-                        <td className="p-3 whitespace-nowrap">
-                          <Badge variant={a.pronScore >= 80 ? "default" : a.pronScore >= 60 ? "secondary" : "destructive"}>
-                            {Math.round(a.pronScore)}
-                          </Badge>
-                        </td>
-                        <td className="p-3 whitespace-nowrap text-xs text-muted-foreground">
-                          <span title="Accuracy">A:{Math.round(a.accuracyScore)}</span>
-                          {" "}
-                          <span title="Fluency">F:{Math.round(a.fluencyScore)}</span>
-                          {" "}
-                          <span title="Completeness">C:{Math.round(a.completenessScore)}</span>
-                          {a.prosodyScore != null && (
-                            <>
-                              {" "}
-                              <span title="Prosody">P:{Math.round(a.prosodyScore)}</span>
-                            </>
-                          )}
-                        </td>
-                        <td className="p-3 whitespace-nowrap text-xs">
-                          {(a.durationMs / 1000).toFixed(1)}s
-                        </td>
-                        <td className="p-3 whitespace-nowrap">
-                          HK${a.cost.toFixed(2)}
-                        </td>
-                        <td className="p-3 whitespace-nowrap text-sm font-medium">
-                          HK${parseFloat(a.cumulativeCost).toFixed(2)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <Pagination
-                page={aPage}
-                total={aTotal}
-                perPage={aPerPage}
-                onPageChange={setAPage}
-                onPerPageChange={(pp) => { setAPerPage(pp); setAPage(1); }}
                 perPageLabel={t.admin.perPage}
                 pageOfLabel={(p, tp) => t.admin.pageOf.replace("{page}", String(p)).replace("{total}", String(tp))}
               />

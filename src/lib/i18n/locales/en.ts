@@ -119,7 +119,7 @@ const en = {
     title: "Admin Dashboard",
     loading: "Loading dashboard...",
     dashboard: "Dashboard",
-    tabUsage: "Usage",
+    tabUsage: "Audio",
     tabPurchases: "Purchases",
     tabSignIns: "Sign-ins",
     searchPlaceholder: "Search by name, email, title, or voice...",
