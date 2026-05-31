@@ -519,7 +519,7 @@ export function AssessmentForm({ pricePerMinHkd }: { pricePerMinHkd: number }) {
         );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       <div className="text-center">
         <h1 className="text-2xl font-bold">{at.title}</h1>
         <p className="text-sm text-muted-foreground">{at.subtitle}</p>
@@ -527,10 +527,10 @@ export function AssessmentForm({ pricePerMinHkd }: { pricePerMinHkd: number }) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center justify-between">
+          <CardTitle className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <span>{at.referenceText}</span>
             <Select onValueChange={handleSample}>
-              <SelectTrigger className="w-40">
+              <SelectTrigger className="w-full sm:w-40">
                 <SelectValue placeholder={at.sampleTexts} />
               </SelectTrigger>
               <SelectContent>
@@ -638,9 +638,9 @@ export function AssessmentForm({ pricePerMinHkd }: { pricePerMinHkd: number }) {
             <Separator />
 
             <Tabs defaultValue="word">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <h3 className="text-sm font-semibold">{at.granularity}</h3>
-                <TabsList>
+                <TabsList className="flex-wrap h-auto">
                   <TabsTrigger value="fulltext">{at.granFullText}</TabsTrigger>
                   <TabsTrigger value="word">{at.granWord}</TabsTrigger>
                   <TabsTrigger value="syllable">{at.granSyllable}</TabsTrigger>

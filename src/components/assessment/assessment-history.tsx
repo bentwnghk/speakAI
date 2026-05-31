@@ -251,9 +251,9 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
         <Separator />
 
         <Tabs defaultValue="word">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <h3 className="text-sm font-semibold">{t.granularity}</h3>
-            <TabsList>
+            <TabsList className="flex-wrap h-auto">
               <TabsTrigger value="fulltext">{t.granFullText}</TabsTrigger>
               <TabsTrigger value="word">{t.granWord}</TabsTrigger>
               <TabsTrigger value="syllable">{t.granSyllable}</TabsTrigger>
