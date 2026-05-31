@@ -57,6 +57,7 @@ const zhTW: TranslationKeys = {
     audioGenerated: "語音已生成！",
     cost: "費用：HK${cost}",
     generationFailed: "語音生成失敗",
+    practiceReading: "練習朗讀",
   },
   history: {
     title: "歷史記錄",

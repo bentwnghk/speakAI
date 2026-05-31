@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,7 +10,7 @@ import { SpeedSlider } from "@/components/speed-slider";
 import { FileUpload } from "@/components/file-upload";
 import { AudioPlayer } from "@/components/audio-player";
 import { KaraokeText } from "@/components/karaoke-text";
-import { Sparkles, Type, Upload, Loader2, History, FileText, SlidersHorizontal } from "lucide-react";
+import { Sparkles, Type, Upload, Loader2, History, FileText, SlidersHorizontal, Mic } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { Segment } from "@/types/karaoke";
@@ -47,6 +47,12 @@ export function TtsForm() {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [karaokeActive, setKaraokeActive] = useState(false);
   const [accumulatedVisionCost, setAccumulatedVisionCost] = useState(0);
+  const [selectionPopover, setSelectionPopover] = useState<{
+    text: string;
+    top: number;
+    left: number;
+  } | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { refreshBalance } = useCredits();
   const { t } = useUserSettings();
 
@@ -182,6 +188,42 @@ export function TtsForm() {
   const displayText = inputMethod === "upload" ? extractedText : text;
   const showKaraoke = karaokeActive && audioSegments.length > 0 && audioSrc;
 
+  const handleTextSelect = useCallback(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const sel = el.value.substring(el.selectionStart, el.selectionEnd).trim();
+    if (!sel) {
+      setSelectionPopover(null);
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    const cardContent = el.closest("[data-selection-container]");
+    const containerRect = cardContent
+      ? cardContent.getBoundingClientRect()
+      : rect;
+    const style = getComputedStyle(el);
+    const lineH = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2;
+    const paddingTop = parseFloat(style.paddingTop) || 0;
+    const textBefore = el.value.substring(0, el.selectionStart);
+    const linesBefore = textBefore.split("\n").length - 1;
+    const charsPerLine = Math.max(1, Math.floor((rect.width - 24) / (parseFloat(style.fontSize) * 0.6)));
+    const wrappedLines = textBefore.split("\n").reduce(
+      (acc, line) => acc + Math.max(1, Math.ceil(line.length / charsPerLine)),
+      0,
+    ) - 1;
+    const topOffset = paddingTop + (linesBefore + wrappedLines) * lineH;
+    const top = topOffset - el.scrollTop;
+    setSelectionPopover({
+      text: sel,
+      top: top - 8 + rect.top - containerRect.top,
+      left: rect.width / 2,
+    });
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    setTimeout(handleTextSelect, 10);
+  }, [handleTextSelect]);
+
   useEffect(() => {
     if (isAudioPlaying) {
       setKaraokeActive(true);
@@ -223,13 +265,38 @@ export function TtsForm() {
                 </TabsList>
 
                 <TabsContent value="text" className="mt-3">
-                  <Textarea
-                    placeholder={t.tts.textPlaceholder}
-                    value={text}
-                    onChange={(e) => setText(e.target.value)}
-                    rows={10}
-                    className="text-base md:text-base"
-                  />
+                  <div className="relative" data-selection-container>
+                    <Textarea
+                      ref={textareaRef}
+                      placeholder={t.tts.textPlaceholder}
+                      value={text}
+                      onChange={(e) => {
+                        setText(e.target.value);
+                        setSelectionPopover(null);
+                      }}
+                      onMouseUp={handleMouseUp}
+                      onKeyUp={handleMouseUp}
+                      onBlur={() => setSelectionPopover(null)}
+                      rows={10}
+                      className="text-base md:text-base"
+                    />
+                    {selectionPopover && (
+                      <Link
+                        href={`/assessment?text=${encodeURIComponent(selectionPopover.text)}`}
+                        className="absolute z-10 -translate-x-1/2 -translate-y-full"
+                        style={{ top: selectionPopover.top, left: selectionPopover.left }}
+                      >
+                        <Button
+                          size="sm"
+                          className="shadow-lg whitespace-nowrap"
+                          onMouseDown={(e) => e.preventDefault()}
+                        >
+                          <Mic className="size-3.5" />
+                          {t.tts.practiceReading}
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="upload" className="mt-3">

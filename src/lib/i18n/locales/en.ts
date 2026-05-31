@@ -55,6 +55,7 @@ const en = {
     audioGenerated: "Audio generated!",
     cost: "Cost: HK${cost}",
     generationFailed: "Audio generation failed",
+    practiceReading: "Practice reading aloud",
   },
   history: {
     title: "History",

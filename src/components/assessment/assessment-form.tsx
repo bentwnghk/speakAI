@@ -64,12 +64,12 @@ interface JsonResult {
   NBest?: JsonNBest[];
 }
 
-export function AssessmentForm({ pricePerMinHkd }: { pricePerMinHkd: number }) {
+export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerMinHkd: number; initialText?: string }) {
   const { t } = useUserSettings();
   const { refreshBalance } = useCredits();
   const at = t.assessment as Record<string, string>;
 
-  const [referenceText, setReferenceText] = useState("");
+  const [referenceText, setReferenceText] = useState(initialText);
   const [mode, setMode] = useState<RecordingMode>("auto");
   const [recordingState, setRecordingState] = useState<RecordingState>("idle");
   const [result, setResult] = useState<AssessmentResult | null>(null);
