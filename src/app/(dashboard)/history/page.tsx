@@ -3,7 +3,7 @@ import { HistoryPageHeader } from "@/components/history-page-header";
 import { HistoryTabs } from "@/components/history-tabs";
 
 export const metadata: Metadata = {
-  title: "History - Mr.\u{1F19A} SpeakAI",
+  title: "History - Mr.\u{1F196} SpeakAI",
 };
 
 export default function HistoryPage() {
