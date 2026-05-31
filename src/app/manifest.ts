@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Mr.🆖 SpeakAI",
     short_name: "Mr.🆖 SpeakAI",
     description:
-      "TTurn text into natural-sounding audio with karaoke-style playback.",
+      "AI text-to-speech with karaoke highlighting & pronunciation assessment.",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
