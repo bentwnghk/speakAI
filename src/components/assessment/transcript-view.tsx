@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import type { WordResult, ErrorType } from "@/types/assessment";
 
@@ -49,12 +50,67 @@ function getAccuracyLabel(score: number, t: Record<string, string>): string {
   return t.accuracyPoor ?? "Poor";
 }
 
+function getWordLabel(word: WordResult, t: Record<string, string>): string {
+  const errorType = word.PronunciationAssessment.ErrorType;
+  const score = Math.round(word.PronunciationAssessment.AccuracyScore);
+  const isError = errorType !== "None";
+  return isError
+    ? `${String(t[`error${errorType}`] ?? errorType)} (${score}%)`
+    : `${getAccuracyLabel(score, t)} (${score}%)`;
+}
+
+function WordTooltip({
+  label,
+  word,
+  t,
+}: {
+  label: string;
+  word: WordResult;
+  t: Record<string, string>;
+}) {
+  const errorType = word.PronunciationAssessment.ErrorType;
+  const isError = errorType !== "None";
+  const phonemes = word.Phonemes?.map((p) => p.Phoneme).join("");
+
+  return (
+    <span className="absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded bg-popover px-2 py-1 text-xs shadow-lg border">
+      <span className="font-medium">{label}</span>
+      {phonemes && (
+        <span className="ml-1.5 font-mono text-muted-foreground">
+          /{phonemes}/
+        </span>
+      )}
+      {isError && (
+        <span className="ml-1.5 text-destructive">
+          {String(t[`error${errorType}`] ?? errorType)}
+        </span>
+      )}
+      <span className="absolute -bottom-1 left-1/2 size-2 -translate-x-1/2 rotate-45 border-b border-r bg-popover" />
+    </span>
+  );
+}
+
 export function TranscriptView({ words, t }: TranscriptViewProps) {
+  const [tappedIdx, setTappedIdx] = useState<number | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const accuracyBuckets = { excellent: 0, good: 0, fair: 0, poor: 0 };
+
+  useEffect(() => {
+    if (tappedIdx === null) return;
+    function dismiss() {
+      setTappedIdx(null);
+    }
+    document.addEventListener("click", dismiss);
+    document.addEventListener("touchstart", dismiss);
+    return () => {
+      document.removeEventListener("click", dismiss);
+      document.removeEventListener("touchstart", dismiss);
+    };
+  }, [tappedIdx]);
 
   return (
     <div className="space-y-3">
-      <div className="rounded-lg border bg-card p-4">
+      <div className="rounded-lg border bg-card p-4 overflow-x-auto" ref={containerRef}>
         <p className="text-sm leading-relaxed">
           {words.map((word, i) => {
             const errorType = word.PronunciationAssessment.ErrorType;
@@ -72,19 +128,34 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
               ? ERROR_STYLES[errorType] ?? ""
               : getAccuracyStyle(score);
 
-            const label = isError
-              ? `${String(t[`error${errorType}`] ?? errorType)} (${score}%)`
-              : `${getAccuracyLabel(score, t)} (${score}%)`;
+            const label = getWordLabel(word, t);
+            const isTapped = tappedIdx === i;
 
             return (
               <span
                 key={i}
+                role="button"
+                tabIndex={0}
                 title={label}
+                aria-label={label}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTappedIdx(isTapped ? null : i);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setTappedIdx(isTapped ? null : i);
+                  }
+                }}
                 className={cn(
-                  "inline-block cursor-default rounded px-1 py-0.5 text-sm transition-colors hover:opacity-80",
+                  "relative inline-block cursor-pointer rounded px-1 py-0.5 text-sm transition-colors hover:opacity-80 active:opacity-70",
                   style
                 )}
               >
+                {isTapped && (
+                  <WordTooltip label={label} word={word} t={t} />
+                )}
                 {word.Word}
                 {isError && (
                   <sup className="ml-0.5 text-[0.6em]">
