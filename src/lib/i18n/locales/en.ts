@@ -158,7 +158,7 @@ const en = {
     title: "Speaking Assessment",
     subtitle: "Practice your English pronunciation with real-time feedback",
     referenceText: "Reference Text",
-    referencePlaceholder: "Paste or type the text you want to practice reading aloud...",
+    referencePlaceholder: "Paste or type a sentence or paragraph you want to practice pronouncing...",
     wordCount: "{count} words",
     estimatedCost: "Approx. HK${cost}/min",
     modeLabel: "Recognition Mode",

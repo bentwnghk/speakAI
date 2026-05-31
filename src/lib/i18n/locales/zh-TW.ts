@@ -160,7 +160,7 @@ const zhTW: TranslationKeys = {
     title: "口語評估",
     subtitle: "透過即時回饋練習您的英語發音",
     referenceText: "參考文本",
-    referencePlaceholder: "在此貼上或輸入您想練習朗讀的文字...",
+    referencePlaceholder: "在此貼上或輸入您想練習發音的句子或段落...",
     wordCount: "{count} 個單詞",
     estimatedCost: "約 HK${cost}/分鐘",
     modeLabel: "辨識模式",
