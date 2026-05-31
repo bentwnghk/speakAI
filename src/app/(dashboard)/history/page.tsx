@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { HistoryPageHeader } from "@/components/history-page-header";
 import { HistoryTabs } from "@/components/history-tabs";
 
@@ -10,7 +11,9 @@ export default function HistoryPage() {
   return (
     <div className="space-y-6">
       <HistoryPageHeader />
-      <HistoryTabs />
+      <Suspense>
+        <HistoryTabs />
+      </Suspense>
     </div>
   );
 }

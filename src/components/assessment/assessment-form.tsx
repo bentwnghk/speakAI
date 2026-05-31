@@ -721,7 +721,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
         </Card>
       )}
 
-      <Link href="/history" className="block">
+      <Link href="/history?tab=assessment" className="block">
         <Button variant="outline" size="lg" className="w-full">
           <History className="size-4" />
           {at.viewHistory}

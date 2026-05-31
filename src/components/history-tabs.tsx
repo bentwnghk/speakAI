@@ -1,5 +1,6 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { HistoryList } from "@/components/history-list";
 import { AssessmentHistory } from "@/components/assessment/assessment-history";
@@ -7,9 +8,11 @@ import { useUserSettings } from "@/hooks/use-settings";
 
 export function HistoryTabs() {
   const { t } = useUserSettings();
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get("tab") === "assessment" ? "assessment" : "audio";
 
   return (
-    <Tabs defaultValue="audio">
+    <Tabs defaultValue={defaultTab}>
       <TabsList>
         <TabsTrigger value="audio">{t.history.tabAudio}</TabsTrigger>
         <TabsTrigger value="assessment">{t.history.tabAssessment}</TabsTrigger>
