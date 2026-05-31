@@ -143,8 +143,10 @@ export const assessments = pgTable(
     words: jsonb("words").notNull(),
     phonemes: jsonb("phonemes"),
     syllables: jsonb("syllables"),
+    audioPath: text("audioPath"),
     cost: real("cost").notNull(),
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+    expiresAt: timestamp("expiresAt", { mode: "date" }),
   },
   (table) => [index("assessments_user_idx").on(table.userId)]
 );

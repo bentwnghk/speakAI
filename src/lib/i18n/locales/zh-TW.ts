@@ -78,6 +78,8 @@ const zhTW: TranslationKeys = {
     renameFailed: "重新命名失敗",
     failed: "失敗",
     expiresIn: "剩餘 {days} 天",
+    tabAudio: "語音",
+    tabAssessment: "評估",
   },
   credits: {
     title: "積分",
@@ -214,6 +216,7 @@ const zhTW: TranslationKeys = {
     sample5: "The weather is wonderful today, perfect for a walk in the park.",
     legend: "圖例",
     pronScore: "發音評分",
+    expiresIn: "剩餘 {days} 天",
   },
 } as const;
 

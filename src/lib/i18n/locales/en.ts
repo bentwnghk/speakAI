@@ -76,6 +76,8 @@ const en = {
     renameFailed: "Failed to rename",
     failed: "Failed",
     expiresIn: "{days}d left",
+    tabAudio: "Audio",
+    tabAssessment: "Assessment",
   },
   credits: {
     title: "Credits",
@@ -212,6 +214,7 @@ const en = {
     sample5: "The weather is wonderful today, perfect for a walk in the park.",
     legend: "Legend",
     pronScore: "Pron. Score",
+    expiresIn: "{days}d left",
   },
 } as const;
 

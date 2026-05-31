@@ -1,0 +1,92 @@
+import { NextRequest } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { assessments } from "@/lib/db/schema";
+import { eq, and, or, isNull, gt } from "drizzle-orm";
+import { readFile, stat as fsStat } from "fs/promises";
+import { join } from "path";
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const [row] = await db
+    .select({ audioPath: assessments.audioPath, userId: assessments.userId })
+    .from(assessments)
+    .where(
+      and(
+        eq(assessments.id, id),
+        eq(assessments.userId, session.user.id),
+        or(isNull(assessments.expiresAt), gt(assessments.expiresAt, new Date()))
+      )
+    );
+
+  if (!row?.audioPath) {
+    return new Response("Not found", { status: 404 });
+  }
+
+  const absolutePath = join(process.cwd(), row.audioPath);
+
+  let fileStat;
+  try {
+    fileStat = await fsStat(absolutePath);
+  } catch {
+    return new Response("Audio file not found", { status: 404 });
+  }
+
+  const fileSize = fileStat.size;
+  const rangeHeader = request.headers.get("Range");
+
+  if (rangeHeader) {
+    const match = /bytes=(\d+)-(\d*)/.exec(rangeHeader);
+    if (!match) {
+      return new Response("Invalid range", { status: 416 });
+    }
+    const start = parseInt(match[1], 10);
+    const end = match[2]
+      ? Math.min(parseInt(match[2], 10), fileSize - 1)
+      : fileSize - 1;
+    if (start >= fileSize || end >= fileSize || start > end) {
+      return new Response(null, {
+        status: 416,
+        headers: { "Content-Range": `bytes */${fileSize}` },
+      });
+    }
+    const chunkSize = end - start + 1;
+    const fd = await (await import("fs/promises")).open(absolutePath, "r");
+    const buf = Buffer.alloc(chunkSize);
+    await fd.read(buf, 0, chunkSize, start);
+    await fd.close();
+    return new Response(buf, {
+      status: 206,
+      headers: {
+        "Content-Type": "audio/webm",
+        "Content-Length": chunkSize.toString(),
+        "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "private, max-age=86400",
+      },
+    });
+  }
+
+  try {
+    const audioBuffer = await readFile(absolutePath);
+    return new Response(audioBuffer, {
+      headers: {
+        "Content-Type": "audio/webm",
+        "Content-Length": audioBuffer.length.toString(),
+        "Accept-Ranges": "bytes",
+        "Cache-Control": "private, max-age=86400",
+      },
+    });
+  } catch {
+    return new Response("Audio file not found", { status: 404 });
+  }
+}

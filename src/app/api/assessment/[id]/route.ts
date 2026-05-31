@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { assessments } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, isNull, gt } from "drizzle-orm";
 
 export async function GET(
   _request: Request,
@@ -19,7 +19,11 @@ export async function GET(
     .select()
     .from(assessments)
     .where(
-      and(eq(assessments.id, id), eq(assessments.userId, session.user.id))
+      and(
+        eq(assessments.id, id),
+        eq(assessments.userId, session.user.id),
+        or(isNull(assessments.expiresAt), gt(assessments.expiresAt, new Date()))
+      )
     );
 
   if (!row) {

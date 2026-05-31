@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,7 +28,6 @@ import { ScoreOverview } from "./score-overview";
 import { TranscriptView } from "./transcript-view";
 import { WordDetail, SyllableView } from "./word-detail";
 import { ErrorSummary } from "./error-summary";
-import { AssessmentHistory } from "./assessment-history";
 import type {
   AssessmentResult,
   AssessmentDetailResult,
@@ -74,7 +73,8 @@ export function AssessmentForm({ cost }: { cost: number }) {
   const [recordingState, setRecordingState] = useState<RecordingState>("idle");
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [errorFilter, setErrorFilter] = useState<ErrorType | "All">("All");
-  const [historyRefresh, setHistoryRefresh] = useState(0);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const wordCount = referenceText.trim()
     ? referenceText.trim().split(/\s+/).length
@@ -85,6 +85,23 @@ export function AssessmentForm({ cost }: { cost: number }) {
 
     setResult(null);
     setRecordingState("recording");
+    audioChunksRef.current = [];
+
+    let mediaRecorder: MediaRecorder | null = null;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      mediaRecorder.start(250);
+    } catch {
+      toast.error(at.micDenied);
+      setRecordingState("idle");
+      return;
+    }
 
     try {
       const tokenRes = await fetch("/api/speech/token");
@@ -155,14 +172,18 @@ export function AssessmentForm({ cost }: { cost: number }) {
 
           if (recResult.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
             setRecordingState("processing");
-            processResult(recResult, SpeechSDK);
+            void stopMediaRecorder().then((blob) => {
+              processResult(recResult, SpeechSDK, blob);
+            });
             setRecordingState("done");
             resolve();
           } else if (recResult.reason === SpeechSDK.ResultReason.NoMatch) {
+            void stopMediaRecorder();
             setRecordingState("idle");
             toast.error(at.noSpeech);
             resolve();
           } else {
+            void stopMediaRecorder();
             setRecordingState("idle");
             const cancel =
               SpeechSDK.CancellationDetails.fromResult(recResult);
@@ -171,6 +192,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
           }
         },
         (error: string) => {
+          void stopMediaRecorder();
           recognizer.close();
           audioConfigCleanup();
           setRecordingState("idle");
@@ -203,9 +225,12 @@ export function AssessmentForm({ cost }: { cost: number }) {
         if (allResults.length > 0) {
           setRecordingState("processing");
           const combined = combineResults(allResults, SpeechSDK);
-          processCombinedResult(combined);
-          setRecordingState("done");
+          void stopMediaRecorder().then((blob) => {
+            processCombinedResult(combined, blob);
+            setRecordingState("done");
+          });
         } else {
+          void stopMediaRecorder();
           setRecordingState("idle");
           toast.error(at.noSpeech);
         }
@@ -225,6 +250,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
       recognizer.startContinuousRecognitionAsync(
         () => {},
         (err: string) => {
+          void stopMediaRecorder();
           recognizer.close();
           audioConfigCleanup();
           setRecordingState("idle");
@@ -238,6 +264,23 @@ export function AssessmentForm({ cost }: { cost: number }) {
           (err: string) => reject(new Error(err))
         );
       };
+    });
+  }
+
+  function stopMediaRecorder(): Promise<Blob | null> {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === "inactive") return Promise.resolve(null);
+
+    return new Promise((resolve) => {
+      recorder.onstop = () => {
+        const tracks = recorder.stream.getTracks();
+        for (const track of tracks) track.stop();
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
+        audioChunksRef.current = [];
+        mediaRecorderRef.current = null;
+        resolve(blob.size > 0 ? blob : null);
+      };
+      recorder.stop();
     });
   }
 
@@ -335,7 +378,8 @@ export function AssessmentForm({ cost }: { cost: number }) {
 
   function processResult(
     recResult: import("microsoft-cognitiveservices-speech-sdk").SpeechRecognitionResult,
-    SpeechSDK: SdkTypes
+    SpeechSDK: SdkTypes,
+    audioBlob: Blob | null
   ) {
     const jsonStr = recResult.properties.getProperty(
       SpeechSDK.PropertyId.SpeechServiceResponse_JsonResult
@@ -365,15 +409,18 @@ export function AssessmentForm({ cost }: { cost: number }) {
     };
 
     setResult(assessment);
-    void saveAssessment(assessment);
+    void saveAssessment(assessment, audioBlob);
   }
 
-  function processCombinedResult(data: {
-    words: WordResult[];
-    scores: PronunciationScores;
-    displayText: string;
-    totalDuration: number;
-  }) {
+  function processCombinedResult(
+    data: {
+      words: WordResult[];
+      scores: PronunciationScores;
+      displayText: string;
+      totalDuration: number;
+    },
+    audioBlob: Blob | null
+  ) {
     const assessment: AssessmentResult = {
       detailResult: {} as AssessmentDetailResult,
       scores: data.scores,
@@ -382,15 +429,15 @@ export function AssessmentForm({ cost }: { cost: number }) {
       durationMs: data.totalDuration / 10000,
     };
     setResult(assessment);
-    void saveAssessment(assessment);
+    void saveAssessment(assessment, audioBlob);
   }
 
-  async function saveAssessment(assessment: AssessmentResult) {
+  async function saveAssessment(assessment: AssessmentResult, audioBlob: Blob | null) {
     try {
-      const res = await fetch("/api/assessment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const formData = new FormData();
+      formData.append(
+        "data",
+        JSON.stringify({
           referenceText: referenceText.trim(),
           recognizedText: assessment.recognizedText,
           durationMs: Math.round(assessment.durationMs),
@@ -402,7 +449,15 @@ export function AssessmentForm({ cost }: { cost: number }) {
           words: assessment.words,
           phonemes: assessment.words.map((w) => w.Phonemes || []),
           syllables: assessment.words.map((w) => w.Syllables || []),
-        }),
+        })
+      );
+      if (audioBlob) {
+        formData.append("audio", audioBlob, "recording.webm");
+      }
+
+      const res = await fetch("/api/assessment", {
+        method: "POST",
+        body: formData,
       });
 
       if (res.status === 402) {
@@ -414,7 +469,6 @@ export function AssessmentForm({ cost }: { cost: number }) {
         const data = (await res.json()) as { cost: number };
         toast.success(at.saved.replace("${cost}", data.cost.toFixed(2)));
         void refreshBalance();
-        setHistoryRefresh((n) => n + 1);
       } else {
         toast.error(at.saveFailed);
       }
@@ -427,6 +481,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
     if (mode === "manual" && window.__stopAssessment) {
       window.__stopAssessment();
     }
+    void stopMediaRecorder();
   }
 
   function handleReset() {
@@ -604,15 +659,6 @@ export function AssessmentForm({ cost }: { cost: number }) {
           </CardContent>
         </Card>
       )}
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{at.history}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <AssessmentHistory t={at} onRefresh={historyRefresh} />
-        </CardContent>
-      </Card>
     </div>
   );
 }

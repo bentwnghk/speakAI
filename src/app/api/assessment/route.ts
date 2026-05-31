@@ -3,12 +3,20 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { assessments } from "@/lib/db/schema";
 import { deductCredits, refundCredits } from "@/lib/db/credits";
-import { eq, desc, sql } from "drizzle-orm";
+import { eq, desc, sql, or, isNull, gt, and } from "drizzle-orm";
 import { z } from "zod";
+import { mkdir, writeFile } from "fs/promises";
+import { join } from "path";
+import { nanoid } from "nanoid";
 
 const ASSESSMENT_COST_HKD = parseFloat(
   process.env.ASSESSMENT_COST_HKD || "0.50"
 );
+
+function getExpiresAt(): Date {
+  const days = parseInt(process.env.RECORDING_RETENTION_DAYS || process.env.AUDIO_RETENTION_DAYS || "365", 10);
+  return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+}
 
 const saveSchema = z.object({
   referenceText: z.string().min(1).max(5000),
@@ -33,8 +41,19 @@ export async function POST(request: Request) {
   const userId = session.user.id;
 
   try {
-    const body: unknown = await request.json();
+    const formData = await request.formData();
+    const dataField = formData.get("data");
+    if (!dataField || typeof dataField !== "string") {
+      return NextResponse.json(
+        { error: "Missing data field" },
+        { status: 400 }
+      );
+    }
+
+    const body: unknown = JSON.parse(dataField);
     const data = saveSchema.parse(body);
+
+    const audioFile = formData.get("audio") as File | null;
 
     const deductResult = await deductCredits(
       userId,
@@ -49,7 +68,20 @@ export async function POST(request: Request) {
       );
     }
 
+    let audioPath: string | null = null;
+
     try {
+      let savedId = "";
+
+      if (audioFile && audioFile.size > 0) {
+        const audioDir = join(process.cwd(), "data", "recording");
+        await mkdir(audioDir, { recursive: true });
+        const filename = `${nanoid()}.webm`;
+        audioPath = join(audioDir, filename);
+        const buffer = Buffer.from(await audioFile.arrayBuffer());
+        await writeFile(audioPath, buffer);
+      }
+
       const [inserted] = await db
         .insert(assessments)
         .values({
@@ -65,12 +97,16 @@ export async function POST(request: Request) {
           words: data.words,
           phonemes: data.phonemes ?? null,
           syllables: data.syllables ?? null,
+          audioPath,
           cost: ASSESSMENT_COST_HKD,
+          expiresAt: audioPath ? getExpiresAt() : null,
         })
         .returning({ id: assessments.id });
 
+      savedId = inserted.id;
+
       return NextResponse.json({
-        id: inserted.id,
+        id: savedId,
         cost: ASSESSMENT_COST_HKD,
         balance: deductResult.balance,
       });
@@ -104,10 +140,15 @@ export async function GET(request: Request) {
   const limit = parseInt(searchParams.get("limit") || "10");
   const offset = (page - 1) * limit;
 
+  const notExpired = or(
+    isNull(assessments.expiresAt),
+    gt(assessments.expiresAt, new Date())
+  );
+
   const [countResult] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(assessments)
-    .where(eq(assessments.userId, session.user.id));
+    .where(and(eq(assessments.userId, session.user.id), notExpired));
 
   const items = await db
     .select({
@@ -122,10 +163,12 @@ export async function GET(request: Request) {
       pronScore: assessments.pronScore,
       words: assessments.words,
       cost: assessments.cost,
+      hasAudio: sql<boolean>`${assessments.audioPath} IS NOT NULL`,
+      expiresAt: assessments.expiresAt,
       createdAt: assessments.createdAt,
     })
     .from(assessments)
-    .where(eq(assessments.userId, session.user.id))
+    .where(and(eq(assessments.userId, session.user.id), notExpired))
     .orderBy(desc(assessments.createdAt))
     .limit(limit)
     .offset(offset);

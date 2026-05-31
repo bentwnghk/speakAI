@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { generations } from "@/lib/db/schema";
-import { lte, eq } from "drizzle-orm";
+import { generations, assessments } from "@/lib/db/schema";
+import { lte, eq, and, isNotNull } from "drizzle-orm";
 import { unlink } from "fs/promises";
 
 export const dynamic = "force-dynamic";
@@ -16,25 +16,43 @@ export async function POST(request: Request) {
   }
 
   const now = new Date();
+  let deletedGenerations = 0;
+  let deletedAssessments = 0;
+
   const expired = await db
     .select()
     .from(generations)
     .where(lte(generations.expiresAt, now));
 
-  if (expired.length === 0) {
-    return NextResponse.json({ deleted: 0 });
-  }
-
-  let deletedCount = 0;
   for (const gen of expired) {
     try {
       await unlink(gen.audioPath).catch(() => {});
       await db.delete(generations).where(eq(generations.id, gen.id));
-      deletedCount++;
+      deletedGenerations++;
     } catch {
       // skip individual errors
     }
   }
 
-  return NextResponse.json({ deleted: deletedCount });
+  const expiredAssessments = await db
+    .select()
+    .from(assessments)
+    .where(and(lte(assessments.expiresAt, now), isNotNull(assessments.expiresAt)));
+
+  for (const assessment of expiredAssessments) {
+    try {
+      if (assessment.audioPath) {
+        await unlink(assessment.audioPath).catch(() => {});
+      }
+      await db.delete(assessments).where(eq(assessments.id, assessment.id));
+      deletedAssessments++;
+    } catch {
+      // skip individual errors
+    }
+  }
+
+  return NextResponse.json({
+    deletedGenerations,
+    deletedAssessments,
+  });
 }

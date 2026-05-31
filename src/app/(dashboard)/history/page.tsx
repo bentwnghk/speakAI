@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { HistoryList } from "@/components/history-list";
 import { HistoryPageHeader } from "@/components/history-page-header";
+import { HistoryTabs } from "@/components/history-tabs";
 
 export const metadata: Metadata = {
-  title: "History - Mr.🆖 SpeakAI",
+  title: "History - Mr.\u{1F19A} SpeakAI",
 };
 
 export default function HistoryPage() {
   return (
     <div className="space-y-6">
       <HistoryPageHeader />
-      <HistoryList />
+      <HistoryTabs />
     </div>
   );
 }
