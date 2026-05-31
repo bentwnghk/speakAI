@@ -44,6 +44,7 @@ import {
 } from "@/components/assessment/word-detail";
 import { Separator } from "@/components/ui/separator";
 import type { SavedAssessment, WordResult, ErrorType } from "@/types/assessment";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZES = [10, 20, 30, 50, 100] as const;
 const DEFAULT_PER_PAGE = 20;
@@ -745,7 +746,16 @@ export default function AdminDashboardPage() {
                           </button>
                         </td>
                         <td className="p-3 whitespace-nowrap">
-                          <Badge variant={a.pronScore >= 80 ? "default" : a.pronScore >= 60 ? "secondary" : "destructive"}>
+                          <Badge
+                            className={cn(
+                              "font-semibold tabular-nums",
+                              a.pronScore >= 80
+                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
+                                : a.pronScore >= 60
+                                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/25"
+                                  : "bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/25",
+                            )}
+                          >
                             {Math.round(a.pronScore)}
                           </Badge>
                         </td>
