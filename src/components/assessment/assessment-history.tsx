@@ -12,6 +12,7 @@ import {
   Coins,
   ChevronLeft,
   ChevronRight,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -398,6 +399,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
                           : "bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/25",
                     )}
                   >
+                    <Star className="size-3" />
                     {Math.round(item.pronScore)}
                   </Badge>
                   <span className="flex items-center gap-1">
