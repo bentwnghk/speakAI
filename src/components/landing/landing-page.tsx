@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import { motion, useInView } from "motion/react";
 import {
   Upload,
@@ -26,8 +26,38 @@ import {
   Target,
   Trophy,
   Activity,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  getDictionary,
+  type Locale,
+} from "@/lib/i18n";
+
+const LANDING_LOCALE_KEY = "speakai-landing-locale";
+
+function detectBrowserLocale(): Locale {
+  if (typeof navigator === "undefined") return "en";
+  const langs = navigator.languages || [navigator.language];
+  for (const lang of langs) {
+    const lower = lang.toLowerCase();
+    if (
+      lower.startsWith("zh") ||
+      lower.startsWith("cmn") ||
+      lower === "yue"
+    ) {
+      return "zh-TW";
+    }
+  }
+  return "en";
+}
+
+function getInitialLocale(): Locale {
+  if (typeof window === "undefined") return "en";
+  const saved = localStorage.getItem(LANDING_LOCALE_KEY) as Locale | null;
+  if (saved === "en" || saved === "zh-TW") return saved;
+  return detectBrowserLocale();
+}
 
 const easeOut: [number, number, number, number] = [0.25, 0.46, 0.45, 0.94];
 
@@ -304,6 +334,23 @@ interface LandingPageProps {
 }
 
 export function LandingPage({ onSignIn }: LandingPageProps) {
+  const [locale, setLocaleState] = useState<Locale>("en");
+
+  useEffect(() => {
+    setLocaleState(getInitialLocale());
+  }, []);
+
+  const t = getDictionary(locale);
+  const l = t.landing;
+
+  const toggleLocale = useCallback(() => {
+    setLocaleState((prev) => {
+      const next = prev === "en" ? "zh-TW" : "en";
+      localStorage.setItem(LANDING_LOCALE_KEY, next);
+      return next;
+    });
+  }, []);
+
   const [welcomeInfo, setWelcomeInfo] = useState<{
     welcomeCredits: number;
     approxGenerations: number;
@@ -327,43 +374,43 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       icon: Upload,
       key: "upload",
       color: "text-blue-600 dark:text-blue-400",
-      title: "Upload Anything",
-      desc: "Upload PDFs, DOCX, TXT files, or images — AI extracts text automatically.",
+      title: l.uploadTitle,
+      desc: l.uploadDesc,
     },
     {
       icon: Mic,
       key: "voices",
       color: "text-violet-600 dark:text-violet-400",
-      title: "6 Natural AI Voices",
-      desc: "Choose from 6 distinct voices — 3 female and 3 male — for natural, expressive speech.",
+      title: l.voicesTitle,
+      desc: l.voicesDesc,
     },
     {
       icon: Gauge,
       key: "speed",
       color: "text-cyan-600 dark:text-cyan-400",
-      title: "Speed Control",
-      desc: "Adjust playback speed to match your listening preference — slow it down or speed it up.",
+      title: l.speedTitle,
+      desc: l.speedDesc,
     },
     {
       icon: Captions,
       key: "karaoke",
       color: "text-yellow-600 dark:text-yellow-400",
-      title: "Karaoke Effect",
-      desc: "Follow along word-by-word as text highlights in sync with the audio.",
+      title: l.karaokeTitle,
+      desc: l.karaokeDesc,
     },
     {
       icon: Download,
       key: "download",
       color: "text-rose-600 dark:text-rose-400",
-      title: "Download MP3",
-      desc: "Download any generated audio as MP3 for offline listening on any device.",
+      title: l.downloadTitle,
+      desc: l.downloadDesc,
     },
     {
       icon: History,
       key: "history",
       color: "text-amber-600 dark:text-amber-400",
-      title: "Generation History",
-      desc: "Access all your past audio from any device — just sign in to pick up where you left off.",
+      title: l.historyTitle,
+      desc: l.historyDesc,
     },
   ];
 
@@ -372,87 +419,110 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       icon: MessageCircle,
       key: "pron-assess",
       color: "text-emerald-600 dark:text-emerald-400",
-      title: "Pronunciation Assessment",
-      desc: "AI evaluates every word you speak with detailed accuracy, fluency, and prosody scoring.",
+      title: l.pronAssessTitle,
+      desc: l.pronAssessDesc,
     },
     {
       icon: BarChart3,
       key: "phoneme",
       color: "text-teal-600 dark:text-teal-400",
-      title: "Phoneme-Level Feedback",
-      desc: "Drill down to individual sounds with IPA phoneme breakdowns and accuracy scores.",
+      title: l.phonemeTitle,
+      desc: l.phonemeDesc,
     },
     {
       icon: Ear,
       key: "realtime",
       color: "text-sky-600 dark:text-sky-400",
-      title: "Real-Time Speech Recognition",
-      desc: "Get instant, detailed feedback as soon as you stop speaking.",
+      title: l.realtimeTitle,
+      desc: l.realtimeDesc,
     },
     {
       icon: Target,
       key: "error-detect",
       color: "text-orange-600 dark:text-orange-400",
-      title: "Error Detection",
-      desc: "Identifies mispronunciations, omissions, insertions, and timing errors in your speech.",
+      title: l.errorDetectTitle,
+      desc: l.errorDetectDesc,
     },
     {
       icon: Languages,
       key: "ipa",
       color: "text-indigo-600 dark:text-indigo-400",
-      title: "IPA Phonetic Alphabet",
-      desc: "See exact phonetic transcriptions of expected vs. spoken sounds in standard IPA notation.",
+      title: l.ipaTitle,
+      desc: l.ipaDesc,
     },
     {
       icon: Trophy,
       key: "score-tracking",
       color: "text-amber-600 dark:text-amber-400",
-      title: "Score Tracking",
-      desc: "Review past assessments, compare scores over time, and track your pronunciation improvement.",
+      title: l.scoreTrackTitle,
+      desc: l.scoreTrackDesc,
     },
   ];
 
   const listenJourney = [
-    { num: 1, icon: FileText, key: "input", label: "Upload or Type Text" },
-    { num: 2, icon: Pencil, key: "edit", label: "Edit Extracted Text" },
-    { num: 3, icon: Mic, key: "voice", label: "Choose Voice & Speed" },
-    { num: 4, icon: Brain, key: "generate", label: "AI Generates Audio" },
-    { num: 5, icon: Headphones, key: "listen", label: "Listen to Audio" },
-    { num: 6, icon: BookOpen, key: "read", label: "Read Along with Karaoke" },
-    { num: 7, icon: Download, key: "download", label: "Download MP3" },
+    { num: 1, icon: FileText, key: "input", label: l.stepInput },
+    { num: 2, icon: Pencil, key: "edit", label: l.stepEdit },
+    { num: 3, icon: Mic, key: "voice", label: l.stepVoice },
+    { num: 4, icon: Brain, key: "generate", label: l.stepGenerate },
+    { num: 5, icon: Headphones, key: "listen", label: l.stepListen },
+    { num: 6, icon: BookOpen, key: "read", label: l.stepRead },
+    { num: 7, icon: Download, key: "download", label: l.stepDownload },
   ];
 
   const practiceJourney = [
-    { num: 1, icon: FileText, key: "ref", label: "Enter Reference Text" },
-    { num: 2, icon: Mic, key: "rec", label: "Record Your Speech" },
-    { num: 3, icon: Brain, key: "assess", label: "AI Assesses Pronunciation" },
-    { num: 4, icon: Activity, key: "scores", label: "View Overall Scores" },
-    { num: 5, icon: MessageCircle, key: "transcript", label: "Review Word-by-Word" },
-    { num: 6, icon: BarChart3, key: "phonemes", label: "Explore Phoneme Detail" },
-    { num: 7, icon: Trophy, key: "improve", label: "Track Your Progress" },
+    { num: 1, icon: FileText, key: "ref", label: l.stepRef },
+    { num: 2, icon: Mic, key: "rec", label: l.stepRec },
+    { num: 3, icon: Brain, key: "assess", label: l.stepAssess },
+    { num: 4, icon: Activity, key: "scores", label: l.stepScores },
+    { num: 5, icon: MessageCircle, key: "transcript", label: l.stepTranscript },
+    { num: 6, icon: BarChart3, key: "phonemes", label: l.stepPhonemes },
+    { num: 7, icon: Trophy, key: "improve", label: l.stepImprove },
   ];
 
   const capabilities = [
-    "PDF Support",
-    "DOCX Support",
-    "Image OCR",
-    "6 AI Voices",
-    "Speed Control",
-    "Karaoke Effect",
-    "Audio Download",
-    "Pronunciation Scoring",
-    "Phoneme Analysis",
-    "IPA Phonetic Alphabet",
-    "Error Detection",
-    "Word-by-Word Feedback",
-    "Fluency & Prosody Scores",
-    "Assessment History",
-    "Score Tracking Over Time",
-    "Access from Any Device",
+    l.capPdf,
+    l.capDocx,
+    l.capOcr,
+    l.capVoices,
+    l.capSpeed,
+    l.capKaraoke,
+    l.capAudio,
+    l.capPronScoring,
+    l.capPhoneme,
+    l.capIpa,
+    l.capErrorDetect,
+    l.capWordFeedback,
+    l.capFluency,
+    l.capAssessHistory,
+    l.capScoreTrack,
+    l.capAnyDevice,
   ];
+
+  const assessmentCapabilities = new Set([
+    l.capPronScoring,
+    l.capPhoneme,
+    l.capIpa,
+    l.capErrorDetect,
+    l.capWordFeedback,
+    l.capFluency,
+    l.capAssessHistory,
+    l.capScoreTrack,
+  ]);
 
   return (
     <div className="relative">
+      {/* ── Language Switcher ── */}
+      <button
+        onClick={toggleLocale}
+        className="fixed top-4 right-4 z-50 flex items-center gap-1.5 px-3 py-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
+        aria-label={locale === "en" ? "切換至繁體中文" : "Switch to English"}
+      >
+        <Globe className="h-4 w-4" />
+        <span className="text-sm font-medium">
+          {locale === "en" ? "中文" : "EN"}
+        </span>
+      </button>
+
       {/* ── Hero ── */}
       <section className="relative min-h-[90vh] flex flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-[#0f172a] via-[#1e293b] to-[#0f172a]">
         <GalaxyBackground />
@@ -465,7 +535,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
           <motion.div variants={heroItemVariants}>
             <div className="mb-6 inline-flex items-center justify-center gap-2 px-5 pt-3 pb-2 text-white/80 text-sm border-t-2 border-blue-400/60">
               <AudioWaveform className="h-4 w-4 text-blue-400" />
-              AI-powered text-to-speech &amp; pronunciation coaching
+              {l.heroTagline}
             </div>
           </motion.div>
 
@@ -484,19 +554,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             variants={heroItemVariants}
             className="mt-3 text-2xl sm:text-3xl font-medium italic flex flex-wrap items-center justify-center gap-x-2"
           >
-            {[
-              "Listen",
-              "to",
-              "any",
-              "text",
-              "—",
-              "master",
-              "your",
-              "pronunciation",
-              "with",
-              "AI",
-              "feedback",
-            ].map((word, i, arr) => (
+            {l.heroSubtitle.map((word, i, arr) => (
               <motion.span
                 key={i}
                 initial={{ opacity: 0.2 }}
@@ -523,9 +581,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
             variants={heroItemVariants}
             className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-white/50"
           >
-            Transform text into lifelike speech with karaoke-style highlighting,
-            then practice reading aloud and get instant AI-powered pronunciation
-            scores — word by word, phoneme by phoneme.
+            {l.heroDesc}
           </motion.p>
 
           <motion.div
@@ -538,7 +594,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               className="h-12 px-8 text-base bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 shadow-lg shadow-blue-500/25 cursor-pointer"
             >
               <Rocket className="mr-2 h-5 w-5" />
-              Get Started Free
+              {l.getStartedFree}
             </Button>
           </motion.div>
 
@@ -550,14 +606,14 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               <Sparkles className="h-4 w-4 text-indigo-400" />
               <span>
                 {welcomeInfo
-                  ? `${welcomeInfo.welcomeCredits} free credits on sign up — enough for ~${welcomeInfo.approxGenerations} audio generations`
-                  : "Free credits on sign up — just sign in with Google"}
+                  ? l.welcomeCredits
+                      .replace("${credits}", String(welcomeInfo.welcomeCredits))
+                      .replace("${gens}", String(welcomeInfo.approxGenerations))
+                  : l.welcomeCreditsDefault}
               </span>
             </div>
             {welcomeInfo && (
-              <p className="text-xs text-white/40">
-                Based on ~3,000 characters per generation
-              </p>
+              <p className="text-xs text-white/40">{l.basedOnChars}</p>
             )}
           </motion.div>
         </motion.div>
@@ -573,13 +629,13 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               variants={sectionTitleVariants}
               className="block text-center text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-3"
             >
-              New Feature
+              {l.assessmentBadge}
             </motion.span>
             <motion.h2
               variants={sectionTitleVariants}
               className="text-3xl sm:text-5xl font-bold tracking-tight text-center mb-4"
             >
-              Speaking Assessment
+              {l.assessmentTitle}
             </motion.h2>
             <motion.div
               variants={sectionTitleVariants}
@@ -589,9 +645,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               variants={sectionTitleVariants}
               className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto"
             >
-              Practice reading any text aloud and receive instant, detailed
-              feedback on your pronunciation. AI scores every word and phoneme
-              so you know exactly what to improve.
+              {l.assessmentDesc}
             </motion.p>
           </AnimatedSection>
 
@@ -607,17 +661,17 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                 <div className="flex flex-col items-center gap-4">
                   <ScoreRing score={87} size={140} />
                   <div className="w-full space-y-3 max-w-[200px]">
-                    <MiniScoreBar label="Accuracy" score={92} />
-                    <MiniScoreBar label="Fluency" score={85} />
-                    <MiniScoreBar label="Completeness" score={90} />
-                    <MiniScoreBar label="Prosody" score={78} />
+                    <MiniScoreBar label={l.accuracy} score={92} />
+                    <MiniScoreBar label={l.fluency} score={85} />
+                    <MiniScoreBar label={l.completeness} score={90} />
+                    <MiniScoreBar label={l.prosody} score={78} />
                   </div>
                 </div>
 
                 <div className="space-y-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                      Word-by-Word Feedback
+                      {l.wordByWordFeedback}
                     </p>
                     <div className="rounded-xl bg-background/60 p-4 leading-relaxed text-base">
                       <span className="text-emerald-600 dark:text-emerald-400 font-medium">The </span>
@@ -633,28 +687,28 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                   </div>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                      Error Details
+                      {l.errorDetails}
                     </p>
                     <div className="space-y-1.5 text-sm">
                       <div className="flex items-center gap-2">
                         <span className="inline-block w-2 h-2 rounded-full bg-red-500" />
                         <span>
                           <span className="font-medium text-red-600 dark:text-red-400">jumps</span>
-                          {" "}— Mispronunciation
+                          {" "}— {l.mispronunciation}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="inline-block w-2 h-2 rounded-full bg-muted-foreground/50" />
                         <span>
                           <span className="font-medium text-muted-foreground line-through">lazy</span>
-                          {" "}— Omission
+                          {" "}— {l.omission}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="inline-block w-2 h-2 rounded-full bg-yellow-500" />
                         <span>
                           <span className="font-medium text-yellow-600 dark:text-yellow-400">brown</span>
-                          {" "}— Fair (80–89)
+                          {" "}— {l.fairScore}
                         </span>
                       </div>
                     </div>
@@ -665,19 +719,19 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               <div className="mt-6 pt-6 border-t border-white/10 flex items-center justify-center gap-6 flex-wrap text-sm text-muted-foreground">
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  Word-level scores
+                  {l.wordLevelScores}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  IPA phoneme breakdown
+                  {l.ipaPhonemeBreakdown}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  Error classification
+                  {l.errorClassification}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  Progress tracking
+                  {l.progressTracking}
                 </span>
               </div>
             </motion.div>
@@ -693,13 +747,13 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               variants={sectionTitleVariants}
               className="block text-center text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-3"
             >
-              Text-to-Speech
+              {l.ttsBadge}
             </motion.span>
             <motion.h2
               variants={sectionTitleVariants}
               className="text-3xl sm:text-5xl font-bold tracking-tight text-center mb-4"
             >
-              Lifelike AI Voices
+              {l.ttsTitle}
             </motion.h2>
             <motion.div
               variants={sectionTitleVariants}
@@ -709,8 +763,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               variants={sectionTitleVariants}
               className="text-center text-muted-foreground mb-12 max-w-xl mx-auto"
             >
-              Upload any content and let AI transform it into natural,
-              high-quality speech with karaoke-style highlighting.
+              {l.ttsDesc}
             </motion.p>
           </AnimatedSection>
 
@@ -744,13 +797,13 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               variants={sectionTitleVariants}
               className="block text-center text-xs font-semibold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-3"
             >
-              Pronunciation Coach
+              {l.pronBadge}
             </motion.span>
             <motion.h2
               variants={sectionTitleVariants}
               className="text-3xl sm:text-5xl font-bold tracking-tight text-center mb-4"
             >
-              Master Your Pronunciation
+              {l.pronTitle}
             </motion.h2>
             <motion.div
               variants={sectionTitleVariants}
@@ -760,8 +813,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               variants={sectionTitleVariants}
               className="text-center text-muted-foreground mb-12 max-w-xl mx-auto"
             >
-              Record yourself reading any text and get instant, detailed AI
-              feedback on every word and sound.
+              {l.pronDesc}
             </motion.p>
           </AnimatedSection>
 
@@ -797,13 +849,13 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               variants={sectionTitleVariants}
               className="block text-center text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-3"
             >
-              How It Works
+              {l.howBadge}
             </motion.span>
             <motion.h2
               variants={sectionTitleVariants}
               className="text-3xl sm:text-5xl font-bold tracking-tight text-center mb-4"
             >
-              Two Powerful Tools
+              {l.howTitle}
             </motion.h2>
             <motion.div
               variants={sectionTitleVariants}
@@ -819,7 +871,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                   className="text-xl font-bold mb-6 flex items-center gap-2"
                 >
                   <Headphones className="h-5 w-5 text-blue-500" />
-                  Listen to Any Text
+                  {l.listenTitle}
                 </motion.h3>
                 {listenJourney.map(
                   ({ num, icon: Icon, key, label }, idx) => (
@@ -865,7 +917,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                   className="text-xl font-bold mb-6 flex items-center gap-2"
                 >
                   <MessageCircle className="h-5 w-5 text-emerald-500" />
-                  Practice &amp; Get Scored
+                  {l.practiceTitle}
                 </motion.h3>
                 {practiceJourney.map(
                   ({ num, icon: Icon, key, label }, idx) => (
@@ -915,13 +967,13 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               variants={sectionTitleVariants}
               className="block text-center text-xs font-semibold uppercase tracking-widest text-blue-600 dark:text-blue-400 mb-3"
             >
-              Capabilities
+              {l.capBadge}
             </motion.span>
             <motion.h2
               variants={sectionTitleVariants}
               className="text-3xl sm:text-5xl font-bold tracking-tight text-center mb-4"
             >
-              Everything in One Place
+              {l.capTitle}
             </motion.h2>
             <motion.div
               variants={sectionTitleVariants}
@@ -935,28 +987,14 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                 key={capability}
                 variants={pillVariants}
                 className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm border ${
-                  capability === "Pronunciation Scoring" ||
-                  capability === "Phoneme Analysis" ||
-                  capability === "IPA Phonetic Alphabet" ||
-                  capability === "Error Detection" ||
-                  capability === "Word-by-Word Feedback" ||
-                  capability === "Fluency & Prosody Scores" ||
-                  capability === "Assessment History" ||
-                  capability === "Score Tracking Over Time"
+                  assessmentCapabilities.has(capability)
                     ? "bg-emerald-50/80 dark:bg-emerald-900/20 border-emerald-200/50 dark:border-emerald-700/30"
                     : "bg-white/60 dark:bg-white/10 border-white/30 dark:border-white/10"
                 }`}
               >
                 <CheckCircle2
                   className={`h-3.5 w-3.5 ${
-                    capability === "Pronunciation Scoring" ||
-                    capability === "Phoneme Analysis" ||
-                    capability === "IPA Phonetic Alphabet" ||
-                    capability === "Error Detection" ||
-                    capability === "Word-by-Word Feedback" ||
-                    capability === "Fluency & Prosody Scores" ||
-                    capability === "Assessment History" ||
-                    capability === "Score Tracking Over Time"
+                    assessmentCapabilities.has(capability)
                       ? "text-emerald-500"
                       : "text-blue-500"
                   }`}
@@ -977,14 +1015,13 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
               variants={sectionTitleVariants}
               className="text-4xl sm:text-6xl font-extrabold tracking-tight text-white mb-4"
             >
-              Ready to Speak Better?
+              {l.ctaTitle}
             </motion.h2>
             <motion.p
               variants={sectionTitleVariants}
               className="text-white/50 mb-8 max-w-xl mx-auto"
             >
-              Listen to any text and practice your pronunciation with instant AI
-              feedback. Sign in and start for free.
+              {l.ctaDesc}
             </motion.p>
             <motion.div variants={heroItemVariants}>
               <Button
@@ -993,7 +1030,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                 className="h-12 px-8 text-base bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white border-0 shadow-lg shadow-blue-500/25 cursor-pointer"
               >
                 <GoogleIcon />
-                Sign in with Google
+                {l.signInGoogle}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </motion.div>
