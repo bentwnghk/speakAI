@@ -704,9 +704,6 @@ export default function AdminDashboardPage() {
                         onSort={toggleASort}
                       />
                       <th className="p-3 text-left font-medium">
-                        {t.admin.colScores}
-                      </th>
-                      <th className="p-3 text-left font-medium">
                         {t.admin.colDuration}
                       </th>
                       <SortableTh
@@ -751,19 +748,6 @@ export default function AdminDashboardPage() {
                           <Badge variant={a.pronScore >= 80 ? "default" : a.pronScore >= 60 ? "secondary" : "destructive"}>
                             {Math.round(a.pronScore)}
                           </Badge>
-                        </td>
-                        <td className="p-3 whitespace-nowrap text-xs text-muted-foreground">
-                          <span title="Accuracy">A:{Math.round(a.accuracyScore)}</span>
-                          {" "}
-                          <span title="Fluency">F:{Math.round(a.fluencyScore)}</span>
-                          {" "}
-                          <span title="Completeness">C:{Math.round(a.completenessScore)}</span>
-                          {a.prosodyScore != null && (
-                            <>
-                              {" "}
-                              <span title="Prosody">P:{Math.round(a.prosodyScore)}</span>
-                            </>
-                          )}
                         </td>
                         <td className="p-3 whitespace-nowrap text-xs">
                           {(a.durationMs / 1000).toFixed(1)}s
