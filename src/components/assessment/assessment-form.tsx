@@ -124,18 +124,15 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
       const audioConfig = SpeechSDK.AudioConfig.fromDefaultMicrophoneInput();
 
-      const pronunciationConfig =
-        SpeechSDK.PronunciationAssessmentConfig.fromJSON(
-          JSON.stringify({
-            referenceText: referenceText.trim(),
-            gradingSystem: "HundredMark",
-            granularity: "Phoneme",
-            phonemeAlphabet: "IPA",
-            nBestPhonemeCount: 5,
-            enableMiscue: mode === "auto",
-            enableProsodyAssessment: true,
-          })
-        );
+      const pronunciationConfig = new SpeechSDK.PronunciationAssessmentConfig(
+        referenceText.trim(),
+        SpeechSDK.PronunciationAssessmentGradingSystem.HundredMark,
+        SpeechSDK.PronunciationAssessmentGranularity.Phoneme,
+        mode === "auto"
+      );
+      pronunciationConfig.phonemeAlphabet = "IPA";
+      pronunciationConfig.nbestPhonemeCount = 5;
+      pronunciationConfig.enableProsodyAssessment = true;
 
       const recognizer = new SpeechSDK.SpeechRecognizer(
         speechConfig,
