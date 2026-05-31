@@ -32,6 +32,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Mic,
+  Clock,
+  Coins,
 } from "lucide-react";
 import { useUserSettings } from "@/hooks/use-settings";
 import { AudioPlayer } from "@/components/audio-player";
@@ -1090,9 +1092,18 @@ export default function AdminDashboardPage() {
                   </Tabs>
 
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>{formatDateHK(assessmentDetail.createdAt)}</span>
-                    <span>HK${assessmentDetail.cost.toFixed(2)}</span>
-                    <span>{(assessmentDetail.durationMs / 1000).toFixed(1)}s</span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="size-3" />
+                      {formatDateHK(assessmentDetail.createdAt)}
+                    </span>
+                    <Badge variant="outline">{t.assessment.score.replace("{score}", String(Math.round(assessmentDetail.pronScore)))}</Badge>
+                    <Badge variant="outline">
+                      {t.assessment.duration.replace("{seconds}", String(Math.round(assessmentDetail.durationMs / 1000)))}
+                    </Badge>
+                    <span className="flex items-center gap-1">
+                      <Coins className="size-3" />
+                      HK${assessmentDetail.cost.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               );
