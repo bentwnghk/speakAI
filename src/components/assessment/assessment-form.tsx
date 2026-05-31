@@ -76,6 +76,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
   const [errorFilter, setErrorFilter] = useState<ErrorType | "All">("All");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recognizerRef = useRef<import("microsoft-cognitiveservices-speech-sdk").SpeechRecognizer | null>(null);
 
   const wordCount = referenceText.trim()
     ? referenceText.trim().split(/\s+/).length
@@ -138,6 +139,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
         speechConfig,
         audioConfig
       );
+      recognizerRef.current = recognizer;
 
       pronunciationConfig.applyTo(recognizer);
 
@@ -168,6 +170,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
 
       recognizer.recognizeOnceAsync(
         (recResult) => {
+          recognizerRef.current = null;
           recognizer.close();
           audioConfigCleanup();
 
@@ -194,6 +197,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
         },
         (error: string) => {
           void stopMediaRecorder();
+          recognizerRef.current = null;
           recognizer.close();
           audioConfigCleanup();
           setRecordingState("idle");
@@ -221,6 +225,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
         if (e.reason === SpeechSDK.CancellationReason.Error) {
           console.error("Continuous recognition error:", e.errorDetails);
         }
+        recognizerRef.current = null;
         recognizer.close();
         audioConfigCleanup();
         if (allResults.length > 0) {
@@ -252,6 +257,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
         () => {},
         (err: string) => {
           void stopMediaRecorder();
+          recognizerRef.current = null;
           recognizer.close();
           audioConfigCleanup();
           setRecordingState("idle");
@@ -482,7 +488,16 @@ export function AssessmentForm({ cost }: { cost: number }) {
     if (mode === "manual" && window.__stopAssessment) {
       window.__stopAssessment();
     }
+    const recognizer = recognizerRef.current;
+    if (recognizer) {
+      try {
+        recognizer.close();
+      } catch {}
+      recognizerRef.current = null;
+    }
+    delete window.__stopAssessment;
     void stopMediaRecorder();
+    setRecordingState("idle");
   }
 
   function handleReset() {
