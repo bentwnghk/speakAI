@@ -521,11 +521,13 @@ export function AssessmentForm({ pricePerMinHkd }: { pricePerMinHkd: number }) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold flex items-center gap-2">
+        <div className="flex items-center justify-center gap-2">
           <Mic className="size-6 text-primary" />
-          {at.title}
-        </h1>
-        <p className="text-sm text-muted-foreground">{at.subtitle}</p>
+          <div className="text-left">
+            <h1 className="text-2xl font-bold leading-tight">{at.title}</h1>
+            <p className="text-sm text-muted-foreground">{at.subtitle}</p>
+          </div>
+        </div>
       </div>
 
       <Card>
