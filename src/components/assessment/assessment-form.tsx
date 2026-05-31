@@ -39,10 +39,6 @@ import type {
   PronunciationScores,
 } from "@/types/assessment";
 
-const ASSESSMENT_COST = parseFloat(
-  process.env.NEXT_PUBLIC_ASSESSMENT_COST_HKD || "0.50"
-);
-
 const SAMPLE_TEXTS = [
   "sample1",
   "sample2",
@@ -68,7 +64,7 @@ interface JsonResult {
   NBest?: JsonNBest[];
 }
 
-export function AssessmentForm() {
+export function AssessmentForm({ cost }: { cost: number }) {
   const { t } = useUserSettings();
   const { refreshBalance } = useCredits();
   const at = t.assessment as Record<string, string>;
@@ -491,7 +487,7 @@ export function AssessmentForm() {
             <span>
               {at.wordCount.replace("{count}", String(wordCount))}{" "}
               &middot;{" "}
-              {at.estimatedCost.replace("${cost}", ASSESSMENT_COST.toFixed(2))}
+              {at.estimatedCost.replace("${cost}", cost.toFixed(2))}
             </span>
           </div>
 
