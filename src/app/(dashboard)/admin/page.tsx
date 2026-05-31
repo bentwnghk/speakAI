@@ -707,7 +707,7 @@ export default function AdminDashboardPage() {
                         {t.admin.colDuration}
                       </th>
                       <SortableTh
-                        label={t.admin.colCost}
+                        label={t.admin.colSttCost}
                         sortKey="cost"
                         activeSortKey={aSortBy}
                         isDesc={aSortDesc}

@@ -142,6 +142,7 @@ const en = {
     colTitle: "Title",
     colVoice: "Voice",
     colCost: "TTS Cost",
+    colSttCost: "STT Cost",
     colCumulative: "Cumulative",
     colPackage: "Package",
     colAmount: "Amount Paid",

@@ -144,6 +144,7 @@ const zhTW: TranslationKeys = {
     colTitle: "標題",
     colVoice: "語音",
     colCost: "TTS 費用",
+    colSttCost: "STT 費用",
     colCumulative: "累計",
     colPackage: "套餐",
     colAmount: "付款金額",
