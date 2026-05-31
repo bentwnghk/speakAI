@@ -12,12 +12,15 @@ function ScoreBar({
   label,
   score,
   color,
+  na,
 }: {
   label: string;
   score: number;
   color: string;
+  na?: boolean;
 }) {
   const getColor = () => {
+    if (na) return "bg-muted-foreground/30";
     if (score >= 80) return "bg-green-500 dark:bg-green-400";
     if (score >= 60) return "bg-yellow-500 dark:bg-yellow-400";
     if (score >= 40) return "bg-orange-500 dark:bg-orange-400";
@@ -28,14 +31,14 @@ function ScoreBar({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-sm">
         <span className="font-medium">{label}</span>
-        <span className={cn("font-bold tabular-nums", color)}>
-          {Math.round(score)}
+        <span className={cn("font-bold tabular-nums", na ? "text-muted-foreground" : color)}>
+          {na ? "\u2013" : Math.round(score)}
         </span>
       </div>
       <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
         <div
           className={cn("h-full rounded-full transition-all duration-700", getColor())}
-          style={{ width: `${score}%` }}
+          style={{ width: na ? "100%" : `${score}%`, opacity: na ? 0.3 : 1 }}
         />
       </div>
     </div>
@@ -99,9 +102,7 @@ export function ScoreOverview({ scores, t }: ScoreOverviewProps) {
           <ScoreBar label={t.accuracy} score={scores.AccuracyScore} color="text-foreground" />
           <ScoreBar label={t.fluency} score={scores.FluencyScore} color="text-foreground" />
           <ScoreBar label={t.completeness} score={scores.CompletenessScore} color="text-foreground" />
-          {scores.ProsodyScore > 0 && (
-            <ScoreBar label={t.prosody} score={scores.ProsodyScore} color="text-foreground" />
-          )}
+          <ScoreBar label={t.prosody} score={scores.ProsodyScore} color="text-foreground" na={!Number.isFinite(scores.ProsodyScore) || scores.ProsodyScore <= 0} />
         </div>
       </div>
     </div>
