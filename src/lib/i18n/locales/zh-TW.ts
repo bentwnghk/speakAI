@@ -60,7 +60,7 @@ const zhTW: TranslationKeys = {
   },
   history: {
     title: "歷史記錄",
-    description: "查看和管理您之前生成的語音",
+    description: "查看和管理您的語音生成與口語評估記錄",
     noAudio: "尚無歷史記錄",
     backToList: "返回列表",
     sourceText: "原文",
@@ -199,6 +199,7 @@ const zhTW: TranslationKeys = {
     phonemeSpoken: "實際",
     phonemeAccuracy: "準確度",
     tryAgain: "再試一次",
+    viewHistory: "查看歷史記錄",
     newAssessment: "新評估",
     saved: "評估已儲存！費用：HK${cost}",
     saveFailed: "儲存評估失敗。結果仍可查看。",

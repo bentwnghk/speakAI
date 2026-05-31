@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, History } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -659,6 +660,13 @@ export function AssessmentForm({ cost }: { cost: number }) {
           </CardContent>
         </Card>
       )}
+
+      <Link href="/history" className="block">
+        <Button variant="outline" size="lg" className="w-full">
+          <History className="size-4" />
+          {at.viewHistory}
+        </Button>
+      </Link>
     </div>
   );
 }
