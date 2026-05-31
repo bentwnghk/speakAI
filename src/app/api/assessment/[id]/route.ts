@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { isAdminEmail } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { assessments } from "@/lib/db/schema";
 import { eq, and, or, isNull, gt } from "drizzle-orm";
@@ -14,17 +15,18 @@ export async function GET(
   }
 
   const { id } = await params;
+  const isAdmin = isAdminEmail(session.user.email);
+
+  const conditions = [
+    eq(assessments.id, id),
+    ...(isAdmin ? [] : [eq(assessments.userId, session.user.id)]),
+    ...(isAdmin ? [] : [or(isNull(assessments.expiresAt), gt(assessments.expiresAt, new Date()))]),
+  ];
 
   const [row] = await db
     .select()
     .from(assessments)
-    .where(
-      and(
-        eq(assessments.id, id),
-        eq(assessments.userId, session.user.id),
-        or(isNull(assessments.expiresAt), gt(assessments.expiresAt, new Date()))
-      )
-    );
+    .where(and(...conditions));
 
   if (!row) {
     return NextResponse.json(

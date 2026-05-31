@@ -90,6 +90,7 @@ export interface SavedAssessment {
   words: WordResult[];
   phonemes: PhonemeResult[][] | null;
   syllables: SyllableResult[][] | null;
+  audioPath: string | null;
   cost: number;
   expiresAt: string | null;
   createdAt: string;
