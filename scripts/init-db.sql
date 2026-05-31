@@ -105,7 +105,28 @@ CREATE TABLE "sign_in_logs" (
   "createdAt" TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE "assessments" (
+  "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid(),
+  "userId" TEXT NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "referenceText" TEXT NOT NULL,
+  "recognizedText" TEXT NOT NULL,
+  "durationMs" INTEGER NOT NULL,
+  "accuracyScore" REAL NOT NULL,
+  "fluencyScore" REAL NOT NULL,
+  "completenessScore" REAL NOT NULL,
+  "prosodyScore" REAL,
+  "pronScore" REAL NOT NULL,
+  "words" JSONB NOT NULL,
+  "phonemes" JSONB,
+  "syllables" JSONB,
+  "audioPath" TEXT,
+  "cost" REAL NOT NULL,
+  "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
+  "expiresAt" TIMESTAMP
+);
+
 CREATE INDEX "sign_in_logs_userId_idx" ON "sign_in_logs"("userId");
 CREATE INDEX "sign_in_logs_createdAt_idx" ON "sign_in_logs"("createdAt");
+CREATE INDEX "assessments_user_idx" ON "assessments"("userId");
 
 COMMIT;
