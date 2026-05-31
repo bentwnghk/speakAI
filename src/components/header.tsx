@@ -42,25 +42,27 @@ export function Header() {
             <span>{t.common.appName}</span>
           </Link>
 
-          <nav className="flex items-center gap-2">
+          <nav className="flex items-center gap-1">
             {session && (
               <>
                 <Link href="/assessment">
                   <Button variant="ghost" size="sm">
                     <Mic className="size-4" />
-                    {t.header.assessment}
+                    <span className="hidden sm:inline">{t.header.assessment}</span>
                   </Button>
                 </Link>
                 <Link href="/history">
                   <Button variant="ghost" size="sm">
                     <History className="size-4" />
-                    {t.header.history}
+                    <span className="hidden sm:inline">{t.header.history}</span>
                   </Button>
                 </Link>
                 <Link href="/credits">
                   <Button variant="ghost" size="sm">
                     <Coins className="size-4" />
-                    {balance !== null ? balance.toFixed(2) : "..."}
+                    <span className="hidden sm:inline">
+                      {balance !== null ? balance.toFixed(2) : "..."}
+                    </span>
                   </Button>
                 </Link>
               </>
