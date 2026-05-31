@@ -219,21 +219,17 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
       const allResults: import("microsoft-cognitiveservices-speech-sdk").SpeechRecognitionResult[] =
         [];
 
-      recognizer.recognized = (_s, e) => {
-        if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
-          allResults.push(e.result);
-        }
-      };
+      // Guard against double-processing if both the stopContinuousRecognitionAsync
+      // success callback and the canceled/sessionStopped events fire.
+      let finished = false;
 
-      recognizer.canceled = (_s, e) => {
-        if (e.reason === SpeechSDK.CancellationReason.Error) {
-          console.error("Continuous recognition error:", e.errorDetails);
-        }
+      const finish = () => {
+        if (finished) return;
+        finished = true;
         recognizerRef.current = null;
-        recognizer.close();
+        try { recognizer.close(); } catch { /* already closed */ }
         audioConfigCleanup();
         if (allResults.length > 0) {
-          setRecordingState("processing");
           const combined = combineResults(allResults, SpeechSDK);
           void stopMediaRecorder().then((blob) => {
             processCombinedResult(combined, blob);
@@ -247,14 +243,31 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
         resolve();
       };
 
-      recognizer.sessionStopped = () => {
-        recognizer.stopContinuousRecognitionAsync(
-          () => {},
-          (err: string) => {
-            console.error("Stop error:", err);
-            reject(new Error(err));
-          }
-        );
+      recognizer.recognized = (_s, e) => {
+        if (e.result.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
+          allResults.push(e.result);
+        }
+      };
+
+      // Handle unexpected errors and natural end-of-stream as a fallback.
+      // The primary result-processing path is the stopContinuousRecognitionAsync
+      // success callback inside window.__stopAssessment.
+      recognizer.canceled = (_s, e) => {
+        if (e.reason === SpeechSDK.CancellationReason.Error) {
+          console.error("Continuous recognition error:", e.errorDetails);
+          if (finished) return;
+          finished = true;
+          recognizerRef.current = null;
+          try { recognizer.close(); } catch { /* already closed */ }
+          audioConfigCleanup();
+          void stopMediaRecorder();
+          setRecordingState("idle");
+          toast.error(at.recognitionError);
+          resolve();
+        } else {
+          // EndOfStream or other non-error cancellation — treat as a natural finish.
+          finish();
+        }
       };
 
       recognizer.startContinuousRecognitionAsync(
@@ -262,17 +275,30 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
         (err: string) => {
           void stopMediaRecorder();
           recognizerRef.current = null;
-          recognizer.close();
+          try { recognizer.close(); } catch { /* already closed */ }
           audioConfigCleanup();
           setRecordingState("idle");
           reject(new Error(err));
         }
       );
 
+      // Called by handleStop(). stopContinuousRecognitionAsync's success callback
+      // fires reliably once the SDK has fully stopped — use it as the primary
+      // result-processing trigger instead of waiting for the canceled event.
       window.__stopAssessment = () => {
         recognizer.stopContinuousRecognitionAsync(
-          () => {},
-          (err: string) => reject(new Error(err))
+          finish,
+          (err: string) => {
+            if (!finished) {
+              finished = true;
+              recognizerRef.current = null;
+              try { recognizer.close(); } catch { /* already closed */ }
+              audioConfigCleanup();
+              void stopMediaRecorder();
+              setRecordingState("idle");
+            }
+            reject(new Error(err));
+          }
         );
       };
     });
