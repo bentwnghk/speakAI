@@ -471,32 +471,56 @@ export default function AdminDashboardPage() {
       </div>
 
       <Tabs defaultValue="usage">
-        <TabsList className="flex w-full">
-          <TabsTrigger value="usage" className="flex-1 gap-1 text-xs sm:text-sm">
-            <Volume2 className="h-4 w-4" />
-            {t.admin.tabUsage}
-            <Badge variant="secondary" className="ml-1 text-xs">
+        <TabsList className="flex w-full h-auto">
+          <TabsTrigger
+            value="usage"
+            className="flex-1 gap-0.5 px-1 py-1.5 text-[10px] sm:gap-1 sm:px-3 sm:text-xs sm:py-2"
+          >
+            <Volume2 className="hidden sm:inline size-3" />
+            <span className="truncate">{t.admin.tabUsage}</span>
+            <Badge
+              variant="secondary"
+              className="ml-0.5 h-4 min-w-4 px-1 text-[10px]"
+            >
               {gTotal}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="assessments" className="flex-1 gap-1 text-xs sm:text-sm">
-            <Mic className="h-4 w-4" />
-            {t.admin.tabAssessments}
-            <Badge variant="secondary" className="ml-1 text-xs">
+          <TabsTrigger
+            value="assessments"
+            className="flex-1 gap-0.5 px-1 py-1.5 text-[10px] sm:gap-1 sm:px-3 sm:text-xs sm:py-2"
+          >
+            <Mic className="hidden sm:inline size-3" />
+            <span className="truncate">{t.admin.tabAssessments}</span>
+            <Badge
+              variant="secondary"
+              className="ml-0.5 h-4 min-w-4 px-1 text-[10px]"
+            >
               {aTotal}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="purchases" className="flex-1 gap-1 text-xs sm:text-sm">
-            <ShoppingCart className="h-4 w-4" />
-            {t.admin.tabPurchases}
-            <Badge variant="secondary" className="ml-1 text-xs">
+          <TabsTrigger
+            value="purchases"
+            className="flex-1 gap-0.5 px-1 py-1.5 text-[10px] sm:gap-1 sm:px-3 sm:text-xs sm:py-2"
+          >
+            <ShoppingCart className="hidden sm:inline size-3" />
+            <span className="truncate">{t.admin.tabPurchases}</span>
+            <Badge
+              variant="secondary"
+              className="ml-0.5 h-4 min-w-4 px-1 text-[10px]"
+            >
               {pTotal}
             </Badge>
           </TabsTrigger>
-          <TabsTrigger value="signins" className="flex-1 gap-1 text-xs sm:text-sm">
-            <LogIn className="h-4 w-4" />
-            {t.admin.tabSignIns}
-            <Badge variant="secondary" className="ml-1 text-xs">
+          <TabsTrigger
+            value="signins"
+            className="flex-1 gap-0.5 px-1 py-1.5 text-[10px] sm:gap-1 sm:px-3 sm:text-xs sm:py-2"
+          >
+            <LogIn className="hidden sm:inline size-3" />
+            <span className="truncate">{t.admin.tabSignIns}</span>
+            <Badge
+              variant="secondary"
+              className="ml-0.5 h-4 min-w-4 px-1 text-[10px]"
+            >
               {sTotal}
             </Badge>
           </TabsTrigger>
