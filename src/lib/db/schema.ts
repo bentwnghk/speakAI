@@ -1,6 +1,7 @@
 import {
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   real,
@@ -123,6 +124,30 @@ export const signInLogs = pgTable("sign_in_logs", {
   provider: text("provider").notNull().default("google"),
   createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
 });
+
+export const assessments = pgTable(
+  "assessments",
+  {
+    id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+    userId: text("userId")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    referenceText: text("referenceText").notNull(),
+    recognizedText: text("recognizedText").notNull(),
+    durationMs: integer("durationMs").notNull(),
+    accuracyScore: real("accuracyScore").notNull(),
+    fluencyScore: real("fluencyScore").notNull(),
+    completenessScore: real("completenessScore").notNull(),
+    prosodyScore: real("prosodyScore"),
+    pronScore: real("pronScore").notNull(),
+    words: jsonb("words").notNull(),
+    phonemes: jsonb("phonemes"),
+    syllables: jsonb("syllables"),
+    cost: real("cost").notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
+  },
+  (table) => [index("assessments_user_idx").on(table.userId)]
+);
 
 export const purchases = pgTable("purchases", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

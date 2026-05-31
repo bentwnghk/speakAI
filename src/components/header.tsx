@@ -8,6 +8,7 @@ import {
   Coins,
   History,
   LogOut,
+  Mic,
   Settings,
   ShieldCheck,
   User,
@@ -44,6 +45,12 @@ export function Header() {
           <nav className="flex items-center gap-2">
             {session && (
               <>
+                <Link href="/assessment">
+                  <Button variant="ghost" size="sm">
+                    <Mic className="size-4" />
+                    {t.header.assessment}
+                  </Button>
+                </Link>
                 <Link href="/history">
                   <Button variant="ghost" size="sm">
                     <History className="size-4" />

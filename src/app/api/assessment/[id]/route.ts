@@ -1,0 +1,61 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { assessments } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const [row] = await db
+    .select()
+    .from(assessments)
+    .where(
+      and(eq(assessments.id, id), eq(assessments.userId, session.user.id))
+    );
+
+  if (!row) {
+    return NextResponse.json(
+      { error: "Assessment not found" },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json(row);
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const result = await db
+    .delete(assessments)
+    .where(
+      and(eq(assessments.id, id), eq(assessments.userId, session.user.id))
+    )
+    .returning({ id: assessments.id });
+
+  if (result.length === 0) {
+    return NextResponse.json(
+      { error: "Assessment not found" },
+      { status: 404 }
+    );
+  }
+
+  return NextResponse.json({ success: true });
+}
