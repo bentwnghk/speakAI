@@ -85,9 +85,9 @@ export async function POST(request: Request) {
         const audioDir = join(process.cwd(), "data", "recording");
         await mkdir(audioDir, { recursive: true });
         const filename = `${nanoid()}.webm`;
-        audioPath = join(audioDir, filename);
+        audioPath = join("data", "recording", filename);
         const buffer = Buffer.from(await audioFile.arrayBuffer());
-        await writeFile(audioPath, buffer);
+        await writeFile(join(process.cwd(), audioPath), buffer);
       }
 
       const [inserted] = await db
