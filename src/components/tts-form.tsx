@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef, useLayoutEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,14 +10,15 @@ import { SpeedSlider } from "@/components/speed-slider";
 import { FileUpload } from "@/components/file-upload";
 import { AudioPlayer } from "@/components/audio-player";
 import { KaraokeText } from "@/components/karaoke-text";
-import { Sparkles, Type, Upload, Loader2, History, FileText, SlidersHorizontal, Mic } from "lucide-react";
+import { SelectionPopover } from "@/components/selection-popover";
+import { Sparkles, Type, Upload, Loader2, History, FileText, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { Segment } from "@/types/karaoke";
 import { processPdf } from "@/lib/pdf-client";
 import { useCredits } from "@/hooks/use-credits";
 import { useUserSettings } from "@/hooks/use-settings";
+import { useTextSelectionPopover } from "@/hooks/use-text-selection";
 
 interface Generation {
   id: string;
@@ -32,7 +33,6 @@ interface Generation {
 }
 
 export function TtsForm() {
-  const router = useRouter();
   const [inputMethod, setInputMethod] = useState<"text" | "upload">("text");
   const [text, setText] = useState("");
   const [extractedText, setExtractedText] = useState("");
@@ -49,17 +49,11 @@ export function TtsForm() {
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   const [karaokeActive, setKaraokeActive] = useState(false);
   const [accumulatedVisionCost, setAccumulatedVisionCost] = useState(0);
-  const [selection, setSelection] = useState<{
-    text: string;
-    x: number;
-    y: number;
-    above: boolean;
-  } | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const mirrorRef = useRef<HTMLDivElement>(null);
-  const popupRef = useRef<HTMLDivElement>(null);
   const { refreshBalance } = useCredits();
   const { t } = useUserSettings();
+
+  const textSel = useTextSelectionPopover();
+  const uploadSel = useTextSelectionPopover();
 
   const handleFilesSelected = useCallback(async (newFiles: File[]) => {
     if (newFiles.length === 0) {
@@ -193,87 +187,6 @@ export function TtsForm() {
   const displayText = inputMethod === "upload" ? extractedText : text;
   const showKaraoke = karaokeActive && audioSegments.length > 0 && audioSrc;
 
-  const handleSelectionChange = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const selectedText = el.value.substring(el.selectionStart, el.selectionEnd).trim();
-    if (!selectedText || selectedText.length === 0 || selectedText.length > 4096) {
-      setSelection(null);
-      return;
-    }
-
-    const mirror = mirrorRef.current;
-    if (!mirror) return;
-
-    const textNode = mirror.firstChild;
-    if (!textNode || textNode.nodeType !== Node.TEXT_NODE) {
-      setSelection(null);
-      return;
-    }
-
-    try {
-      const range = document.createRange();
-      const start = Math.min(el.selectionStart, textNode.textContent?.length ?? 0);
-      const end = Math.min(el.selectionEnd, textNode.textContent?.length ?? 0);
-      range.setStart(textNode, start);
-      range.setEnd(textNode, end);
-      const rect = range.getBoundingClientRect();
-      if (rect.width === 0 && rect.height === 0) {
-        setSelection(null);
-        return;
-      }
-      const isIOS =
-        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-      const showAbove = isIOS && rect.top < window.innerHeight / 2;
-      setSelection({
-        text: selectedText,
-        x: rect.left + rect.width / 2,
-        y: showAbove ? rect.top - 8 : rect.bottom + 8,
-        above: showAbove,
-      });
-    } catch {
-      setSelection(null);
-    }
-  }, []);
-
-  useLayoutEffect(() => {
-    const popup = popupRef.current;
-    if (!popup || !selection) return;
-    const popupWidth = popup.offsetWidth;
-    const MARGIN = 8;
-    const desiredLeft = selection.x - popupWidth / 2;
-    const left = Math.max(MARGIN, Math.min(window.innerWidth - popupWidth - MARGIN, desiredLeft));
-    popup.style.left = `${left}px`;
-    popup.style.transform = selection.above ? "translateY(-100%)" : "none";
-  }, [selection]);
-
-  const handleDismiss = useCallback((e: MouseEvent | TouchEvent) => {
-    const target = e.target as HTMLElement;
-    if (!target.closest(".selection-popup")) {
-      setSelection(null);
-    }
-  }, []);
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const debounced = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(handleSelectionChange, 150);
-    };
-
-    document.addEventListener("selectionchange", debounced);
-    document.addEventListener("mousedown", handleDismiss);
-    document.addEventListener("touchstart", handleDismiss, { passive: true });
-
-    return () => {
-      document.removeEventListener("selectionchange", debounced);
-      document.removeEventListener("mousedown", handleDismiss);
-      document.removeEventListener("touchstart", handleDismiss);
-      if (timer) clearTimeout(timer);
-    };
-  }, [handleSelectionChange, handleDismiss]);
-
   useEffect(() => {
     if (isAudioPlaying) {
       setKaraokeActive(true);
@@ -317,7 +230,7 @@ export function TtsForm() {
                 <TabsContent value="text" className="mt-3">
                   <div className="relative">
                     <div
-                      ref={mirrorRef}
+                      ref={textSel.mirrorRef}
                       aria-hidden="true"
                       className="absolute inset-0 overflow-hidden pointer-events-none whitespace-pre-wrap break-words text-base md:text-base p-3 border border-transparent"
                       style={{ visibility: "hidden" }}
@@ -325,12 +238,12 @@ export function TtsForm() {
                       {text}
                     </div>
                     <Textarea
-                      ref={textareaRef}
+                      ref={textSel.textareaRef}
                       placeholder={t.tts.textPlaceholder}
                       value={text}
                       onChange={(e) => {
                         setText(e.target.value);
-                        setSelection(null);
+                        textSel.clearSelection();
                       }}
                       rows={10}
                       className="text-base md:text-base"
@@ -348,12 +261,26 @@ export function TtsForm() {
                       <p className="text-xs text-muted-foreground mb-1">
                         {t.tts.editExtracted}
                       </p>
-                      <Textarea
-                        value={extractedText}
-                        onChange={(e) => setExtractedText(e.target.value)}
-                        rows={10}
-                        className="text-base md:text-base"
-                      />
+                      <div className="relative">
+                        <div
+                          ref={uploadSel.mirrorRef}
+                          aria-hidden="true"
+                          className="absolute inset-0 overflow-hidden pointer-events-none whitespace-pre-wrap break-words text-base md:text-base p-3 border border-transparent"
+                          style={{ visibility: "hidden" }}
+                        >
+                          {extractedText}
+                        </div>
+                        <Textarea
+                          ref={uploadSel.textareaRef}
+                          value={extractedText}
+                          onChange={(e) => {
+                            setExtractedText(e.target.value);
+                            uploadSel.clearSelection();
+                          }}
+                          rows={10}
+                          className="text-base md:text-base"
+                        />
+                      </div>
                     </div>
                   )}
                 </TabsContent>
@@ -362,31 +289,11 @@ export function TtsForm() {
           </CardContent>
         </Card>
 
-        {selection && (
-          <div
-            ref={popupRef}
-            className="selection-popup fixed z-[9999] shadow-md flex gap-0.5 bg-background border rounded-md p-0.5"
-            style={{
-              left: selection.x,
-              top: selection.y,
-              transform: selection.above ? "translate(-50%, -100%)" : "translateX(-50%)",
-            }}
-          >
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => {
-                router.push(`/assessment?text=${encodeURIComponent(selection.text)}`);
-              }}
-              onTouchEnd={(e) => {
-                e.preventDefault();
-                router.push(`/assessment?text=${encodeURIComponent(selection.text)}`);
-              }}
-            >
-              <Mic className="h-4 w-4" />
-              <span className="hidden sm:inline">{t.tts.practiceReading}</span>
-            </Button>
-          </div>
+        {textSel.selection && (
+          <SelectionPopover selection={textSel.selection} popupRef={textSel.popupRef} />
+        )}
+        {uploadSel.selection && (
+          <SelectionPopover selection={uploadSel.selection} popupRef={uploadSel.popupRef} />
         )}
 
         <Card>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { SelectionPopover } from "@/components/selection-popover";
 import {
   Play,
   Download,
@@ -36,6 +37,7 @@ import { AudioPlayer } from "@/components/audio-player";
 import { KaraokeText } from "@/components/karaoke-text";
 import { formatVoiceBadge } from "@/lib/constants";
 import { useUserSettings } from "@/hooks/use-settings";
+import { useTextSelectionPopover } from "@/hooks/use-text-selection";
 import type { Segment } from "@/types/karaoke";
 
 interface Generation {
@@ -125,6 +127,7 @@ export function HistoryList() {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
   const { t } = useUserSettings();
+  const detailSel = useTextSelectionPopover();
 
   const totalPages = Math.ceil(total / limit);
 
@@ -281,12 +284,23 @@ export function HistoryList() {
                 isPlaying={isAudioPlaying}
               />
             ) : (
-              <Textarea
-                value={loadedGeneration.transcript}
-                readOnly
-                rows={10}
-                className="text-base md:text-base resize-none max-h-[50vh] overflow-y-auto"
-              />
+              <div className="relative">
+                <div
+                  ref={detailSel.mirrorRef}
+                  aria-hidden="true"
+                  className="absolute inset-0 overflow-hidden pointer-events-none whitespace-pre-wrap break-words text-base md:text-base p-3 border border-transparent resize-none max-h-[50vh]"
+                  style={{ visibility: "hidden" }}
+                >
+                  {loadedGeneration.transcript}
+                </div>
+                <Textarea
+                  ref={detailSel.textareaRef}
+                  value={loadedGeneration.transcript}
+                  readOnly
+                  rows={10}
+                  className="text-base md:text-base resize-none max-h-[50vh] overflow-y-auto"
+                />
+              </div>
             )}
           </CardContent>
         </Card>
@@ -324,6 +338,10 @@ export function HistoryList() {
             )}
           </div>
         </div>
+
+        {detailSel.selection && (
+          <SelectionPopover selection={detailSel.selection} popupRef={detailSel.popupRef} />
+        )}
       </div>
     );
   }
