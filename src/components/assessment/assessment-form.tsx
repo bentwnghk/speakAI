@@ -26,7 +26,7 @@ import { useCredits } from "@/hooks/use-credits";
 import { RecordingControls } from "./recording-controls";
 import { ScoreOverview } from "./score-overview";
 import { TranscriptView } from "./transcript-view";
-import { WordDetail } from "./word-detail";
+import { WordDetail, SyllableView } from "./word-detail";
 import { ErrorSummary } from "./error-summary";
 import { AssessmentHistory } from "./assessment-history";
 import type {
@@ -572,6 +572,7 @@ export function AssessmentForm({ cost }: { cost: number }) {
                 <TabsList>
                   <TabsTrigger value="fulltext">{at.granFullText}</TabsTrigger>
                   <TabsTrigger value="word">{at.granWord}</TabsTrigger>
+                  <TabsTrigger value="syllable">{at.granSyllable}</TabsTrigger>
                   <TabsTrigger value="phoneme">{at.granPhoneme}</TabsTrigger>
                 </TabsList>
               </div>
@@ -588,9 +589,15 @@ export function AssessmentForm({ cost }: { cost: number }) {
                 </div>
               </TabsContent>
 
+              <TabsContent value="syllable">
+                <div className="max-h-96 overflow-y-auto">
+                  <SyllableView words={filteredWords} t={at} />
+                </div>
+              </TabsContent>
+
               <TabsContent value="phoneme">
                 <div className="max-h-96 overflow-y-auto">
-                  <WordDetail words={filteredWords} t={at} />
+                  <WordDetail words={filteredWords} t={at} expandAll />
                 </div>
               </TabsContent>
             </Tabs>

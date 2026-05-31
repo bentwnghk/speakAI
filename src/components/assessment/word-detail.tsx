@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { WordResult, ErrorType, PhonemeResult } from "@/types/assessment";
+import type { WordResult, ErrorType, PhonemeResult, SyllableResult } from "@/types/assessment";
 
 interface WordDetailProps {
   words: WordResult[];
   t: Record<string, string>;
+  expandAll?: boolean;
 }
 
 const ERROR_COLORS: Record<ErrorType, string> = {
@@ -30,7 +31,7 @@ const ERROR_BG: Record<ErrorType, string> = {
   Monotone: "bg-purple-500/10 border-purple-500/20",
 };
 
-export function WordDetail({ words, t }: WordDetailProps) {
+export function WordDetail({ words, t, expandAll }: WordDetailProps) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   return (
@@ -39,7 +40,8 @@ export function WordDetail({ words, t }: WordDetailProps) {
         const errorType = word.PronunciationAssessment.ErrorType;
         const isError = errorType !== "None";
         const score = Math.round(word.PronunciationAssessment.AccuracyScore);
-        const isExpanded = expandedIdx === i;
+        const isExpanded = expandAll || expandedIdx === i;
+        const hasPhonemes = word.Phonemes && word.Phonemes.length > 0;
 
         return (
           <div key={i}>
@@ -49,14 +51,14 @@ export function WordDetail({ words, t }: WordDetailProps) {
                 "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-accent/50",
                 ERROR_BG[errorType]
               )}
-              onClick={() => setExpandedIdx(isExpanded ? null : i)}
+              onClick={() => !expandAll && setExpandedIdx(isExpanded ? null : i)}
             >
               <span className="shrink-0 text-muted-foreground">
-                {isExpanded ? (
+                {expandAll ? null : isExpanded ? (
                   <ChevronDown className="size-4" />
-                ) : (
+                ) : hasPhonemes ? (
                   <ChevronRight className="size-4" />
-                )}
+                ) : null}
               </span>
 
               <span className="font-medium">{word.Word}</span>
@@ -79,7 +81,7 @@ export function WordDetail({ words, t }: WordDetailProps) {
               </span>
             </button>
 
-            {isExpanded && word.Phonemes && word.Phonemes.length > 0 && (
+            {isExpanded && hasPhonemes && word.Phonemes && (
               <PhonemeBreakdown phonemes={word.Phonemes} t={t} />
             )}
           </div>
@@ -189,6 +191,77 @@ function NBestDetail({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+export function SyllableView({ words }: { words: WordResult[]; t: Record<string, string> }) {
+  const allSyllables: { word: string; syllable: SyllableResult }[] = [];
+  for (const w of words) {
+    if (w.Syllables) {
+      for (const s of w.Syllables) {
+        allSyllables.push({ word: w.Word, syllable: s });
+      }
+    }
+  }
+
+  if (allSyllables.length === 0) {
+    return (
+      <p className="py-6 text-center text-sm text-muted-foreground">
+        No syllable data available.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      {allSyllables.map((item, i) => {
+        const acc = Math.round(item.syllable.PronunciationAssessment.AccuracyScore);
+
+        return (
+          <div
+            key={i}
+            className="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm"
+          >
+            <span className="font-mono font-medium text-foreground w-16 shrink-0">
+              {item.syllable.Syllable}
+            </span>
+
+            <span className="text-xs text-muted-foreground w-20 shrink-0 truncate">
+              ({item.word})
+            </span>
+
+            <div className="flex-1">
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all duration-500",
+                    acc >= 80
+                      ? "bg-green-500"
+                      : acc >= 60
+                        ? "bg-yellow-500"
+                        : "bg-red-500"
+                  )}
+                  style={{ width: `${acc}%` }}
+                />
+              </div>
+            </div>
+
+            <span
+              className={cn(
+                "w-8 text-right tabular-nums font-semibold",
+                acc >= 80
+                  ? "text-green-600 dark:text-green-400"
+                  : acc >= 60
+                    ? "text-yellow-600 dark:text-yellow-400"
+                    : "text-red-600 dark:text-red-400"
+              )}
+            >
+              {acc}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

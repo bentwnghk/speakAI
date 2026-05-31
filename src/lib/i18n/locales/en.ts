@@ -176,6 +176,7 @@ const en = {
     granFullText: "Full Text",
     granWord: "Word",
     granPhoneme: "Phoneme",
+    granSyllable: "Syllable",
     errorType: "Error Type",
     errorNone: "Correct",
     errorOmission: "Omission",

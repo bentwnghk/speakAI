@@ -178,6 +178,7 @@ const zhTW: TranslationKeys = {
     granFullText: "全文",
     granWord: "單詞",
     granPhoneme: "音素",
+    granSyllable: "音節",
     errorType: "錯誤類型",
     errorNone: "正確",
     errorOmission: "遺漏",
