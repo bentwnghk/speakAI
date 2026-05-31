@@ -20,7 +20,7 @@ export function HistoryTabs() {
       </TabsContent>
 
       <TabsContent value="assessment">
-        <AssessmentHistory t={t.assessment} />
+        <AssessmentHistory t={t.assessment} ht={t.history} />
       </TabsContent>
     </Tabs>
   );

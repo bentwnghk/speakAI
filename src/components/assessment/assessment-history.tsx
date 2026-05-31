@@ -10,6 +10,8 @@ import {
   Volume2,
   Timer,
   Coins,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,6 +26,13 @@ import {
 } from "@/components/assessment/word-detail";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type {
   SavedAssessment,
   WordResult,
@@ -33,11 +42,7 @@ import type {
 
 interface AssessmentHistoryProps {
   t: Record<string, string>;
-}
-
-interface HistoryResponse {
-  items: SavedAssessment[];
-  total: number;
+  ht: Record<string, string>;
 }
 
 interface HistoryItem {
@@ -71,28 +76,41 @@ function getDaysUntilExpiry(expiresAt: string | null): number | null {
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
 
-export function AssessmentHistory({ t }: AssessmentHistoryProps) {
+const PAGE_SIZE_OPTIONS = [10, 20, 30, 50] as const;
+
+export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
   const [items, setItems] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<SavedAssessment | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [errorFilter, setErrorFilter] = useState<ErrorType | "All">("All");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+
+  const totalPages = Math.ceil(total / limit);
 
   const loadHistory = useCallback(async () => {
     try {
-      const res = await fetch("/api/assessment?limit=50");
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+      });
+      const res = await fetch(`/api/assessment?${params}`);
       if (!res.ok) throw new Error("Failed");
-      const data = (await res.json()) as HistoryResponse & {
+      const data = (await res.json()) as {
         items: HistoryItem[];
+        total: number;
       };
       setItems(data.items);
+      setTotal(data.total);
     } catch {
       toast.error(t.loadFailed);
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, page, limit]);
 
   useEffect(() => {
     void loadHistory();
@@ -121,6 +139,7 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
       if (!res.ok) throw new Error("Failed");
       toast.success(t.deleted);
       setItems((prev) => prev.filter((a) => a.id !== id));
+      setTotal((prev) => Math.max(0, prev - 1));
       if (selectedId === id) {
         setSelectedId(null);
         setDetail(null);
@@ -149,7 +168,7 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
     );
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 && page === 1) {
     return (
       <div className="py-8 text-center">
         <Volume2 className="mx-auto mb-2 size-8 opacity-30" />
@@ -187,7 +206,7 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
             }}
           >
             <ArrowLeft className="size-4" />
-            {t.backToList ?? "Back to list"}
+            {ht.backToList ?? "Back to list"}
           </Button>
           <h2 className="truncate text-lg font-semibold">
             {detail.referenceText.slice(0, 50)}
@@ -305,7 +324,36 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {ht.items
+            .replace("{count}", String(total))
+            .replace("{plural}", total !== 1 ? "s" : "")}
+        </p>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">{ht.perPage}</span>
+          <Select
+            value={String(limit)}
+            onValueChange={(val) => {
+              setLimit(Number(val));
+              setPage(1);
+            }}
+          >
+            <SelectTrigger className="h-8 w-[70px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
       {detailLoading && (
         <div className="space-y-2">
           {[1, 2].map((i) => (
@@ -385,8 +433,36 @@ export function AssessmentHistory({ t }: AssessmentHistoryProps) {
               </div>
              </CardContent>
            </Card>
-        );
+       );
         })}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+          >
+            <ChevronLeft className="size-4" />
+            {ht.previous}
+          </Button>
+          <span className="text-sm text-muted-foreground px-2">
+            {ht.pageOf
+              .replace("{page}", String(page))
+              .replace("{total}", String(totalPages))}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          >
+            {ht.next}
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
