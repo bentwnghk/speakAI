@@ -42,27 +42,25 @@ export function Header() {
             <span>{t.common.appName}</span>
           </Link>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-0.5 sm:gap-1">
             {session && (
               <>
                 <Link href="/assessment">
-                  <Button variant="ghost" size="sm">
-                    <Mic className="size-4" />
-                    <span className="hidden sm:inline">{t.header.assessment}</span>
+                  <Button variant="ghost" size="sm" className="gap-1 px-1.5 sm:px-2.5 text-xs sm:text-sm">
+                    <Mic className="size-3.5 sm:size-4 shrink-0" />
+                    <span>{t.header.assessment}</span>
                   </Button>
                 </Link>
                 <Link href="/history">
-                  <Button variant="ghost" size="sm">
-                    <History className="size-4" />
-                    <span className="hidden sm:inline">{t.header.history}</span>
+                  <Button variant="ghost" size="sm" className="gap-1 px-1.5 sm:px-2.5 text-xs sm:text-sm">
+                    <History className="size-3.5 sm:size-4 shrink-0" />
+                    <span>{t.header.history}</span>
                   </Button>
                 </Link>
                 <Link href="/credits">
-                  <Button variant="ghost" size="sm">
-                    <Coins className="size-4" />
-                    <span className="hidden sm:inline">
-                      {balance !== null ? balance.toFixed(2) : "..."}
-                    </span>
+                  <Button variant="ghost" size="sm" className="gap-1 px-1.5 sm:px-2.5 text-xs sm:text-sm">
+                    <Coins className="size-3.5 sm:size-4 shrink-0" />
+                    <span>{balance !== null ? balance.toFixed(2) : "..."}</span>
                   </Button>
                 </Link>
               </>
