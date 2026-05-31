@@ -52,11 +52,13 @@ function getAccuracyLabel(score: number, t: Record<string, string>): string {
 
 function getWordLabel(word: WordResult, t: Record<string, string>): string {
   const errorType = word.PronunciationAssessment.ErrorType;
-  const score = Math.round(word.PronunciationAssessment.AccuracyScore);
+  const rawScore = word.PronunciationAssessment.AccuracyScore;
+  const score = Number.isFinite(rawScore) ? Math.round(rawScore) : null;
   const isError = errorType !== "None";
+  const scoreStr = score !== null ? ` (${score}%)` : "";
   return isError
-    ? `${String(t[`error${errorType}`] ?? errorType)} (${score}%)`
-    : `${getAccuracyLabel(score, t)} (${score}%)`;
+    ? `${String(t[`error${errorType}`] ?? errorType)}${scoreStr}`
+    : `${getAccuracyLabel(score ?? 0, t)}${scoreStr}`;
 }
 
 function WordTooltip({
@@ -115,7 +117,8 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
           {words.map((word, i) => {
             const errorType = word.PronunciationAssessment.ErrorType;
             const isError = errorType !== "None";
-            const score = Math.round(word.PronunciationAssessment.AccuracyScore);
+            const rawScore = word.PronunciationAssessment.AccuracyScore;
+            const score = Number.isFinite(rawScore) ? Math.round(rawScore) : 0;
 
             if (!isError) {
               if (score >= 90) accuracyBuckets.excellent++;

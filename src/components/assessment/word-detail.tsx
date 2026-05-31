@@ -39,7 +39,8 @@ export function WordDetail({ words, t, expandAll }: WordDetailProps) {
       {words.map((word, i) => {
         const errorType = word.PronunciationAssessment.ErrorType;
         const isError = errorType !== "None";
-        const score = Math.round(word.PronunciationAssessment.AccuracyScore);
+        const rawScore = word.PronunciationAssessment.AccuracyScore;
+        const score = Number.isFinite(rawScore) ? Math.round(rawScore) : null;
         const isExpanded = expandAll || expandedIdx === i;
         const hasPhonemes = word.Phonemes && word.Phonemes.length > 0;
 
@@ -66,7 +67,7 @@ export function WordDetail({ words, t, expandAll }: WordDetailProps) {
               <span
                 className={cn("ml-auto tabular-nums font-semibold", isError ? ERROR_COLORS[errorType] : "text-green-600 dark:text-green-400")}
               >
-                {score}
+                {score ?? "\u2013"}
               </span>
 
               <span
@@ -109,7 +110,9 @@ function PhonemeBreakdown({
 
       <div className="grid gap-2">
         {phonemes.map((phoneme, j) => {
-          const acc = Math.round(phoneme.PronunciationAssessment.AccuracyScore);
+          const rawAcc = phoneme.PronunciationAssessment.AccuracyScore;
+          const acc = Number.isFinite(rawAcc) ? Math.round(rawAcc) : 0;
+          const displayAcc = Number.isFinite(rawAcc) ? Math.round(rawAcc) : null;
           const nbest = phoneme.PronunciationAssessment.NBestPhonemes;
 
           return (
@@ -147,7 +150,7 @@ function PhonemeBreakdown({
                       : "text-red-600 dark:text-red-400"
                 )}
               >
-                {acc}
+                {displayAcc ?? "\u2013"}
               </span>
 
               {nbest && nbest.length > 1 && (
@@ -216,7 +219,9 @@ export function SyllableView({ words }: { words: WordResult[]; t: Record<string,
   return (
     <div className="space-y-1">
       {allSyllables.map((item, i) => {
-        const acc = Math.round(item.syllable.PronunciationAssessment.AccuracyScore);
+        const rawAcc = item.syllable.PronunciationAssessment.AccuracyScore;
+        const acc = Number.isFinite(rawAcc) ? Math.round(rawAcc) : 0;
+        const displayAcc = Number.isFinite(rawAcc) ? Math.round(rawAcc) : null;
 
         return (
           <div
@@ -257,7 +262,7 @@ export function SyllableView({ words }: { words: WordResult[]; t: Record<string,
                     : "text-red-600 dark:text-red-400"
               )}
             >
-              {acc}
+              {displayAcc ?? "\u2013"}
             </span>
           </div>
         );
