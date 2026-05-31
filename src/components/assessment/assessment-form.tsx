@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { RotateCcw, History } from "lucide-react";
+import { RotateCcw, History, Mic } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -521,7 +521,10 @@ export function AssessmentForm({ pricePerMinHkd }: { pricePerMinHkd: number }) {
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h1 className="text-2xl font-bold">{at.title}</h1>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Mic className="size-6 text-primary" />
+          {at.title}
+        </h1>
         <p className="text-sm text-muted-foreground">{at.subtitle}</p>
       </div>
 
