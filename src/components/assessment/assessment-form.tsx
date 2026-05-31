@@ -77,6 +77,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recognizerRef = useRef<import("microsoft-cognitiveservices-speech-sdk").SpeechRecognizer | null>(null);
+  const userStoppedRef = useRef(false);
 
   const wordCount = referenceText.trim()
     ? referenceText.trim().split(/\s+/).length
@@ -88,6 +89,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
     setResult(null);
     setRecordingState("recording");
     audioChunksRef.current = [];
+    userStoppedRef.current = false;
 
     let mediaRecorder: MediaRecorder | null = null;
 
@@ -189,10 +191,15 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
           } else {
             void stopMediaRecorder();
             setRecordingState("idle");
-            const cancel =
-              SpeechSDK.CancellationDetails.fromResult(recResult);
-            console.error("Recognition canceled:", cancel.errorDetails);
-            reject(new Error("canceled"));
+            if (userStoppedRef.current) {
+              // User pressed Stop intentionally — clean exit, no error
+              resolve();
+            } else {
+              const cancel =
+                SpeechSDK.CancellationDetails.fromResult(recResult);
+              console.error("Recognition canceled:", cancel.errorDetails);
+              reject(new Error("canceled"));
+            }
           }
         },
         (error: string) => {
@@ -485,19 +492,31 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   }
 
   function handleStop() {
+    userStoppedRef.current = true;
+
     if (mode === "manual" && window.__stopAssessment) {
+      // Signal Azure to stop continuous recognition. The recognizer.canceled
+      // handler in recognizeContinuous fires asynchronously and handles all
+      // cleanup: closes the recognizer, stops the media recorder, processes
+      // collected results, and updates recording state.
+      // Do NOT close the recognizer here — it must stay alive until canceled fires.
+      // Do NOT call stopMediaRecorder here — the canceled handler does it.
+      setRecordingState("processing");
       window.__stopAssessment();
+    } else {
+      // Auto mode: close the recognizer (triggers recognizeOnceAsync callback
+      // with cancellation, which resolves silently thanks to userStoppedRef).
+      const recognizer = recognizerRef.current;
+      if (recognizer) {
+        try {
+          recognizer.close();
+        } catch {}
+        recognizerRef.current = null;
+      }
+      delete window.__stopAssessment;
+      void stopMediaRecorder();
+      setRecordingState("idle");
     }
-    const recognizer = recognizerRef.current;
-    if (recognizer) {
-      try {
-        recognizer.close();
-      } catch {}
-      recognizerRef.current = null;
-    }
-    delete window.__stopAssessment;
-    void stopMediaRecorder();
-    setRecordingState("idle");
   }
 
   function handleReset() {
