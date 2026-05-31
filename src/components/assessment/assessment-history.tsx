@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import type {
   SavedAssessment,
   WordResult,
@@ -387,8 +388,17 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
                   )}
                 </div>
                 <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                  <Badge variant="secondary" className="text-xs">
-                    {Math.round(item.pronScore)}/100
+                  <Badge
+                    className={cn(
+                      "text-xs font-semibold tabular-nums",
+                      item.pronScore >= 80
+                        ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/25"
+                        : item.pronScore >= 60
+                          ? "bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/25"
+                          : "bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/25",
+                    )}
+                  >
+                    {Math.round(item.pronScore)}
                   </Badge>
                   <span className="flex items-center gap-1">
                     <Clock className="size-3" />
