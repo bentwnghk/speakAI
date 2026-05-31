@@ -176,25 +176,25 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
       <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <span className="inline-block rounded px-1 py-px text-green-600 dark:text-green-400 bg-green-500/15">
-            {t.accuracyExcellent ?? "Excellent"} &ge;90
+            {t.accuracyExcellent ?? "Excellent"} (&ge;90)
           </span>
           <span>{accuracyBuckets.excellent}</span>
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block rounded px-1 py-px text-lime-600 dark:text-lime-400 bg-lime-500/10">
-            {t.accuracyGood ?? "Good"} 80&ndash;89
+            {t.accuracyGood ?? "Good"} (80&ndash;89)
           </span>
           <span>{accuracyBuckets.good}</span>
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block rounded px-1 py-px text-yellow-600 dark:text-yellow-400 bg-yellow-500/10">
-            {t.accuracyFair ?? "Fair"} 60&ndash;79
+            {t.accuracyFair ?? "Fair"} (60&ndash;79)
           </span>
           <span>{accuracyBuckets.fair}</span>
         </span>
         <span className="flex items-center gap-1">
           <span className="inline-block rounded px-1 py-px text-red-600 dark:text-red-400 bg-red-500/10">
-            {t.accuracyPoor ?? "Poor"} &lt;60
+            {t.accuracyPoor ?? "Poor"} (&lt;60)
           </span>
           <span>{accuracyBuckets.poor}</span>
         </span>
