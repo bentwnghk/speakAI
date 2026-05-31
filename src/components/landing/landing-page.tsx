@@ -387,7 +387,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       key: "realtime",
       color: "text-sky-600 dark:text-sky-400",
       title: "Real-Time Speech Recognition",
-      desc: "Powered by Azure Speech SDK — get instant, detailed feedback as soon as you stop speaking.",
+      desc: "Get instant, detailed feedback as soon as you stop speaking.",
     },
     {
       icon: Target,
