@@ -13,6 +13,7 @@ import { KaraokeText } from "@/components/karaoke-text";
 import { Sparkles, Type, Upload, Loader2, History, FileText, SlidersHorizontal, Mic } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Segment } from "@/types/karaoke";
 import { processPdf } from "@/lib/pdf-client";
 import { useCredits } from "@/hooks/use-credits";
@@ -31,6 +32,7 @@ interface Generation {
 }
 
 export function TtsForm() {
+  const router = useRouter();
   const [inputMethod, setInputMethod] = useState<"text" | "upload">("text");
   const [text, setText] = useState("");
   const [extractedText, setExtractedText] = useState("");
@@ -370,19 +372,20 @@ export function TtsForm() {
               transform: selection.above ? "translate(-50%, -100%)" : "translateX(-50%)",
             }}
           >
-            <Link href={`/assessment?text=${encodeURIComponent(selection.text)}`}>
-              <Button
-                size="sm"
-                variant="ghost"
-                onTouchEnd={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-              >
-                <Mic className="h-4 w-4" />
-                <span className="hidden sm:inline">{t.tts.practiceReading}</span>
-              </Button>
-            </Link>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                router.push(`/assessment?text=${encodeURIComponent(selection.text)}`);
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                router.push(`/assessment?text=${encodeURIComponent(selection.text)}`);
+              }}
+            >
+              <Mic className="h-4 w-4" />
+              <span className="hidden sm:inline">{t.tts.practiceReading}</span>
+            </Button>
           </div>
         )}
 
