@@ -78,6 +78,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   const audioChunksRef = useRef<Blob[]>([]);
   const recognizerRef = useRef<import("microsoft-cognitiveservices-speech-sdk").SpeechRecognizer | null>(null);
   const userStoppedRef = useRef(false);
+  const recordStartRef = useRef(0);
 
   const wordCount = referenceText.trim()
     ? referenceText.trim().split(/\s+/).length
@@ -108,6 +109,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
       mediaRecorder.start(250);
+      recordStartRef.current = Date.now();
     } catch {
       toast.error(at.micDenied);
       setRecordingState("idle");
@@ -182,8 +184,8 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
           if (recResult.reason === SpeechSDK.ResultReason.RecognizedSpeech) {
             setRecordingState("processing");
-            void stopMediaRecorder().then((blob) => {
-              processResult(recResult, SpeechSDK, blob);
+            void stopMediaRecorder().then(({ blob, recordingDurationMs }) => {
+              processResult(recResult, SpeechSDK, blob, recordingDurationMs);
             });
             setRecordingState("done");
             resolve();
@@ -238,8 +240,8 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
         audioConfigCleanup();
         if (allResults.length > 0) {
           const combined = combineResults(allResults, SpeechSDK);
-          void stopMediaRecorder().then((blob) => {
-            processCombinedResult(combined, blob);
+          void stopMediaRecorder().then(({ blob, recordingDurationMs }) => {
+            processCombinedResult(combined, blob, recordingDurationMs);
             setRecordingState("done");
           });
         } else {
@@ -311,9 +313,11 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
     });
   }
 
-  function stopMediaRecorder(): Promise<Blob | null> {
+  function stopMediaRecorder(): Promise<{ blob: Blob | null; recordingDurationMs: number }> {
     const recorder = mediaRecorderRef.current;
-    if (!recorder || recorder.state === "inactive") return Promise.resolve(null);
+    const duration = recordStartRef.current > 0 ? Date.now() - recordStartRef.current : 0;
+    recordStartRef.current = 0;
+    if (!recorder || recorder.state === "inactive") return Promise.resolve({ blob: null, recordingDurationMs: duration });
 
     return new Promise((resolve) => {
       recorder.onstop = () => {
@@ -322,7 +326,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
         const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType });
         audioChunksRef.current = [];
         mediaRecorderRef.current = null;
-        resolve(blob.size > 0 ? blob : null);
+        resolve({ blob: blob.size > 0 ? blob : null, recordingDurationMs: duration });
       };
       recorder.stop();
     });
@@ -423,7 +427,8 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   function processResult(
     recResult: import("microsoft-cognitiveservices-speech-sdk").SpeechRecognitionResult,
     SpeechSDK: SdkTypes,
-    audioBlob: Blob | null
+    audioBlob: Blob | null,
+    recordingDurationMs: number
   ) {
     const jsonStr = recResult.properties.getProperty(
       SpeechSDK.PropertyId.SpeechServiceResponse_JsonResult
@@ -449,7 +454,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
       },
       words: nbest.Words || [],
       recognizedText: recResult.text || "",
-      durationMs: recResult.duration / 10000,
+      durationMs: recordingDurationMs,
     };
 
     setResult(assessment);
@@ -463,14 +468,15 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
       displayText: string;
       totalDuration: number;
     },
-    audioBlob: Blob | null
+    audioBlob: Blob | null,
+    recordingDurationMs: number
   ) {
     const assessment: AssessmentResult = {
       detailResult: {} as AssessmentDetailResult,
       scores: data.scores,
       words: data.words,
       recognizedText: data.displayText,
-      durationMs: data.totalDuration / 10000,
+      durationMs: recordingDurationMs,
     };
     setResult(assessment);
     void saveAssessment(assessment, audioBlob);
