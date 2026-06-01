@@ -399,8 +399,17 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
     recognizedWords: WordResult[],
     refText: string
   ) {
-    const refWords = refText.toLowerCase().split(/\s+/);
-    const recWords = recognizedWords.map((w) => w.Word.toLowerCase());
+    // Strip leading/trailing punctuation (periods, commas, exclamation/question marks,
+    // quotation marks, etc.) so that "year," matches "year" and "'bun" matches "bun".
+    const stripPunct = (w: string) => w.replace(/^[^a-z0-9]+|[^a-z0-9]+$/g, "");
+    const refWords = refText
+      .toLowerCase()
+      .split(/\s+/)
+      .map(stripPunct)
+      .filter(Boolean);
+    const recWords = recognizedWords.map((w) =>
+      stripPunct(w.Word.toLowerCase())
+    );
 
     const matched = new Set<number>();
 
