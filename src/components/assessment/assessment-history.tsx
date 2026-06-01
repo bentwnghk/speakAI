@@ -226,23 +226,26 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
         <Separator />
 
         {hasAudio && (
-          <Card>
-            <CardContent className="flex items-center gap-3 py-3">
-              <audio controls className="w-full" preload="metadata">
-                <source
-                  src={`/api/assessment/${detail.id}/audio`}
-                />
-              </audio>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0"
-                onClick={() => downloadAudio({ id: detail.id } as HistoryItem)}
-              >
-                <Download className="size-4" />
-              </Button>
-            </CardContent>
-          </Card>
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold">{t.yourRecording}</h3>
+            <Card>
+              <CardContent className="flex items-center gap-3 py-3">
+                <audio controls className="w-full" preload="metadata">
+                  <source
+                    src={`/api/assessment/${detail.id}/audio`}
+                  />
+                </audio>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => downloadAudio({ id: detail.id } as HistoryItem)}
+                >
+                  <Download className="size-4" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         )}
 
         <Separator />

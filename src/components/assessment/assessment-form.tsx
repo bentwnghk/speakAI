@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { RotateCcw, History, Mic, FileText, SlidersHorizontal, Timer, Hand, BookOpen } from "lucide-react";
+import { RotateCcw, History, Mic, FileText, SlidersHorizontal, Timer, Hand, BookOpen, Download } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -73,6 +73,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   const [recordingState, setRecordingState] = useState<RecordingState>("idle");
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [errorFilter, setErrorFilter] = useState<AssessmentFilter>("All");
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recognizerRef = useRef<import("microsoft-cognitiveservices-speech-sdk").SpeechRecognizer | null>(null);
@@ -466,6 +467,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
     };
 
     setResult(assessment);
+    if (audioBlob) setAudioUrl(URL.createObjectURL(audioBlob));
     void saveAssessment(assessment, audioBlob);
   }
 
@@ -487,6 +489,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
       durationMs: recordingDurationMs,
     };
     setResult(assessment);
+    if (audioBlob) setAudioUrl(URL.createObjectURL(audioBlob));
     void saveAssessment(assessment, audioBlob);
   }
 
@@ -567,6 +570,8 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
   function handleReset() {
     setResult(null);
+    if (audioUrl) URL.revokeObjectURL(audioUrl);
+    setAudioUrl(null);
     setRecordingState("idle");
     setErrorFilter("All");
   }
@@ -678,6 +683,31 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
           </CardHeader>
           <CardContent className="space-y-6">
             <ScoreOverview scores={result.scores} t={at} />
+
+            <Separator />
+
+            {audioUrl && (
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">{at.yourRecording}</h3>
+                <Card>
+                  <CardContent className="flex items-center gap-3 py-3">
+                    <audio controls className="w-full" preload="metadata">
+                      <source src={audioUrl} />
+                    </audio>
+                    <a
+                      href={audioUrl}
+                      download={`assessment-recording.${audioUrl.includes("mp4") ? "mp4" : "webm"}`}
+                    >
+                      <Button variant="ghost" size="icon" className="shrink-0" asChild>
+                        <span>
+                          <Download className="size-4" />
+                        </span>
+                      </Button>
+                    </a>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             <Separator />
 

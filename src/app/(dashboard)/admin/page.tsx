@@ -1020,15 +1020,18 @@ export default function AdminDashboardPage() {
                   <Separator />
 
                   {assessmentDetail.audioPath && (
-                    <Card>
-                      <CardContent className="flex items-center gap-3 py-3">
-                        <audio controls className="w-full" preload="metadata">
-                          <source
-                            src={`/api/assessment/${selectedAssessmentId}/audio`}
-                          />
-                        </audio>
-                      </CardContent>
-                    </Card>
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-semibold">{t.assessment.yourRecording}</h3>
+                      <Card>
+                        <CardContent className="flex items-center gap-3 py-3">
+                          <audio controls className="w-full" preload="metadata">
+                            <source
+                              src={`/api/assessment/${selectedAssessmentId}/audio`}
+                            />
+                          </audio>
+                        </CardContent>
+                      </Card>
+                    </div>
                   )}
 
                   <Separator />
