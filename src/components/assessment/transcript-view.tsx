@@ -1,8 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import type { WordResult, ErrorType } from "@/types/assessment";
+
+function speakWord(word: string) {
+  if (typeof window === "undefined" || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(word);
+  utterance.rate = 0.85;
+  window.speechSynthesis.speak(utterance);
+}
 
 interface TranscriptViewProps {
   words: WordResult[];
@@ -94,10 +102,25 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
   const [tappedIdx, setTappedIdx] = useState<number | null>(null);
   const accuracyBuckets = { excellent: 0, good: 0, fair: 0 };
 
+  const handleWordTap = useCallback(
+    (e: React.MouseEvent | React.KeyboardEvent, i: number) => {
+      e.stopPropagation();
+      const nextIdx = tappedIdx === i ? null : i;
+      setTappedIdx(nextIdx);
+      if (nextIdx !== null) {
+        speakWord(words[i].Word);
+      }
+    },
+    [tappedIdx, words],
+  );
+
   useEffect(() => {
     if (tappedIdx === null) return;
     function dismiss() {
       setTappedIdx(null);
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
     }
     document.addEventListener("click", dismiss);
     document.addEventListener("touchstart", dismiss);
@@ -141,14 +164,11 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
                 tabIndex={0}
                 title={label}
                 aria-label={label}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setTappedIdx(isTapped ? null : i);
-                }}
+                onClick={(e) => handleWordTap(e, i)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    setTappedIdx(isTapped ? null : i);
+                    handleWordTap(e, i);
                   }
                 }}
                 className={cn(
