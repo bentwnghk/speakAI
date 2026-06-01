@@ -45,7 +45,8 @@ import {
   SyllableView,
 } from "@/components/assessment/word-detail";
 import { Separator } from "@/components/ui/separator";
-import type { SavedAssessment, WordResult, ErrorType } from "@/types/assessment";
+import type { SavedAssessment } from "@/types/assessment";
+import { type AssessmentFilter, filterWords } from "@/types/assessment";
 import { cn } from "@/lib/utils";
 
 const PAGE_SIZES = [10, 20, 30, 50, 100] as const;
@@ -254,7 +255,7 @@ export default function AdminDashboardPage() {
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
   const [assessmentDetail, setAssessmentDetail] = useState<SavedAssessment | null>(null);
   const [assessmentDetailLoading, setAssessmentDetailLoading] = useState(false);
-  const [assessmentErrorFilter, setAssessmentErrorFilter] = useState<ErrorType | "All">("All");
+  const [assessmentErrorFilter, setAssessmentErrorFilter] = useState<AssessmentFilter>("All");
 
   useEffect(() => {
     if (!selectedId) {
@@ -1011,10 +1012,7 @@ export default function AdminDashboardPage() {
                 PronScore: assessmentDetail.pronScore,
               };
               const words = assessmentDetail.words;
-              const filteredWords: WordResult[] =
-                assessmentErrorFilter === "All"
-                  ? words
-                  : words.filter((w) => w.PronunciationAssessment.ErrorType === assessmentErrorFilter);
+              const filteredWords = filterWords(words, assessmentErrorFilter);
               return (
                 <div className="space-y-4">
                   <ScoreOverview scores={scores} t={t.assessment} />

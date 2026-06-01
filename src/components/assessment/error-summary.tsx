@@ -1,13 +1,15 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import type { WordResult, ErrorType } from "@/types/assessment";
+import type { ErrorType } from "@/types/assessment";
+import { type AccuracyTier, type AssessmentFilter, getAccuracyTier } from "@/types/assessment";
+import type { WordResult } from "@/types/assessment";
 
 interface ErrorSummaryProps {
   words: WordResult[];
   t: Record<string, string>;
-  filter: ErrorType | "All";
-  onFilterChange: (filter: ErrorType | "All") => void;
+  filter: AssessmentFilter;
+  onFilterChange: (filter: AssessmentFilter) => void;
 }
 
 const ERROR_COLORS: Record<ErrorType, string> = {
@@ -20,45 +22,98 @@ const ERROR_COLORS: Record<ErrorType, string> = {
   Monotone: "bg-purple-500/15 text-purple-700 dark:text-purple-400 hover:bg-purple-500/25",
 };
 
+const TIER_COLORS: Record<AccuracyTier, string> = {
+  Excellent: "bg-green-500/15 text-green-700 dark:text-green-400 hover:bg-green-500/25",
+  Good: "bg-green-500/15 text-green-600 dark:text-green-500 hover:bg-green-500/25",
+  Fair: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/25",
+};
+
+const TIERS: AccuracyTier[] = ["Excellent", "Good", "Fair"];
+
+const ERROR_TYPES: ErrorType[] = [
+  "Mispronunciation",
+  "Omission",
+  "Insertion",
+  "UnexpectedBreak",
+  "MissingBreak",
+  "Monotone",
+];
+
 export function ErrorSummary({ words, t, filter, onFilterChange }: ErrorSummaryProps) {
-  const counts: Record<string, number> = {};
+  const tierCounts: Record<AccuracyTier, number> = { Excellent: 0, Good: 0, Fair: 0 };
+  const errorCounts: Record<string, number> = {};
+
   for (const w of words) {
     const et = w.PronunciationAssessment.ErrorType;
-    counts[et] = (counts[et] || 0) + 1;
+    if (et === "None") {
+      tierCounts[getAccuracyTier(w.PronunciationAssessment.AccuracyScore)]++;
+    } else {
+      errorCounts[et] = (errorCounts[et] || 0) + 1;
+    }
   }
 
+  const hasErrors = ERROR_TYPES.some((et) => (errorCounts[et] ?? 0) > 0);
+
   return (
-    <div className="flex flex-wrap gap-2">
-      <button
-        type="button"
-        onClick={() => onFilterChange("All")}
-        className={cn(
-          "cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-colors",
-          filter === "All"
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted text-muted-foreground hover:bg-accent"
-        )}
-      >
-        All ({words.length})
-      </button>
-      {(Object.keys(ERROR_COLORS) as ErrorType[]).map((type) => {
-        const count = counts[type] ?? 0;
-        if (count === 0 && type !== "None") return null;
-        return (
-          <button
-            key={type}
-            type="button"
-            onClick={() => onFilterChange(type)}
-            className={cn(
-              "cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-colors",
-              ERROR_COLORS[type],
-              filter === type && "ring-2 ring-primary ring-offset-1"
-            )}
-          >
-            {String(t[`error${type}`] ?? type)} ({count})
-          </button>
-        );
-      })}
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-muted-foreground">{t.accuracyLabel}</span>
+        <button
+          type="button"
+          onClick={() => onFilterChange("All")}
+          className={cn(
+            "cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-colors",
+            filter === "All"
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted text-muted-foreground hover:bg-accent"
+          )}
+        >
+          All ({words.length})
+        </button>
+        {TIERS.map((tier) => {
+          const count = tierCounts[tier];
+          if (count === 0) return null;
+          const tierFilter = `None:${tier}` as AssessmentFilter;
+          const key = `accuracy${tier}`;
+          return (
+            <button
+              key={tier}
+              type="button"
+              onClick={() => onFilterChange(tierFilter)}
+              className={cn(
+                "cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                TIER_COLORS[tier],
+                filter === tierFilter && "ring-2 ring-primary ring-offset-1"
+              )}
+            >
+              {String(t[key] ?? tier)} ({count})
+            </button>
+          );
+        })}
+      </div>
+      {hasErrors && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground">{t.errorLabel}</span>
+          {ERROR_TYPES.map((type) => {
+            const count = errorCounts[type] ?? 0;
+            if (count === 0) return null;
+            return (
+              <button
+                key={type}
+                type="button"
+                onClick={() => onFilterChange(type)}
+                className={cn(
+                  "cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-colors",
+                  ERROR_COLORS[type],
+                  filter === type && "ring-2 ring-primary ring-offset-1"
+                )}
+              >
+                {String(t[`error${type}`] ?? type)} ({count})
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

@@ -37,10 +37,9 @@ import {
 import { cn } from "@/lib/utils";
 import type {
   SavedAssessment,
-  WordResult,
-  ErrorType,
   PronunciationScores,
 } from "@/types/assessment";
+import { type AssessmentFilter, filterWords } from "@/types/assessment";
 
 interface AssessmentHistoryProps {
   t: Record<string, string>;
@@ -86,7 +85,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<SavedAssessment | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [errorFilter, setErrorFilter] = useState<ErrorType | "All">("All");
+  const [errorFilter, setErrorFilter] = useState<AssessmentFilter>("All");
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
@@ -188,10 +187,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
       PronScore: detail.pronScore,
     };
     const words = detail.words;
-    const filteredWords: WordResult[] =
-      errorFilter === "All"
-        ? words
-        : words.filter((w) => w.PronunciationAssessment.ErrorType === errorFilter);
+    const filteredWords = filterWords(words, errorFilter);
     const hasAudio = !!detail.id;
     const daysLeft = getDaysUntilExpiry(detail.expiresAt ?? null);
     const nearExpiry = daysLeft !== null && daysLeft <= 14;

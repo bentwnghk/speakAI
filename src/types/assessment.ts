@@ -71,6 +71,32 @@ export interface AssessmentResult {
   durationMs: number;
 }
 
+export type AccuracyTier = "Excellent" | "Good" | "Fair";
+
+export type AssessmentFilter =
+  | "All"
+  | ErrorType
+  | `None:${AccuracyTier}`;
+
+export function getAccuracyTier(score: number): AccuracyTier {
+  if (score >= 90) return "Excellent";
+  if (score >= 80) return "Good";
+  return "Fair";
+}
+
+export function filterWords(words: WordResult[], filter: AssessmentFilter): WordResult[] {
+  if (filter === "All") return words;
+  if (filter.startsWith("None:")) {
+    const tier = filter.slice(5) as AccuracyTier;
+    return words.filter(
+      (w) =>
+        w.PronunciationAssessment.ErrorType === "None" &&
+        getAccuracyTier(w.PronunciationAssessment.AccuracyScore) === tier
+    );
+  }
+  return words.filter((w) => w.PronunciationAssessment.ErrorType === filter);
+}
+
 export type GranularityLevel = "FullText" | "Word" | "Phoneme";
 
 export type RecordingMode = "auto" | "manual";

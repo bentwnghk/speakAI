@@ -34,9 +34,9 @@ import type {
   RecordingMode,
   RecordingState,
   WordResult,
-  ErrorType,
   PronunciationScores,
 } from "@/types/assessment";
+import { type AssessmentFilter, filterWords } from "@/types/assessment";
 
 const SAMPLE_TEXTS = [
   "sample1",
@@ -72,7 +72,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   const [mode, setMode] = useState<RecordingMode>("auto");
   const [recordingState, setRecordingState] = useState<RecordingState>("idle");
   const [result, setResult] = useState<AssessmentResult | null>(null);
-  const [errorFilter, setErrorFilter] = useState<ErrorType | "All">("All");
+  const [errorFilter, setErrorFilter] = useState<AssessmentFilter>("All");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recognizerRef = useRef<import("microsoft-cognitiveservices-speech-sdk").SpeechRecognizer | null>(null);
@@ -576,12 +576,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
     if (sample) setReferenceText(sample);
   }
 
-  const filteredWords: WordResult[] =
-    errorFilter === "All"
-      ? result?.words ?? []
-      : (result?.words ?? []).filter(
-          (w) => w.PronunciationAssessment.ErrorType === errorFilter
-        );
+  const filteredWords = filterWords(result?.words ?? [], errorFilter);
 
   return (
     <div className="space-y-6">
