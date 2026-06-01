@@ -1,15 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import type { WordResult, ErrorType } from "@/types/assessment";
 
-function speakWord(word: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(word);
-  utterance.rate = 0.85;
-  window.speechSynthesis.speak(utterance);
+async function fetchWordAudio(word: string): Promise<string | null> {
+  try {
+    const res = await fetch("/api/tts/word", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ word }),
+    });
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return URL.createObjectURL(blob);
+  } catch {
+    return null;
+  }
 }
 
 interface TranscriptViewProps {
@@ -101,26 +108,48 @@ function WordInfoBar({
 export function TranscriptView({ words, t }: TranscriptViewProps) {
   const [tappedIdx, setTappedIdx] = useState<number | null>(null);
   const accuracyBuckets = { excellent: 0, good: 0, fair: 0 };
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+
+  const stopAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current = null;
+    }
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+  }, []);
 
   const handleWordTap = useCallback(
     (e: React.MouseEvent | React.KeyboardEvent, i: number) => {
       e.stopPropagation();
       const nextIdx = tappedIdx === i ? null : i;
       setTappedIdx(nextIdx);
+
+      stopAudio();
+
       if (nextIdx !== null) {
-        speakWord(words[i].Word);
+        const word = words[i].Word;
+        void fetchWordAudio(word).then((url) => {
+          if (!url) return;
+          audioUrlRef.current = url;
+          const audio = new Audio(url);
+          audioRef.current = audio;
+          audio.play().catch(() => {});
+        });
       }
     },
-    [tappedIdx, words],
+    [tappedIdx, words, stopAudio],
   );
 
   useEffect(() => {
     if (tappedIdx === null) return;
     function dismiss() {
       setTappedIdx(null);
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-      }
+      stopAudio();
     }
     document.addEventListener("click", dismiss);
     document.addEventListener("touchstart", dismiss);
@@ -128,7 +157,11 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
       document.removeEventListener("click", dismiss);
       document.removeEventListener("touchstart", dismiss);
     };
-  }, [tappedIdx]);
+  }, [tappedIdx, stopAudio]);
+
+  useEffect(() => {
+    return () => { stopAudio(); };
+  }, [stopAudio]);
 
   const tappedWord = tappedIdx !== null ? words[tappedIdx] : null;
   const tappedLabel = tappedWord ? getWordLabel(tappedWord, t) : null;
