@@ -11,8 +11,7 @@ interface WordDetailProps {
   expandAll?: boolean;
 }
 
-const ERROR_COLORS: Record<ErrorType, string> = {
-  None: "text-green-600 dark:text-green-400",
+const ERROR_COLORS: Record<Exclude<ErrorType, "None">, string> = {
   Mispronunciation: "text-red-600 dark:text-red-400",
   Omission: "text-muted-foreground",
   Insertion: "text-orange-600 dark:text-orange-400",
@@ -21,8 +20,7 @@ const ERROR_COLORS: Record<ErrorType, string> = {
   Monotone: "text-purple-600 dark:text-purple-400",
 };
 
-const ERROR_BG: Record<ErrorType, string> = {
-  None: "bg-green-500/10 border-green-500/20",
+const ERROR_BG: Record<Exclude<ErrorType, "None">, string> = {
   Mispronunciation: "bg-red-500/10 border-red-500/20",
   Omission: "bg-muted/50 border-muted",
   Insertion: "bg-orange-500/10 border-orange-500/20",
@@ -30,6 +28,18 @@ const ERROR_BG: Record<ErrorType, string> = {
   MissingBreak: "bg-blue-500/10 border-blue-500/20",
   Monotone: "bg-purple-500/10 border-purple-500/20",
 };
+
+function getAccuracyTextColor(score: number): string {
+  if (score >= 90) return "text-green-600 dark:text-green-400";
+  if (score >= 80) return "text-lime-600 dark:text-lime-400";
+  return "text-yellow-600 dark:text-yellow-400";
+}
+
+function getAccuracyBg(score: number): string {
+  if (score >= 90) return "bg-green-500/15 border-green-500/20";
+  if (score >= 80) return "bg-lime-500/10 border-lime-500/20";
+  return "bg-yellow-500/10 border-yellow-500/20";
+}
 
 export function WordDetail({ words, t, expandAll }: WordDetailProps) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
@@ -44,13 +54,15 @@ export function WordDetail({ words, t, expandAll }: WordDetailProps) {
         const isExpanded = expandAll || expandedIdx === i;
         const hasPhonemes = word.Phonemes && word.Phonemes.length > 0;
 
+        const resolvedScore = score ?? 0;
+
         return (
           <div key={i}>
             <button
               type="button"
               className={cn(
                 "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-accent/50",
-                ERROR_BG[errorType]
+                isError ? ERROR_BG[errorType] : getAccuracyBg(resolvedScore)
               )}
               onClick={() => !expandAll && setExpandedIdx(isExpanded ? null : i)}
             >
@@ -65,7 +77,7 @@ export function WordDetail({ words, t, expandAll }: WordDetailProps) {
               <span className="font-medium">{word.Word}</span>
 
               <span
-                className={cn("ml-auto tabular-nums font-semibold", isError ? ERROR_COLORS[errorType] : "text-green-600 dark:text-green-400")}
+                className={cn("ml-auto tabular-nums font-semibold", isError ? ERROR_COLORS[errorType] : getAccuracyTextColor(resolvedScore))}
               >
                 {score ?? "\u2013"}
               </span>
@@ -73,7 +85,7 @@ export function WordDetail({ words, t, expandAll }: WordDetailProps) {
               <span
                 className={cn(
                   "text-xs",
-                  isError ? ERROR_COLORS[errorType] : "text-muted-foreground"
+                  isError ? ERROR_COLORS[errorType] : getAccuracyTextColor(resolvedScore)
                 )}
               >
                 {isError
