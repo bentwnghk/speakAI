@@ -56,20 +56,20 @@ export function ErrorSummary({ words, t, filter, onFilterChange }: ErrorSummaryP
 
   return (
     <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => onFilterChange("All")}
+        className={cn(
+          "cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-colors",
+          filter === "All"
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-muted-foreground hover:bg-accent"
+        )}
+      >
+        All ({words.length})
+      </button>
       <div className="flex flex-wrap items-center gap-2">
         <span className="text-xs font-medium text-muted-foreground">{t.accuracyLabel}</span>
-        <button
-          type="button"
-          onClick={() => onFilterChange("All")}
-          className={cn(
-            "cursor-pointer rounded-full px-3 py-1 text-xs font-medium transition-colors",
-            filter === "All"
-              ? "bg-primary text-primary-foreground"
-              : "bg-muted text-muted-foreground hover:bg-accent"
-          )}
-        >
-          All ({words.length})
-        </button>
         {TIERS.map((tier) => {
           const count = tierCounts[tier];
           if (count === 0) return null;
