@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { RotateCcw, History, Mic } from "lucide-react";
+import { RotateCcw, History, Mic, FileText, SlidersHorizontal, Timer, Hand, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -588,10 +588,10 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>{at.referenceText}</span>
+            <span className="flex items-center gap-1.5"><FileText className="size-4" />{at.referenceText}</span>
             <Select onValueChange={handleSample}>
               <SelectTrigger className="w-40">
-                <SelectValue placeholder={at.sampleTexts} />
+                <SelectValue placeholder={<span className="flex items-center gap-1.5"><BookOpen className="size-3.5" />{at.sampleTexts}</span>} />
               </SelectTrigger>
               <SelectContent>
                 {SAMPLE_TEXTS.map((key) => (
@@ -602,9 +602,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
               </SelectContent>
             </Select>
           </CardTitle>
-          <CardDescription>
-            <span>{at.referencePlaceholder}</span>
-          </CardDescription>
+
         </CardHeader>
         <CardContent className="space-y-3">
           <Textarea
@@ -625,7 +623,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
           <Separator />
 
           <div className="space-y-2">
-            <p className="text-sm font-medium">{at.modeLabel}</p>
+            <p className="text-sm font-medium"><SlidersHorizontal className="inline size-4 mr-1.5 align-text-bottom" />{at.modeLabel}</p>
             <div className="flex gap-2">
               <Button
                 size="sm"
@@ -633,6 +631,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
                 onClick={() => setMode("auto")}
                 disabled={recordingState === "recording"}
               >
+                <Timer className="size-3.5" />
                 {at.modeAuto}
               </Button>
               <Button
@@ -641,6 +640,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
                 onClick={() => setMode("manual")}
                 disabled={recordingState === "recording"}
               >
+                <Hand className="size-3.5" />
                 {at.modeManual}
               </Button>
             </div>
