@@ -5,7 +5,17 @@ import { db } from "@/lib/db";
 import { assessments } from "@/lib/db/schema";
 import { eq, and, or, isNull, gt } from "drizzle-orm";
 import { readFile, stat as fsStat } from "fs/promises";
-import { join } from "path";
+import { join, extname } from "path";
+
+const EXT_MIME: Record<string, string> = {
+  ".mp4": "audio/mp4",
+  ".m4a": "audio/mp4",
+  ".webm": "audio/webm",
+};
+
+function audioContentType(audioPath: string): string {
+  return EXT_MIME[extname(audioPath).toLowerCase()] ?? "audio/webm";
+}
 
 export async function GET(
   request: NextRequest,
@@ -69,7 +79,7 @@ export async function GET(
     return new Response(buf, {
       status: 206,
       headers: {
-        "Content-Type": "audio/webm",
+        "Content-Type": audioContentType(row.audioPath),
         "Content-Length": chunkSize.toString(),
         "Content-Range": `bytes ${start}-${end}/${fileSize}`,
         "Accept-Ranges": "bytes",
@@ -82,7 +92,7 @@ export async function GET(
     const audioBuffer = await readFile(absolutePath);
     return new Response(audioBuffer, {
       headers: {
-        "Content-Type": "audio/webm",
+        "Content-Type": audioContentType(row.audioPath),
         "Content-Length": audioBuffer.length.toString(),
         "Accept-Ranges": "bytes",
         "Cache-Control": "private, max-age=86400",

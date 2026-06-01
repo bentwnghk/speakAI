@@ -1027,7 +1027,6 @@ export default function AdminDashboardPage() {
                         <audio controls className="w-full" preload="metadata">
                           <source
                             src={`/api/assessment/${selectedAssessmentId}/audio`}
-                            type="audio/webm"
                           />
                         </audio>
                       </CardContent>

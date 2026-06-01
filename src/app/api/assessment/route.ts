@@ -84,7 +84,9 @@ export async function POST(request: Request) {
       if (audioFile && audioFile.size > 0) {
         const audioDir = join(process.cwd(), "data", "recording");
         await mkdir(audioDir, { recursive: true });
-        const filename = `${nanoid()}.webm`;
+        const audioMimeType = (formData.get("audioMimeType") as string) || audioFile.type || "audio/webm";
+        const ext = audioMimeType.includes("mp4") ? "mp4" : "webm";
+        const filename = `${nanoid()}.${ext}`;
         audioPath = join("data", "recording", filename);
         const buffer = Buffer.from(await audioFile.arrayBuffer());
         await writeFile(join(process.cwd(), audioPath), buffer);

@@ -95,7 +95,14 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream);
+      const mimeType = MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+          ? "audio/webm;codecs=opus"
+          : undefined;
+      mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
@@ -489,7 +496,9 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
         })
       );
       if (audioBlob) {
-        formData.append("audio", audioBlob, "recording.webm");
+        const ext = audioBlob.type.includes("mp4") ? "mp4" : "webm";
+        formData.append("audio", audioBlob, `recording.${ext}`);
+        formData.append("audioMimeType", audioBlob.type || "audio/webm");
       }
 
       const res = await fetch("/api/assessment", {

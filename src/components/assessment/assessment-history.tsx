@@ -154,7 +154,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
   function downloadAudio(item: HistoryItem) {
     const a = document.createElement("a");
     a.href = `/api/assessment/${item.id}/audio`;
-    a.download = `assessment-${item.id}.webm`;
+    a.download = `assessment-${item.id}.mp4`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -235,7 +235,6 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
               <audio controls className="w-full" preload="metadata">
                 <source
                   src={`/api/assessment/${detail.id}/audio`}
-                  type="audio/webm"
                 />
               </audio>
               <Button
