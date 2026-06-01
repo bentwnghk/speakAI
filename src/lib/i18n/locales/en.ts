@@ -182,7 +182,7 @@ const en = {
     completeness: "Completeness",
     prosody: "Prosody",
     recognizedText: "What You Said",
-    yourRecording: "Your Recording",
+    yourRecording: "Recording",
     referenceTextLabel: "Reference",
     wordDetails: "Word Details",
     phonemeDetails: "Phoneme Details",
