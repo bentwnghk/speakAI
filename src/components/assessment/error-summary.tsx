@@ -23,9 +23,9 @@ const ERROR_COLORS: Record<ErrorType, string> = {
 };
 
 const TIER_COLORS: Record<AccuracyTier, string> = {
-  Excellent: "bg-green-500/15 text-green-700 dark:text-green-400 hover:bg-green-500/25",
-  Good: "bg-green-500/15 text-green-600 dark:text-green-500 hover:bg-green-500/25",
-  Fair: "bg-yellow-500/15 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-500/25",
+  Excellent: "bg-green-500/15 text-green-600 dark:text-green-400 hover:bg-green-500/25",
+  Good: "bg-lime-500/10 text-lime-600 dark:text-lime-400 hover:bg-lime-500/20",
+  Fair: "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 hover:bg-yellow-500/20",
 };
 
 const TIERS: AccuracyTier[] = ["Excellent", "Good", "Fair"];

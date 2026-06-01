@@ -187,7 +187,7 @@ const zhTW: TranslationKeys = {
     referenceTextLabel: "參考文本",
     wordDetails: "單詞詳情",
     phonemeDetails: "音素詳情",
-    granularity: "粒度",
+    granularity: "分析細節",
     granFullText: "全文",
     granWord: "單詞",
     granPhoneme: "音素",

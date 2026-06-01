@@ -185,7 +185,7 @@ const en = {
     referenceTextLabel: "Reference",
     wordDetails: "Word Details",
     phonemeDetails: "Phoneme Details",
-    granularity: "Granularity",
+    granularity: "Breakdown",
     granFullText: "Full Text",
     granWord: "Word",
     granPhoneme: "Phoneme",
