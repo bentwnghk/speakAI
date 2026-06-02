@@ -38,6 +38,7 @@ export function PlayWordButton({
     <button
       type="button"
       onClick={handlePlay}
+      onTouchStart={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}
       className="inline-flex items-center justify-center rounded p-0.5 text-muted-foreground transition-colors hover:text-foreground hover:bg-muted"
       aria-label={label ?? "Play pronunciation"}
