@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
 import { db } from "@/lib/db";
 import { assessments } from "@/lib/db/schema";
-import { eq, and, or, isNull, gt } from "drizzle-orm";
+import { eq, and, or, isNull, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { unlink } from "fs/promises";
 import { join } from "path";
@@ -86,6 +86,7 @@ export async function DELETE(
 
 const patchSchema = z.object({
   referenceAudioPath: z.string().min(1),
+  referenceAudioCost: z.number().positive().optional(),
 });
 
 export async function PATCH(
@@ -103,7 +104,12 @@ export async function PATCH(
 
   const result = await db
     .update(assessments)
-    .set({ referenceAudioPath: data.referenceAudioPath })
+    .set({
+      referenceAudioPath: data.referenceAudioPath,
+      ...(data.referenceAudioCost != null
+        ? { cost: sql`${assessments.cost} + ${data.referenceAudioCost}` }
+        : {}),
+    })
     .where(
       and(eq(assessments.id, id), eq(assessments.userId, session.user.id))
     )

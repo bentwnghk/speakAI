@@ -13,10 +13,10 @@ interface ReferenceAudioSectionProps {
   referenceText: string;
   t: Record<string, string>;
   assessmentId?: string;
-  onCostIncurred?: (cost: number) => void;
+  onCostUpdate?: (cost: number) => void;
 }
 
-export function ReferenceAudioSection({ referenceText, t, assessmentId, onCostIncurred }: ReferenceAudioSectionProps) {
+export function ReferenceAudioSection({ referenceText, t, assessmentId, onCostUpdate }: ReferenceAudioSectionProps) {
   const [refAudioUrl, setRefAudioUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [voice, setVoice] = useState("Female 1");
@@ -53,7 +53,7 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, onCostIn
       setRefAudioUrl(data.audioUrl);
       void refreshBalance();
       const cost = parseFloat(data.ttsCost ?? "0");
-      onCostIncurred?.(cost);
+      onCostUpdate?.(cost);
       toast.info(
         (t.referenceAudioCost ?? "Reference audio generated — HK${cost} deducted")
           .replace("${cost}", data.ttsCost ?? "0.00")
@@ -63,7 +63,10 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, onCostIn
         await fetch(`/api/assessment/${assessmentId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ referenceAudioPath: data.audioPath }),
+          body: JSON.stringify({
+            referenceAudioPath: data.audioPath,
+            referenceAudioCost: cost,
+          }),
         });
       }
     } catch (error) {
