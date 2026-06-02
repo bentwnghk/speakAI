@@ -91,6 +91,10 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
 
+  const handleWordCost = useCallback((cost: number) => {
+    setDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev);
+  }, []);
+
   const totalPages = Math.ceil(total / limit);
 
   const loadHistory = useCallback(async () => {
@@ -195,9 +199,6 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
     const hasAudio = !!detail.id;
     const daysLeft = getDaysUntilExpiry(detail.expiresAt ?? null);
     const nearExpiry = daysLeft !== null && daysLeft <= 14;
-    const handleWordCost = useCallback((cost: number) => {
-      setDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev);
-    }, []);
 
     return (
       <div className="space-y-4">
