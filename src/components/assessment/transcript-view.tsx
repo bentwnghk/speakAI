@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { WordResult, ErrorType } from "@/types/assessment";
-import { PlayWordButton, fetchWordAudio } from "./play-word-button";
+import { fetchWordAudio } from "./play-word-button";
 import { useCredits } from "@/hooks/use-credits";
 
 interface TranscriptViewProps {
@@ -86,7 +86,6 @@ function WordInfoBar({
           /{phonemes}/
         </span>
       )}
-      <PlayWordButton word={word.Word} label={t.playPronunciation} costLabel={t.wordPronunciationCost} />
       {isError && (
         <span className="text-destructive">
           {String(t[`error${errorType}`] ?? errorType)}
