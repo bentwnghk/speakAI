@@ -65,7 +65,7 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, onCostUp
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             referenceAudioPath: data.audioPath,
-            referenceAudioCost: cost,
+            additionalCost: cost,
           }),
         });
       }

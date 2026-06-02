@@ -92,7 +92,15 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
   const [total, setTotal] = useState(0);
 
   const handleWordCost = useCallback((cost: number) => {
-    setDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev);
+    setDetail((prev) => {
+      if (!prev) return prev;
+      void fetch(`/api/assessment/${prev.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ additionalCost: cost }),
+      });
+      return { ...prev, cost: prev.cost + cost };
+    });
   }, []);
 
   const totalPages = Math.ceil(total / limit);

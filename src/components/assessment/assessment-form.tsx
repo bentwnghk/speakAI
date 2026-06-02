@@ -79,6 +79,17 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   const [savedAssessmentId, setSavedAssessmentId] = useState<string | null>(null);
   const [savedCost, setSavedCost] = useState<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+
+  const handleWordCost = useCallback((cost: number) => {
+    setSavedCost((prev) => (prev ?? 0) + cost);
+    if (savedAssessmentId) {
+      void fetch(`/api/assessment/${savedAssessmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ additionalCost: cost }),
+      });
+    }
+  }, [savedAssessmentId]);
   const audioChunksRef = useRef<Blob[]>([]);
   const recognizerRef = useRef<import("microsoft-cognitiveservices-speech-sdk").SpeechRecognizer | null>(null);
   const userStoppedRef = useRef(false);
@@ -722,7 +733,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">{at.recognizedText}</h3>
-              <TranscriptView words={result.words} t={at} onCostUpdate={(cost) => setSavedCost((prev) => (prev ?? 0) + cost)} />
+              <TranscriptView words={result.words} t={at} onCostUpdate={handleWordCost} />
             </div>
 
             <Separator />
@@ -758,26 +769,26 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
               <TabsContent value="word">
                 <div className="max-h-96 overflow-y-auto">
-                  <WordDetail words={filteredWords} t={at} onCostUpdate={(cost) => setSavedCost((prev) => (prev ?? 0) + cost)} />
+                  <WordDetail words={filteredWords} t={at} onCostUpdate={handleWordCost} />
                 </div>
               </TabsContent>
 
               <TabsContent value="syllable">
                 <div className="max-h-96 overflow-y-auto">
-                  <SyllableView words={filteredWords} t={at} onCostUpdate={(cost) => setSavedCost((prev) => (prev ?? 0) + cost)} />
+                  <SyllableView words={filteredWords} t={at} onCostUpdate={handleWordCost} />
                 </div>
               </TabsContent>
 
               <TabsContent value="phoneme">
                 <div className="max-h-96 overflow-y-auto">
-                  <WordDetail words={filteredWords} t={at} expandAll onCostUpdate={(cost) => setSavedCost((prev) => (prev ?? 0) + cost)} />
+                  <WordDetail words={filteredWords} t={at} expandAll onCostUpdate={handleWordCost} />
                 </div>
               </TabsContent>
             </Tabs>
 
             <Separator />
 
-            <ReferenceAudioSection referenceText={referenceText} t={at} assessmentId={savedAssessmentId ?? undefined} onCostUpdate={(cost) => setSavedCost((prev) => (prev ?? 0) + cost)} />
+            <ReferenceAudioSection referenceText={referenceText} t={at} assessmentId={savedAssessmentId ?? undefined} onCostUpdate={handleWordCost} />
 
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">

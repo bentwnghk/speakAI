@@ -258,6 +258,18 @@ export default function AdminDashboardPage() {
   const [assessmentDetailLoading, setAssessmentDetailLoading] = useState(false);
   const [assessmentErrorFilter, setAssessmentErrorFilter] = useState<AssessmentFilter>("All");
 
+  const handleAssessmentWordCost = useCallback((cost: number) => {
+    setAssessmentDetail((prev) => {
+      if (!prev) return prev;
+      void fetch(`/api/assessment/${prev.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ additionalCost: cost }),
+      });
+      return { ...prev, cost: prev.cost + cost };
+    });
+  }, []);
+
   useEffect(() => {
     if (!selectedId) {
       setDetail(null);
@@ -1039,7 +1051,7 @@ export default function AdminDashboardPage() {
 
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold">{t.assessment.recognizedText}</h3>
-                    <TranscriptView words={words} t={t.assessment} onCostUpdate={(cost) => setAssessmentDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev)} />
+                    <TranscriptView words={words} t={t.assessment} onCostUpdate={handleAssessmentWordCost} />
                   </div>
 
                   <Separator />
@@ -1075,19 +1087,19 @@ export default function AdminDashboardPage() {
 
                     <TabsContent value="word">
                       <div className="max-h-96 overflow-y-auto">
-                        <WordDetail words={filteredWords} t={t.assessment} onCostUpdate={(cost) => setAssessmentDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev)} />
+                        <WordDetail words={filteredWords} t={t.assessment} onCostUpdate={handleAssessmentWordCost} />
                       </div>
                     </TabsContent>
 
                     <TabsContent value="syllable">
                       <div className="max-h-96 overflow-y-auto">
-                        <SyllableView words={filteredWords} t={t.assessment} onCostUpdate={(cost) => setAssessmentDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev)} />
+                        <SyllableView words={filteredWords} t={t.assessment} onCostUpdate={handleAssessmentWordCost} />
                       </div>
                     </TabsContent>
 
                     <TabsContent value="phoneme">
                       <div className="max-h-96 overflow-y-auto">
-                        <WordDetail words={filteredWords} t={t.assessment} expandAll onCostUpdate={(cost) => setAssessmentDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev)} />
+                        <WordDetail words={filteredWords} t={t.assessment} expandAll onCostUpdate={handleAssessmentWordCost} />
                       </div>
                     </TabsContent>
                   </Tabs>

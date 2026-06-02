@@ -85,8 +85,10 @@ export async function DELETE(
 }
 
 const patchSchema = z.object({
-  referenceAudioPath: z.string().min(1),
-  referenceAudioCost: z.number().positive().optional(),
+  referenceAudioPath: z.string().min(1).optional(),
+  additionalCost: z.number().positive().optional(),
+}).refine((d) => d.referenceAudioPath != null || d.additionalCost != null, {
+  message: "At least one of referenceAudioPath or additionalCost is required",
 });
 
 export async function PATCH(
@@ -105,9 +107,11 @@ export async function PATCH(
   const result = await db
     .update(assessments)
     .set({
-      referenceAudioPath: data.referenceAudioPath,
-      ...(data.referenceAudioCost != null
-        ? { cost: sql`${assessments.cost} + ${data.referenceAudioCost}` }
+      ...(data.referenceAudioPath != null
+        ? { referenceAudioPath: data.referenceAudioPath }
+        : {}),
+      ...(data.additionalCost != null
+        ? { cost: sql`${assessments.cost} + ${data.additionalCost}` }
         : {}),
     })
     .where(
