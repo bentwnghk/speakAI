@@ -1,8 +1,48 @@
 "use client";
 
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PronunciationScores } from "@/types/assessment";
+
+function InfoTip({ text }: { text: string }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+
+  const dismiss = useCallback((e: MouseEvent | TouchEvent) => {
+    if (ref.current && e.target instanceof Node && ref.current.contains(e.target)) return;
+    setOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    document.addEventListener("click", dismiss, true);
+    document.addEventListener("touchstart", dismiss, true);
+    return () => {
+      document.removeEventListener("click", dismiss, true);
+      document.removeEventListener("touchstart", dismiss, true);
+    };
+  }, [open, dismiss]);
+
+  return (
+    <span ref={ref} className="relative inline-flex">
+      <Info
+        className="size-3.5 cursor-pointer text-muted-foreground/60"
+        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        onTouchStart={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      />
+      <span
+        className={cn(
+          "absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-md bg-popover px-2.5 py-1.5 text-xs font-normal text-popover-foreground shadow-lg ring-1 ring-border transition-opacity",
+          open ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
 
 interface ScoreOverviewProps {
   scores: PronunciationScores;
@@ -35,16 +75,7 @@ function ScoreBar({
       <div className="flex items-center justify-between text-sm">
         <span className="inline-flex items-center gap-1 font-medium">
           {label}
-          {description && (
-            <span className="group relative inline-flex">
-              <Info className="size-3.5 text-muted-foreground/60" />
-              <span
-                className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-md bg-popover px-2.5 py-1.5 text-xs font-normal text-popover-foreground opacity-0 shadow-lg ring-1 ring-border transition-opacity group-hover:opacity-100"
-              >
-                {description}
-              </span>
-            </span>
-          )}
+          {description && <InfoTip text={description} />}
         </span>
         <span className={cn("font-bold tabular-nums", na ? "text-muted-foreground" : color)}>
           {na ? "\u2013" : Math.round(score)}
