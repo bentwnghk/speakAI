@@ -10,6 +10,7 @@ interface WordDetailProps {
   words: WordResult[];
   t: Record<string, string>;
   expandAll?: boolean;
+  onCostUpdate?: (cost: number) => void;
 }
 
 const ERROR_COLORS: Record<Exclude<ErrorType, "None">, string> = {
@@ -42,7 +43,7 @@ function getAccuracyBg(score: number): string {
   return "bg-yellow-500/10 border-yellow-500/20";
 }
 
-export function WordDetail({ words, t, expandAll }: WordDetailProps) {
+export function WordDetail({ words, t, expandAll, onCostUpdate }: WordDetailProps) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   return (
@@ -96,7 +97,7 @@ export function WordDetail({ words, t, expandAll }: WordDetailProps) {
             </button>
 
             {isExpanded && hasPhonemes && word.Phonemes && (
-              <PhonemeBreakdown phonemes={word.Phonemes} wordText={word.Word} t={t} />
+              <PhonemeBreakdown phonemes={word.Phonemes} wordText={word.Word} t={t} onCostUpdate={onCostUpdate} />
             )}
           </div>
         );
@@ -109,10 +110,12 @@ function PhonemeBreakdown({
   phonemes,
   wordText,
   t,
+  onCostUpdate,
 }: {
   phonemes: PhonemeResult[];
   wordText: string;
   t: Record<string, string>;
+  onCostUpdate?: (cost: number) => void;
 }) {
   return (
     <div className="ml-6 mt-1 space-y-2 rounded-lg border bg-card p-3">
@@ -121,7 +124,7 @@ function PhonemeBreakdown({
         <span className="font-mono text-foreground">
           /{phonemes.map((p) => p.Phoneme).join("")}/
         </span>
-        <PlayWordButton word={wordText} label={t.playPronunciation} costLabel={t.wordPronunciationCost} />
+        <PlayWordButton word={wordText} label={t.playPronunciation} costLabel={t.wordPronunciationCost} onCostUpdate={onCostUpdate} />
       </div>
 
       <div className="grid gap-2">
@@ -223,7 +226,7 @@ function NBestDetail({
   );
 }
 
-export function SyllableView({ words, t }: { words: WordResult[]; t: Record<string, string> }) {
+export function SyllableView({ words, t, onCostUpdate }: { words: WordResult[]; t: Record<string, string>; onCostUpdate?: (cost: number) => void }) {
   const allSyllables: { word: string; syllable: SyllableResult }[] = [];
   for (const w of words) {
     if (w.Syllables) {
@@ -261,7 +264,7 @@ export function SyllableView({ words, t }: { words: WordResult[]; t: Record<stri
               ({item.word})
             </span>
 
-            <PlayWordButton word={item.word} label={t.playPronunciation} costLabel={t.wordPronunciationCost} />
+            <PlayWordButton word={item.word} label={t.playPronunciation} costLabel={t.wordPronunciationCost} onCostUpdate={onCostUpdate} />
 
             <div className="flex-1">
               <div className="h-2 overflow-hidden rounded-full bg-muted">

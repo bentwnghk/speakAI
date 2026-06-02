@@ -32,24 +32,29 @@ export function PlayWordButton({
   word,
   label,
   costLabel,
+  onCostUpdate,
 }: {
   word: string;
   label?: string;
   costLabel?: string;
+  onCostUpdate?: (cost: number) => void;
 }) {
   const { refreshBalance } = useCredits();
 
   function handlePlay(e: React.MouseEvent) {
     e.stopPropagation();
-    void fetchWordAudio(word).then((result) => {
-      if (!result) return;
-      const audio = new Audio(result.audioUrl);
-      audio.addEventListener("ended", () => URL.revokeObjectURL(result.audioUrl));
-      audio.play().catch(() => URL.revokeObjectURL(result.audioUrl));
-      void refreshBalance();
-      if (costLabel && result.creditsUsed > 0) {
-        toast.info(costLabel.replace("${cost}", result.creditsUsed.toFixed(4)));
-      }
+      void fetchWordAudio(word).then((result) => {
+        if (!result) return;
+        const audio = new Audio(result.audioUrl);
+        audio.addEventListener("ended", () => URL.revokeObjectURL(result.audioUrl));
+        audio.play().catch(() => URL.revokeObjectURL(result.audioUrl));
+        void refreshBalance();
+        if (result.creditsUsed > 0) {
+          onCostUpdate?.(result.creditsUsed);
+          if (costLabel) {
+            toast.info(costLabel.replace("${cost}", result.creditsUsed.toFixed(4)));
+          }
+        }
     });
   }
 

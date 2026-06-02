@@ -722,7 +722,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">{at.recognizedText}</h3>
-              <TranscriptView words={result.words} t={at} />
+              <TranscriptView words={result.words} t={at} onCostUpdate={(cost) => setSavedCost((prev) => (prev ?? 0) + cost)} />
             </div>
 
             <Separator />
@@ -758,19 +758,19 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
               <TabsContent value="word">
                 <div className="max-h-96 overflow-y-auto">
-                  <WordDetail words={filteredWords} t={at} />
+                  <WordDetail words={filteredWords} t={at} onCostUpdate={(cost) => setSavedCost((prev) => (prev ?? 0) + cost)} />
                 </div>
               </TabsContent>
 
               <TabsContent value="syllable">
                 <div className="max-h-96 overflow-y-auto">
-                  <SyllableView words={filteredWords} t={at} />
+                  <SyllableView words={filteredWords} t={at} onCostUpdate={(cost) => setSavedCost((prev) => (prev ?? 0) + cost)} />
                 </div>
               </TabsContent>
 
               <TabsContent value="phoneme">
                 <div className="max-h-96 overflow-y-auto">
-                  <WordDetail words={filteredWords} t={at} expandAll />
+                  <WordDetail words={filteredWords} t={at} expandAll onCostUpdate={(cost) => setSavedCost((prev) => (prev ?? 0) + cost)} />
                 </div>
               </TabsContent>
             </Tabs>

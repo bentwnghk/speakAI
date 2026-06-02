@@ -195,6 +195,9 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
     const hasAudio = !!detail.id;
     const daysLeft = getDaysUntilExpiry(detail.expiresAt ?? null);
     const nearExpiry = daysLeft !== null && daysLeft <= 14;
+    const handleWordCost = useCallback((cost: number) => {
+      setDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev);
+    }, []);
 
     return (
       <div className="space-y-4">
@@ -203,6 +206,13 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
             variant="ghost"
             size="sm"
             onClick={() => {
+              if (detail) {
+                setItems((prev) =>
+                  prev.map((a) =>
+                    a.id === selectedId ? { ...a, cost: detail.cost } : a
+                  )
+                );
+              }
               setSelectedId(null);
               setDetail(null);
             }}
@@ -256,7 +266,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
 
         <div className="space-y-3">
           <h3 className="text-sm font-semibold">{t.recognizedText}</h3>
-          <TranscriptView words={words} t={t} />
+          <TranscriptView words={words} t={t} onCostUpdate={handleWordCost} />
         </div>
 
         <Separator />
@@ -292,19 +302,19 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
 
           <TabsContent value="word">
             <div className="max-h-96 overflow-y-auto">
-              <WordDetail words={filteredWords} t={t} />
+              <WordDetail words={filteredWords} t={t} onCostUpdate={handleWordCost} />
             </div>
           </TabsContent>
 
           <TabsContent value="syllable">
             <div className="max-h-96 overflow-y-auto">
-              <SyllableView words={filteredWords} t={t} />
+              <SyllableView words={filteredWords} t={t} onCostUpdate={handleWordCost} />
             </div>
           </TabsContent>
 
           <TabsContent value="phoneme">
             <div className="max-h-96 overflow-y-auto">
-              <WordDetail words={filteredWords} t={t} expandAll />
+              <WordDetail words={filteredWords} t={t} expandAll onCostUpdate={handleWordCost} />
             </div>
           </TabsContent>
         </Tabs>

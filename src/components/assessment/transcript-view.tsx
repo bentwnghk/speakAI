@@ -10,6 +10,7 @@ import { useCredits } from "@/hooks/use-credits";
 interface TranscriptViewProps {
   words: WordResult[];
   t: Record<string, string>;
+  onCostUpdate?: (cost: number) => void;
 }
 
 const ERROR_STYLES: Record<Exclude<ErrorType, "None">, string> = {
@@ -95,7 +96,7 @@ function WordInfoBar({
   );
 }
 
-export function TranscriptView({ words, t }: TranscriptViewProps) {
+export function TranscriptView({ words, t, onCostUpdate }: TranscriptViewProps) {
   const [tappedIdx, setTappedIdx] = useState<number | null>(null);
   const accuracyBuckets = { excellent: 0, good: 0, fair: 0 };
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -125,6 +126,7 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
         audio.play().catch(() => {});
         void refreshBalance();
         if (result.creditsUsed > 0) {
+          onCostUpdate?.(result.creditsUsed);
           toast.info(
             (t.wordPronunciationCost ?? "Pronunciation played — HK${cost} deducted")
               .replace("${cost}", result.creditsUsed.toFixed(4))
@@ -132,7 +134,7 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
         }
       });
     },
-    [stopAudio, refreshBalance, t.wordPronunciationCost],
+    [stopAudio, refreshBalance, t.wordPronunciationCost, onCostUpdate],
   );
 
   const handleWordTap = useCallback(

@@ -1039,7 +1039,7 @@ export default function AdminDashboardPage() {
 
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold">{t.assessment.recognizedText}</h3>
-                    <TranscriptView words={words} t={t.assessment} />
+                    <TranscriptView words={words} t={t.assessment} onCostUpdate={(cost) => setAssessmentDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev)} />
                   </div>
 
                   <Separator />
@@ -1075,19 +1075,19 @@ export default function AdminDashboardPage() {
 
                     <TabsContent value="word">
                       <div className="max-h-96 overflow-y-auto">
-                        <WordDetail words={filteredWords} t={t.assessment} />
+                        <WordDetail words={filteredWords} t={t.assessment} onCostUpdate={(cost) => setAssessmentDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev)} />
                       </div>
                     </TabsContent>
 
                     <TabsContent value="syllable">
                       <div className="max-h-96 overflow-y-auto">
-                        <SyllableView words={filteredWords} t={t.assessment} />
+                        <SyllableView words={filteredWords} t={t.assessment} onCostUpdate={(cost) => setAssessmentDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev)} />
                       </div>
                     </TabsContent>
 
                     <TabsContent value="phoneme">
                       <div className="max-h-96 overflow-y-auto">
-                        <WordDetail words={filteredWords} t={t.assessment} expandAll />
+                        <WordDetail words={filteredWords} t={t.assessment} expandAll onCostUpdate={(cost) => setAssessmentDetail((prev) => prev ? { ...prev, cost: prev.cost + cost } : prev)} />
                       </div>
                     </TabsContent>
                   </Tabs>
