@@ -13,9 +13,10 @@ interface ReferenceAudioSectionProps {
   referenceText: string;
   t: Record<string, string>;
   assessmentId?: string;
+  onCostIncurred?: (cost: number) => void;
 }
 
-export function ReferenceAudioSection({ referenceText, t, assessmentId }: ReferenceAudioSectionProps) {
+export function ReferenceAudioSection({ referenceText, t, assessmentId, onCostIncurred }: ReferenceAudioSectionProps) {
   const [refAudioUrl, setRefAudioUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [voice, setVoice] = useState("Female 1");
@@ -51,6 +52,8 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId }: Refere
       if (refAudioUrl && refAudioUrl.startsWith("blob:")) URL.revokeObjectURL(refAudioUrl);
       setRefAudioUrl(data.audioUrl);
       void refreshBalance();
+      const cost = parseFloat(data.ttsCost ?? "0");
+      onCostIncurred?.(cost);
       toast.info(
         (t.referenceAudioCost ?? "Reference audio generated — HK${cost} deducted")
           .replace("${cost}", data.ttsCost ?? "0.00")

@@ -90,6 +90,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [total, setTotal] = useState(0);
+  const [detailExtraCost, setDetailExtraCost] = useState(0);
 
   const totalPages = Math.ceil(total / limit);
 
@@ -200,8 +201,16 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
             variant="ghost"
             size="sm"
             onClick={() => {
+              if (detailExtraCost > 0) {
+                setItems((prev) =>
+                  prev.map((a) =>
+                    a.id === selectedId ? { ...a, cost: a.cost + detailExtraCost } : a
+                  )
+                );
+              }
               setSelectedId(null);
               setDetail(null);
+              setDetailExtraCost(0);
             }}
           >
             <ArrowLeft className="size-4" />
@@ -308,7 +317,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
 
         <Separator />
 
-        <ReferenceAudioSection referenceText={detail.referenceText} t={t} assessmentId={detail.id} />
+        <ReferenceAudioSection referenceText={detail.referenceText} t={t} assessmentId={detail.id} onCostIncurred={(cost) => setDetailExtraCost((prev) => prev + cost)} />
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
@@ -321,7 +330,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
           </Badge>
           <span className="flex items-center gap-1">
             <Coins className="size-3" />
-            HK${detail.cost.toFixed(2)}
+            HK${(detail.cost + detailExtraCost).toFixed(2)}
           </span>
         </div>
       </div>

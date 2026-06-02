@@ -256,6 +256,7 @@ export default function AdminDashboardPage() {
   const [selectedAssessmentId, setSelectedAssessmentId] = useState<string | null>(null);
   const [assessmentDetail, setAssessmentDetail] = useState<SavedAssessment | null>(null);
   const [assessmentDetailLoading, setAssessmentDetailLoading] = useState(false);
+  const [assessmentExtraCost, setAssessmentExtraCost] = useState(0);
   const [assessmentErrorFilter, setAssessmentErrorFilter] = useState<AssessmentFilter>("All");
 
   useEffect(() => {
@@ -288,10 +289,12 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (!selectedAssessmentId) {
       setAssessmentDetail(null);
+      setAssessmentExtraCost(0);
       return;
     }
     let cancelled = false;
     setAssessmentDetailLoading(true);
+    setAssessmentExtraCost(0);
     fetch(`/api/assessment/${selectedAssessmentId}`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
@@ -1094,7 +1097,7 @@ export default function AdminDashboardPage() {
 
                   <Separator />
 
-                  <ReferenceAudioSection referenceText={assessmentDetail.referenceText} t={t.assessment} assessmentId={assessmentDetail.id} />
+                  <ReferenceAudioSection referenceText={assessmentDetail.referenceText} t={t.assessment} assessmentId={assessmentDetail.id} onCostIncurred={(cost) => setAssessmentExtraCost((prev) => prev + cost)} />
 
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -1107,7 +1110,7 @@ export default function AdminDashboardPage() {
                     </Badge>
                     <span className="flex items-center gap-1">
                       <Coins className="size-3" />
-                      HK${assessmentDetail.cost.toFixed(2)}
+                      HK${(assessmentDetail.cost + assessmentExtraCost).toFixed(2)}
                     </span>
                   </div>
                 </div>

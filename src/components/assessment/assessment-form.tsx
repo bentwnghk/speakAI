@@ -777,7 +777,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
             <Separator />
 
-            <ReferenceAudioSection referenceText={referenceText} t={at} assessmentId={savedAssessmentId ?? undefined} />
+            <ReferenceAudioSection referenceText={referenceText} t={at} assessmentId={savedAssessmentId ?? undefined} onCostIncurred={(cost) => setSavedCost((prev) => (prev ?? 0) + cost)} />
 
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
