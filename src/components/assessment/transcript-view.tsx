@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 import type { WordResult, ErrorType } from "@/types/assessment";
 import { fetchWordAudio } from "./play-word-button";
 import { useCredits } from "@/hooks/use-credits";
@@ -11,6 +12,7 @@ interface TranscriptViewProps {
   words: WordResult[];
   t: Record<string, string>;
   onCostUpdate?: (cost: number) => void;
+  referenceText?: string;
 }
 
 const ERROR_STYLES: Record<Exclude<ErrorType, "None">, string> = {
@@ -96,12 +98,49 @@ function WordInfoBar({
   );
 }
 
-export function TranscriptView({ words, t, onCostUpdate }: TranscriptViewProps) {
+function stripPunct(w: string): string {
+  return w.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, "").toLowerCase();
+}
+
+function alignWordsToReference(
+  words: WordResult[],
+  referenceText?: string,
+): string[] {
+  const defaults = words.map((w) => w.Word);
+  if (!referenceText?.trim()) return defaults;
+
+  const refTokens = referenceText.split(/\s+/).filter(Boolean);
+  const displayTexts = [...defaults];
+
+  let refIdx = 0;
+
+  for (let wordIdx = 0; wordIdx < words.length; wordIdx++) {
+    const cleanWord = stripPunct(words[wordIdx].Word);
+    if (!cleanWord) continue;
+
+    for (let r = refIdx; r < refTokens.length; r++) {
+      if (stripPunct(refTokens[r]) === cleanWord) {
+        displayTexts[wordIdx] = refTokens[r];
+        refIdx = r + 1;
+        break;
+      }
+    }
+  }
+
+  return displayTexts;
+}
+
+export function TranscriptView({ words, t, onCostUpdate, referenceText }: TranscriptViewProps) {
   const [tappedIdx, setTappedIdx] = useState<number | null>(null);
   const accuracyBuckets = { excellent: 0, good: 0, fair: 0 };
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
   const { refreshBalance } = useCredits();
+
+  const displayTexts = useMemo(
+    () => alignWordsToReference(words, referenceText),
+    [words, referenceText],
+  );
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
@@ -217,7 +256,7 @@ export function TranscriptView({ words, t, onCostUpdate }: TranscriptViewProps) 
                   style
                 )}
               >
-                {word.Word}
+                {displayTexts[i]}
                 {isError && (
                   <sup className="ml-0.5 text-[0.6em]">
                     {ERROR_ICONS[errorType]}

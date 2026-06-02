@@ -1051,7 +1051,7 @@ export default function AdminDashboardPage() {
 
                   <div className="space-y-3">
                     <h3 className="text-sm font-semibold">{t.assessment.recognizedText}</h3>
-                    <TranscriptView words={words} t={t.assessment} onCostUpdate={handleAssessmentWordCost} />
+                    <TranscriptView words={words} t={t.assessment} onCostUpdate={handleAssessmentWordCost} referenceText={assessmentDetail.referenceText} />
                   </div>
 
                   <Separator />
