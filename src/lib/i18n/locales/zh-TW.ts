@@ -257,6 +257,7 @@ const zhTW: TranslationKeys = {
       "—",
       "透過",
       "AI",
+      "即時",
       "回饋",
       "掌握",
       "你的",
