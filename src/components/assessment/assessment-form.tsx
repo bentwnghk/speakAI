@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
-import { RotateCcw, History, Mic, FileText, SlidersHorizontal, Timer, Hand, BookOpen, Download } from "lucide-react";
+import { RotateCcw, History, Mic, FileText, SlidersHorizontal, Timer, Hand, BookOpen, Download, Clock, Coins } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Select,
@@ -76,6 +77,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   const [errorFilter, setErrorFilter] = useState<AssessmentFilter>("All");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [savedAssessmentId, setSavedAssessmentId] = useState<string | null>(null);
+  const [savedCost, setSavedCost] = useState<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recognizerRef = useRef<import("microsoft-cognitiveservices-speech-sdk").SpeechRecognizer | null>(null);
@@ -91,6 +93,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
     setResult(null);
     setSavedAssessmentId(null);
+    setSavedCost(null);
     setRecordingState("recording");
     audioChunksRef.current = [];
     userStoppedRef.current = false;
@@ -534,6 +537,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
       if (res.ok) {
         const data = (await res.json()) as { cost: number; id: string };
         setSavedAssessmentId(data.id);
+        setSavedCost(data.cost);
         toast.success(at.saved.replace("${cost}", data.cost.toFixed(2)));
         void refreshBalance();
       } else {
@@ -774,6 +778,32 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
             <Separator />
 
             <ReferenceAudioSection referenceText={referenceText} t={at} assessmentId={savedAssessmentId ?? undefined} />
+
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Clock className="size-3" />
+                {new Date().toLocaleString("en-HK", {
+                  timeZone: "Asia/Hong_Kong",
+                  year: "numeric",
+                  month: "2-digit",
+                  day: "2-digit",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  second: "2-digit",
+                  hour12: false,
+                })}
+              </span>
+              <Badge variant="outline">{at.score.replace("{score}", String(Math.round(result.scores.PronScore)))}</Badge>
+              <Badge variant="outline">
+                {at.duration.replace("{seconds}", String(Math.round(result.durationMs / 1000)))}
+              </Badge>
+              {savedCost !== null && (
+                <span className="flex items-center gap-1">
+                  <Coins className="size-3" />
+                  HK${savedCost.toFixed(2)}
+                </span>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
