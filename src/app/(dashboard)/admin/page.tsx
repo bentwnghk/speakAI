@@ -1094,7 +1094,7 @@ export default function AdminDashboardPage() {
 
                   <Separator />
 
-                  <ReferenceAudioSection referenceText={assessmentDetail.referenceText} t={t.assessment} />
+                  <ReferenceAudioSection referenceText={assessmentDetail.referenceText} t={t.assessment} assessmentId={assessmentDetail.id} />
 
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">

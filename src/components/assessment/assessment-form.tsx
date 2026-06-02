@@ -75,6 +75,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [errorFilter, setErrorFilter] = useState<AssessmentFilter>("All");
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [savedAssessmentId, setSavedAssessmentId] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recognizerRef = useRef<import("microsoft-cognitiveservices-speech-sdk").SpeechRecognizer | null>(null);
@@ -89,6 +90,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
     if (!referenceText.trim()) return;
 
     setResult(null);
+    setSavedAssessmentId(null);
     setRecordingState("recording");
     audioChunksRef.current = [];
     userStoppedRef.current = false;
@@ -530,7 +532,8 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
       }
 
       if (res.ok) {
-        const data = (await res.json()) as { cost: number };
+        const data = (await res.json()) as { cost: number; id: string };
+        setSavedAssessmentId(data.id);
         toast.success(at.saved.replace("${cost}", data.cost.toFixed(2)));
         void refreshBalance();
       } else {
@@ -573,6 +576,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
     setResult(null);
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
+    setSavedAssessmentId(null);
     setRecordingState("idle");
     setErrorFilter("All");
   }
@@ -769,7 +773,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
             <Separator />
 
-            <ReferenceAudioSection referenceText={referenceText} t={at} />
+            <ReferenceAudioSection referenceText={referenceText} t={at} assessmentId={savedAssessmentId ?? undefined} />
           </CardContent>
         </Card>
       )}

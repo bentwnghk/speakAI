@@ -117,6 +117,7 @@ export async function POST(request: NextRequest) {
       voice,
       speed,
       audioUrl: `/api/audio/${generation.id}`,
+      audioPath: generation.audioPath,
       segments: result.segments.length > 0 ? result.segments : undefined,
       ttsCost: totalCost,
       creditsUsed: totalCostNum,

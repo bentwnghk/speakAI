@@ -308,7 +308,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
 
         <Separator />
 
-        <ReferenceAudioSection referenceText={detail.referenceText} t={t} />
+        <ReferenceAudioSection referenceText={detail.referenceText} t={t} assessmentId={detail.id} />
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">

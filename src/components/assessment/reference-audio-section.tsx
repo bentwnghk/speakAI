@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Volume2, Loader2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,14 +12,27 @@ import { SpeedSlider } from "@/components/speed-slider";
 interface ReferenceAudioSectionProps {
   referenceText: string;
   t: Record<string, string>;
+  assessmentId?: string;
 }
 
-export function ReferenceAudioSection({ referenceText, t }: ReferenceAudioSectionProps) {
+export function ReferenceAudioSection({ referenceText, t, assessmentId }: ReferenceAudioSectionProps) {
   const [refAudioUrl, setRefAudioUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [voice, setVoice] = useState("Female 1");
   const [speed, setSpeed] = useState(100);
   const { refreshBalance } = useCredits();
+
+  useEffect(() => {
+    if (!assessmentId) return;
+    const audioUrl = `/api/assessment/${assessmentId}/reference-audio`;
+    let cancelled = false;
+    fetch(audioUrl, { method: "HEAD" }).then((res) => {
+      if (!cancelled && res.ok) {
+        setRefAudioUrl(audioUrl);
+      }
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [assessmentId]);
 
   async function handleGenerate() {
     if (!referenceText.trim()) return;
@@ -34,14 +47,22 @@ export function ReferenceAudioSection({ referenceText, t }: ReferenceAudioSectio
         const err = (await res.json()) as { error?: string };
         throw new Error(err.error || "Generation failed");
       }
-      const data = (await res.json()) as { audioUrl: string; ttsCost: string };
-      if (refAudioUrl) URL.revokeObjectURL(refAudioUrl);
+      const data = (await res.json()) as { audioUrl: string; audioPath: string; ttsCost: string };
+      if (refAudioUrl && refAudioUrl.startsWith("blob:")) URL.revokeObjectURL(refAudioUrl);
       setRefAudioUrl(data.audioUrl);
       void refreshBalance();
       toast.info(
         (t.referenceAudioCost ?? "Reference audio generated — HK${cost} deducted")
           .replace("${cost}", data.ttsCost ?? "0.00")
       );
+
+      if (assessmentId && data.audioPath) {
+        await fetch(`/api/assessment/${assessmentId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ referenceAudioPath: data.audioPath }),
+        });
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Generation failed");
     } finally {
