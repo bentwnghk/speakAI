@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { WordResult, ErrorType, PhonemeResult, SyllableResult } from "@/types/assessment";
+import { PlayWordButton } from "./play-word-button";
 
 interface WordDetailProps {
   words: WordResult[];
@@ -95,7 +96,7 @@ export function WordDetail({ words, t, expandAll }: WordDetailProps) {
             </button>
 
             {isExpanded && hasPhonemes && word.Phonemes && (
-              <PhonemeBreakdown phonemes={word.Phonemes} t={t} />
+              <PhonemeBreakdown phonemes={word.Phonemes} wordText={word.Word} t={t} />
             )}
           </div>
         );
@@ -106,9 +107,11 @@ export function WordDetail({ words, t, expandAll }: WordDetailProps) {
 
 function PhonemeBreakdown({
   phonemes,
+  wordText,
   t,
 }: {
   phonemes: PhonemeResult[];
+  wordText: string;
   t: Record<string, string>;
 }) {
   return (
@@ -118,6 +121,7 @@ function PhonemeBreakdown({
         <span className="font-mono text-foreground">
           /{phonemes.map((p) => p.Phoneme).join("")}/
         </span>
+        <PlayWordButton word={wordText} label={t.playPronunciation} />
       </div>
 
       <div className="grid gap-2">
@@ -219,7 +223,7 @@ function NBestDetail({
   );
 }
 
-export function SyllableView({ words }: { words: WordResult[]; t: Record<string, string> }) {
+export function SyllableView({ words, t }: { words: WordResult[]; t: Record<string, string> }) {
   const allSyllables: { word: string; syllable: SyllableResult }[] = [];
   for (const w of words) {
     if (w.Syllables) {
@@ -256,6 +260,8 @@ export function SyllableView({ words }: { words: WordResult[]; t: Record<string,
             <span className="text-xs text-muted-foreground w-20 shrink-0 truncate">
               ({item.word})
             </span>
+
+            <PlayWordButton word={item.word} label={t.playPronunciation} />
 
             <div className="flex-1">
               <div className="h-2 overflow-hidden rounded-full bg-muted">

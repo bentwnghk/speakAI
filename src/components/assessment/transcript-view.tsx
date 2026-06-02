@@ -3,21 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import type { WordResult, ErrorType } from "@/types/assessment";
-
-async function fetchWordAudio(word: string): Promise<string | null> {
-  try {
-    const res = await fetch("/api/tts/word", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ word }),
-    });
-    if (!res.ok) return null;
-    const blob = await res.blob();
-    return URL.createObjectURL(blob);
-  } catch {
-    return null;
-  }
-}
+import { PlayWordButton, fetchWordAudio } from "./play-word-button";
 
 interface TranscriptViewProps {
   words: WordResult[];
@@ -94,8 +80,11 @@ function WordInfoBar({
       <span className="font-semibold">{word.Word}</span>
       <span className="text-muted-foreground">{label}</span>
       {phonemes && (
-        <span className="font-mono text-muted-foreground">/{phonemes}/</span>
+        <span className="inline-flex items-center gap-1 font-mono text-muted-foreground">
+          /{phonemes}/
+        </span>
       )}
+      <PlayWordButton word={word.Word} label={t.playPronunciation} />
       {isError && (
         <span className="text-destructive">
           {String(t[`error${errorType}`] ?? errorType)}
@@ -123,26 +112,33 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
     }
   }, []);
 
+  const playWord = useCallback(
+    (wordText: string) => {
+      stopAudio();
+      void fetchWordAudio(wordText).then((url) => {
+        if (!url) return;
+        audioUrlRef.current = url;
+        const audio = new Audio(url);
+        audioRef.current = audio;
+        audio.play().catch(() => {});
+      });
+    },
+    [stopAudio],
+  );
+
   const handleWordTap = useCallback(
     (e: React.MouseEvent | React.KeyboardEvent, i: number) => {
       e.stopPropagation();
       const nextIdx = tappedIdx === i ? null : i;
       setTappedIdx(nextIdx);
 
-      stopAudio();
-
       if (nextIdx !== null) {
-        const word = words[i].Word;
-        void fetchWordAudio(word).then((url) => {
-          if (!url) return;
-          audioUrlRef.current = url;
-          const audio = new Audio(url);
-          audioRef.current = audio;
-          audio.play().catch(() => {});
-        });
+        playWord(words[i].Word);
+      } else {
+        stopAudio();
       }
     },
-    [tappedIdx, words, stopAudio],
+    [tappedIdx, words, stopAudio, playWord],
   );
 
   useEffect(() => {
