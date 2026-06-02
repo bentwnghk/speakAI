@@ -233,6 +233,8 @@ const en = {
     legend: "Legend",
     pronScore: "Pron. Score",
     expiresIn: "{days}d left",
+    playPronunciation: "Play pronunciation",
+    wordPronunciationCost: "Pronunciation played — HK${cost} deducted",
   },
   landing: {
     heroTagline: "AI-powered text-to-speech & pronunciation coaching",

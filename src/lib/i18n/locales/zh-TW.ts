@@ -235,6 +235,8 @@ const zhTW: TranslationKeys = {
     legend: "圖例",
     pronScore: "發音評分",
     expiresIn: "剩餘 {days} 天",
+    playPronunciation: "播放發音",
+    wordPronunciationCost: "已播放發音 — 扣除 HK${cost}",
   },
   landing: {
     heroTagline: "AI 驅動的文字轉語音與發音教練",

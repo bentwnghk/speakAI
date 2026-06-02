@@ -121,7 +121,7 @@ function PhonemeBreakdown({
         <span className="font-mono text-foreground">
           /{phonemes.map((p) => p.Phoneme).join("")}/
         </span>
-        <PlayWordButton word={wordText} label={t.playPronunciation} />
+        <PlayWordButton word={wordText} label={t.playPronunciation} costLabel={t.wordPronunciationCost} />
       </div>
 
       <div className="grid gap-2">
@@ -261,7 +261,7 @@ export function SyllableView({ words, t }: { words: WordResult[]; t: Record<stri
               ({item.word})
             </span>
 
-            <PlayWordButton word={item.word} label={t.playPronunciation} />
+            <PlayWordButton word={item.word} label={t.playPronunciation} costLabel={t.wordPronunciationCost} />
 
             <div className="flex-1">
               <div className="h-2 overflow-hidden rounded-full bg-muted">

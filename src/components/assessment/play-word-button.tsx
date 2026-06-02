@@ -1,8 +1,16 @@
 "use client";
 
 import { Volume2 } from "lucide-react";
+import { toast } from "sonner";
+import { useCredits } from "@/hooks/use-credits";
 
-export async function fetchWordAudio(word: string): Promise<string | null> {
+export interface WordAudioResult {
+  audioUrl: string;
+  creditsUsed: number;
+  remainingCredits: number;
+}
+
+export async function fetchWordAudio(word: string): Promise<WordAudioResult | null> {
   try {
     const res = await fetch("/api/tts/word", {
       method: "POST",
@@ -10,8 +18,11 @@ export async function fetchWordAudio(word: string): Promise<string | null> {
       body: JSON.stringify({ word }),
     });
     if (!res.ok) return null;
+    const creditsUsed = parseFloat(res.headers.get("X-Credits-Used") ?? "0");
+    const remainingCredits = parseFloat(res.headers.get("X-Remaining-Credits") ?? "0");
     const blob = await res.blob();
-    return URL.createObjectURL(blob);
+    const audioUrl = URL.createObjectURL(blob);
+    return { audioUrl, creditsUsed, remainingCredits };
   } catch {
     return null;
   }
@@ -20,17 +31,25 @@ export async function fetchWordAudio(word: string): Promise<string | null> {
 export function PlayWordButton({
   word,
   label,
+  costLabel,
 }: {
   word: string;
   label?: string;
+  costLabel?: string;
 }) {
+  const { refreshBalance } = useCredits();
+
   function handlePlay(e: React.MouseEvent) {
     e.stopPropagation();
-    void fetchWordAudio(word).then((url) => {
-      if (!url) return;
-      const audio = new Audio(url);
-      audio.addEventListener("ended", () => URL.revokeObjectURL(url));
-      audio.play().catch(() => URL.revokeObjectURL(url));
+    void fetchWordAudio(word).then((result) => {
+      if (!result) return;
+      const audio = new Audio(result.audioUrl);
+      audio.addEventListener("ended", () => URL.revokeObjectURL(result.audioUrl));
+      audio.play().catch(() => URL.revokeObjectURL(result.audioUrl));
+      void refreshBalance();
+      if (costLabel && result.creditsUsed > 0) {
+        toast.info(costLabel.replace("${cost}", result.creditsUsed.toFixed(4)));
+      }
     });
   }
 

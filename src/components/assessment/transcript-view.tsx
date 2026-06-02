@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { WordResult, ErrorType } from "@/types/assessment";
 import { PlayWordButton, fetchWordAudio } from "./play-word-button";
+import { useCredits } from "@/hooks/use-credits";
 
 interface TranscriptViewProps {
   words: WordResult[];
@@ -84,7 +86,7 @@ function WordInfoBar({
           /{phonemes}/
         </span>
       )}
-      <PlayWordButton word={word.Word} label={t.playPronunciation} />
+      <PlayWordButton word={word.Word} label={t.playPronunciation} costLabel={t.wordPronunciationCost} />
       {isError && (
         <span className="text-destructive">
           {String(t[`error${errorType}`] ?? errorType)}
@@ -99,6 +101,7 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
   const accuracyBuckets = { excellent: 0, good: 0, fair: 0 };
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
+  const { refreshBalance } = useCredits();
 
   const stopAudio = useCallback(() => {
     if (audioRef.current) {
@@ -115,15 +118,22 @@ export function TranscriptView({ words, t }: TranscriptViewProps) {
   const playWord = useCallback(
     (wordText: string) => {
       stopAudio();
-      void fetchWordAudio(wordText).then((url) => {
-        if (!url) return;
-        audioUrlRef.current = url;
-        const audio = new Audio(url);
+      void fetchWordAudio(wordText).then((result) => {
+        if (!result) return;
+        audioUrlRef.current = result.audioUrl;
+        const audio = new Audio(result.audioUrl);
         audioRef.current = audio;
         audio.play().catch(() => {});
+        void refreshBalance();
+        if (result.creditsUsed > 0) {
+          toast.info(
+            (t.wordPronunciationCost ?? "Pronunciation played — HK${cost} deducted")
+              .replace("${cost}", result.creditsUsed.toFixed(4))
+          );
+        }
       });
     },
-    [stopAudio],
+    [stopAudio, refreshBalance, t.wordPronunciationCost],
   );
 
   const handleWordTap = useCallback(
