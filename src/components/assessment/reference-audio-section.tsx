@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useCredits } from "@/hooks/use-credits";
+import { VoiceSelect } from "@/components/voice-select";
+import { SpeedSlider } from "@/components/speed-slider";
 
 interface ReferenceAudioSectionProps {
   referenceText: string;
@@ -15,6 +17,8 @@ interface ReferenceAudioSectionProps {
 export function ReferenceAudioSection({ referenceText, t }: ReferenceAudioSectionProps) {
   const [refAudioUrl, setRefAudioUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [voice, setVoice] = useState("Female 1");
+  const [speed, setSpeed] = useState(100);
   const { refreshBalance } = useCredits();
 
   async function handleGenerate() {
@@ -24,7 +28,7 @@ export function ReferenceAudioSection({ referenceText, t }: ReferenceAudioSectio
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: referenceText.trim(), voice: "nova", speed: 100 }),
+        body: JSON.stringify({ text: referenceText.trim(), voice, speed }),
       });
       if (!res.ok) {
         const err = (await res.json()) as { error?: string };
@@ -46,10 +50,15 @@ export function ReferenceAudioSection({ referenceText, t }: ReferenceAudioSectio
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div>
         <h3 className="text-sm font-semibold">{t.listenToReference}</h3>
         <p className="text-xs text-muted-foreground">{t.listenToReferenceDesc}</p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <VoiceSelect value={voice} onValueChange={setVoice} />
+        <SpeedSlider value={speed} onValueChange={setSpeed} />
       </div>
 
       {refAudioUrl && (
