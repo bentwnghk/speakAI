@@ -28,6 +28,7 @@ import { ScoreOverview } from "./score-overview";
 import { TranscriptView } from "./transcript-view";
 import { WordDetail, SyllableView } from "./word-detail";
 import { ErrorSummary } from "./error-summary";
+import { ReferenceAudioSection } from "./reference-audio-section";
 import type {
   AssessmentResult,
   AssessmentDetailResult,
@@ -765,6 +766,10 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
                 </div>
               </TabsContent>
             </Tabs>
+
+            <Separator />
+
+            <ReferenceAudioSection referenceText={referenceText} t={at} />
           </CardContent>
         </Card>
       )}

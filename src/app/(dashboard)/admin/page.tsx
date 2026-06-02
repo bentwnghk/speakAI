@@ -40,6 +40,7 @@ import { AudioPlayer } from "@/components/audio-player";
 import { ScoreOverview } from "@/components/assessment/score-overview";
 import { TranscriptView } from "@/components/assessment/transcript-view";
 import { ErrorSummary } from "@/components/assessment/error-summary";
+import { ReferenceAudioSection } from "@/components/assessment/reference-audio-section";
 import {
   WordDetail,
   SyllableView,
@@ -1090,6 +1091,10 @@ export default function AdminDashboardPage() {
                       </div>
                     </TabsContent>
                   </Tabs>
+
+                  <Separator />
+
+                  <ReferenceAudioSection referenceText={assessmentDetail.referenceText} t={t.assessment} />
 
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
