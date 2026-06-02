@@ -1,5 +1,6 @@
 "use client";
 
+import { Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { PronunciationScores } from "@/types/assessment";
 
@@ -12,11 +13,13 @@ function ScoreBar({
   label,
   score,
   color,
+  description,
   na,
 }: {
   label: string;
   score: number;
   color: string;
+  description?: string;
   na?: boolean;
 }) {
   const getColor = () => {
@@ -30,7 +33,19 @@ function ScoreBar({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between text-sm">
-        <span className="font-medium">{label}</span>
+        <span className="inline-flex items-center gap-1 font-medium">
+          {label}
+          {description && (
+            <span className="group relative inline-flex">
+              <Info className="size-3.5 text-muted-foreground/60" />
+              <span
+                className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-56 -translate-x-1/2 rounded-md bg-popover px-2.5 py-1.5 text-xs font-normal text-popover-foreground opacity-0 shadow-lg ring-1 ring-border transition-opacity group-hover:opacity-100"
+              >
+                {description}
+              </span>
+            </span>
+          )}
+        </span>
         <span className={cn("font-bold tabular-nums", na ? "text-muted-foreground" : color)}>
           {na ? "\u2013" : Math.round(score)}
         </span>
@@ -99,10 +114,10 @@ export function ScoreOverview({ scores, t }: ScoreOverviewProps) {
         <OverallGauge score={scores.PronScore} label={t.overallScore} />
 
         <div className="grid w-full max-w-sm gap-4">
-          <ScoreBar label={t.accuracy} score={scores.AccuracyScore} color="text-foreground" />
-          <ScoreBar label={t.fluency} score={scores.FluencyScore} color="text-foreground" />
-          <ScoreBar label={t.completeness} score={scores.CompletenessScore} color="text-foreground" />
-          <ScoreBar label={t.prosody} score={scores.ProsodyScore} color="text-foreground" na={!Number.isFinite(scores.ProsodyScore) || scores.ProsodyScore <= 0} />
+          <ScoreBar label={t.accuracy} score={scores.AccuracyScore} color="text-foreground" description={t.accuracyDesc} />
+          <ScoreBar label={t.fluency} score={scores.FluencyScore} color="text-foreground" description={t.fluencyDesc} />
+          <ScoreBar label={t.completeness} score={scores.CompletenessScore} color="text-foreground" description={t.completenessDesc} />
+          <ScoreBar label={t.prosody} score={scores.ProsodyScore} color="text-foreground" na={!Number.isFinite(scores.ProsodyScore) || scores.ProsodyScore <= 0} description={t.prosodyDesc} />
         </div>
       </div>
     </div>
