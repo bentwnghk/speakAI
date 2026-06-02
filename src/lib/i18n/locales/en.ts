@@ -240,7 +240,7 @@ const en = {
     playPronunciation: "Play pronunciation",
     wordPronunciationCost: "Pronunciation played — HK${cost} deducted",
     listenToReference: "Listen to Reference",
-    listenToReferenceDesc: "Generate audio of the reference text to hear the correct pronunciation.",
+    listenToReferenceDesc: "Listen to or generate audio of the reference text to hear the correct pronunciation.",
     generateReferenceAudio: "Generate Audio",
     generatingReferenceAudio: "Generating...",
     referenceAudio: "Reference Audio",

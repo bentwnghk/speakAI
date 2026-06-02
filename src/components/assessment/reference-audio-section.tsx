@@ -77,11 +77,6 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId }: Refere
         <p className="text-xs text-muted-foreground">{t.listenToReferenceDesc}</p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <VoiceSelect value={voice} onValueChange={setVoice} />
-        <SpeedSlider value={speed} onValueChange={setSpeed} />
-      </div>
-
       {refAudioUrl && (
         <Card>
           <CardContent className="flex items-center gap-3 py-3">
@@ -98,6 +93,11 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId }: Refere
           </CardContent>
         </Card>
       )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <VoiceSelect value={voice} onValueChange={setVoice} />
+        <SpeedSlider value={speed} onValueChange={setSpeed} />
+      </div>
 
       <Button
         onClick={() => void handleGenerate()}
