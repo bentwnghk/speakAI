@@ -102,6 +102,10 @@ function stripPunct(w: string): string {
   return w.replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, "").toLowerCase();
 }
 
+function getSegments(token: string): string[] {
+  return token.match(/[a-zA-Z0-9]+/g) ?? [];
+}
+
 function alignWordsToReference(
   words: WordResult[],
   referenceText?: string,
@@ -113,17 +117,45 @@ function alignWordsToReference(
   const displayTexts = [...defaults];
 
   let refIdx = 0;
+  let segIdx = 0;
 
   for (let wordIdx = 0; wordIdx < words.length; wordIdx++) {
     const cleanWord = stripPunct(words[wordIdx].Word);
     if (!cleanWord) continue;
 
     for (let r = refIdx; r < refTokens.length; r++) {
-      if (stripPunct(refTokens[r]) === cleanWord) {
-        displayTexts[wordIdx] = refTokens[r];
+      const refToken = refTokens[r];
+      const fullKey = stripPunct(refToken);
+      const segKeys = getSegments(refToken).map((s) => s.toLowerCase());
+      const startSeg = r === refIdx ? segIdx : 0;
+
+      if (cleanWord === fullKey && startSeg === 0) {
+        displayTexts[wordIdx] = refToken;
         refIdx = r + 1;
+        segIdx = 0;
         break;
       }
+
+      let matched = false;
+      for (let s = startSeg; s < segKeys.length; s++) {
+        if (cleanWord === segKeys[s]) {
+          if (segKeys.length === 1) {
+            displayTexts[wordIdx] = refToken;
+          } else {
+            displayTexts[wordIdx] = getSegments(refToken)[s] ?? words[wordIdx].Word;
+          }
+          if (s + 1 < segKeys.length) {
+            refIdx = r;
+            segIdx = s + 1;
+          } else {
+            refIdx = r + 1;
+            segIdx = 0;
+          }
+          matched = true;
+          break;
+        }
+      }
+      if (matched) break;
     }
   }
 
