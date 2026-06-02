@@ -275,7 +275,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
 
         <div className="space-y-3">
           <h3 className="text-sm font-semibold">{t.recognizedText}</h3>
-          <TranscriptView words={words} t={t} onCostUpdate={handleWordCost} referenceText={detail.referenceText} />
+          <TranscriptView words={words} t={t} onCostUpdate={handleWordCost} />
         </div>
 
         <Separator />

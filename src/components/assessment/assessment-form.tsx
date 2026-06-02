@@ -733,7 +733,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
             <div className="space-y-3">
               <h3 className="text-sm font-semibold">{at.recognizedText}</h3>
-              <TranscriptView words={result.words} t={at} onCostUpdate={handleWordCost} referenceText={referenceText} />
+              <TranscriptView words={result.words} t={at} onCostUpdate={handleWordCost} />
             </div>
 
             <Separator />
