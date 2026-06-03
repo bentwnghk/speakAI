@@ -605,13 +605,13 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-          <Mic className="size-6 text-primary" />
-          <div>
-            <h1 className="text-2xl font-bold leading-tight">{at.title}</h1>
-            <p className="text-sm text-muted-foreground">{at.subtitle}</p>
-          </div>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <Mic className="size-6" />
+          {at.title}
+        </h1>
+        <p className="text-muted-foreground">{at.subtitle}</p>
+      </div>
 
       <Card>
         <CardHeader>
