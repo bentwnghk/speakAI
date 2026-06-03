@@ -8,7 +8,7 @@ export function KaraokeSubtitle() {
   const words = t.dashboard.subtitle;
 
   return (
-    <p className="text-muted-foreground flex flex-wrap items-center justify-center gap-x-1.5">
+    <p className="text-muted-foreground flex flex-wrap items-center gap-x-1.5">
       {words.map((word, i) => (
         <motion.span
           key={i}
