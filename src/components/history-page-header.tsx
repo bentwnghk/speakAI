@@ -8,7 +8,7 @@ export function HistoryPageHeader() {
   return (
     <div>
       <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-        <History className="size-6" />
+        <History className="size-6 text-primary" />
         {t.history.title}
       </h1>
       <p className="text-muted-foreground">

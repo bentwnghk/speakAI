@@ -14,6 +14,7 @@ const en = {
     history: "History",
   },
   dashboard: {
+    title: "Text to Speech",
     subtitle: [
       "Transform",
       "text",

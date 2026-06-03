@@ -607,7 +607,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Mic className="size-6" />
+          <Mic className="size-6 text-primary" />
           {at.title}
         </h1>
         <p className="text-muted-foreground">{at.subtitle}</p>

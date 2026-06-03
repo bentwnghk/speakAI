@@ -16,6 +16,7 @@ const zhTW: TranslationKeys = {
     history: "歷史記錄",
   },
   dashboard: {
+    title: "文字轉語音",
     subtitle: [
       "將",
       "文字",
