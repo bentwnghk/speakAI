@@ -53,29 +53,50 @@ src/
 │   ├── (dashboard)/            # Authenticated route group (server-side auth guard in layout)
 │   │   ├── layout.tsx          # Dashboard layout (Header, auth check, footer)
 │   │   ├── page.tsx            # Main TTS generation page
+│   │   ├── admin/              # Admin dashboard (admin-only, server-side guard in layout)
+│   │   │   ├── layout.tsx      # Admin auth guard (checks ADMIN_EMAIL)
+│   │   │   └── page.tsx        # Admin page with TTS + Assessment tabs
+│   │   ├── assessment/         # Pronunciation assessment page
 │   │   ├── credits/            # Credit purchase page with Stripe
-│   │   └── history/            # Generation history listing
+│   │   └── history/            # Generation + assessment history (tabbed)
 │   └── api/                    # API route handlers (see Backend section)
 ├── components/
+│   ├── assessment/             # Pronunciation assessment components
+│   │   ├── assessment-form.tsx      # Main assessment form (recording, scoring, transcript)
+│   │   ├── assessment-history.tsx   # Paginated assessment history list with detail view
+│   │   ├── error-summary.tsx        # Filterable error-type and accuracy-tier chips
+│   │   ├── play-word-button.tsx     # Inline word pronunciation via /api/tts/word
+│   │   ├── recording-controls.tsx   # Mic/stop button with animated pulse, elapsed timer
+│   │   ├── reference-audio-section.tsx # Generate/listen to TTS of reference text
+│   │   ├── score-overview.tsx       # SVG circular gauge + 4 score bars with InfoTip
+│   │   ├── transcript-view.tsx      # Interactive word-by-word color-coded transcript
+│   │   └── word-detail.tsx          # Word/phoneme/syllable breakdown with IPA, confused phonemes
 │   ├── auth-provider.tsx       # Client provider: SessionProvider + CreditsProvider wrapper
 │   ├── audio-player.tsx        # Audio playback with karaoke-style highlighting
+│   ├── dashboard-page-header.tsx # Extracted header for dashboard page
 │   ├── file-upload.tsx         # File upload (PDF, DOCX, TXT, images)
-│   ├── header.tsx              # App header with navigation + credits display
-│   ├── history-list.tsx        # Generation history list component
+│   ├── header.tsx              # App header with navigation (Home, History, Assessment, Admin) + credits
+│   ├── history-list.tsx        # TTS generation history list with pagination, expiry badges
+│   ├── history-page-header.tsx # Extracted header for history page
+│   ├── history-tabs.tsx        # Tabbed switcher for Audio / Assessment history
+│   ├── karaoke-subtitle.tsx    # Animated wave subtitle on dashboard page (motion)
 │   ├── karaoke-text.tsx        # Word-by-word karaoke text display
+│   ├── selection-popover.tsx   # Floating "Practice reading aloud" button on text selection
 │   ├── speed-slider.tsx        # Speed control slider
-│   ├── tts-form.tsx            # Main TTS form (text input, voice, speed, file upload)
+│   ├── tts-form.tsx            # Main TTS form (text input, voice, speed, file upload, selection popover)
 │   ├── voice-select.tsx        # Voice selection dropdown
 │   ├── landing/                # Public landing/marketing page
-│   │   └── landing-page.tsx
+│   │   └── landing-page.tsx    # Landing page with TTS + Assessment feature showcase
 │   └── ui/                     # Shadcn UI primitives (do not modify directly)
 ├── lib/
-│   ├── auth.ts                 # NextAuth v5 config (Google OAuth, JWT strategy, Drizzle adapter)
+│   ├── admin.ts                # getAdminEmails(), isAdminEmail() from ADMIN_EMAIL env var
+│   ├── auth.ts                 # NextAuth v5 config (Google OAuth, JWT strategy, Drizzle adapter, isAdmin)
 │   ├── constants.ts            # Voice mappings, supported file extensions
 │   ├── utils.ts                # cn() utility (clsx + tailwind-merge)
 │   ├── pdf-client.ts           # Client-side PDF processing (pdfjs-dist)
 │   ├── file-parser.ts          # Server-side file text extraction (DOCX, TXT, images)
 │   ├── tts.ts                  # TTS generation + Azure Speech word-boundary alignment + round-robin endpoint pool
+│   ├── word-tts.ts             # Single-word TTS synthesizer (separate round-robin, slower rate for clarity)
 │   ├── stripe.ts               # Stripe client singleton + credit plan definitions
 │   ├── i18n/
 │   │   ├── index.ts            # getDictionary(), Locale type, TranslationKeys type
@@ -84,15 +105,18 @@ src/
 │   │       └── zh-TW.ts        # Traditional Chinese translations
 │   └── db/
 │       ├── index.ts            # Drizzle ORM setup (postgres-js driver, schema export)
-│       ├── schema.ts           # 9 tables: user, account, session, verification_token, generation, credits, credit_transactions, purchases, user_settings
+│       ├── schema.ts           # 11 tables (see Database section)
 │       └── credits.ts          # Credit engine: grant, deduct, refund, purchase operations
 ├── sw/
 │   └── index.ts                # Serwist service worker for PWA offline support
 ├── hooks/
 │   ├── use-credits.tsx         # React context for credit balance (app-wide)
-│   └── use-settings.tsx        # React context for theme + locale (UserSettingsProvider)
+│   ├── use-settings.tsx        # React context for theme + locale (UserSettingsProvider)
+│   └── use-text-selection.tsx  # Text selection tracking hook for textarea (mirror div positioning)
 └── types/
+    ├── assessment.ts           # Pronunciation assessment types (scores, words, phonemes, filters, helpers)
     ├── karaoke.ts              # WordTimestamp, Segment types for karaoke display
+    ├── next-auth.d.ts          # Session/JWT type augmentation (isAdmin)
     └── pdf-parse.d.ts          # Type declarations for pdf-parse
 scripts/                        # SQL migrations (init-db.sql + incremental migrations)
 ```
@@ -126,7 +150,7 @@ scripts/                        # SQL migrations (init-db.sql + incremental migr
 
 - **Server State**: Next.js RSC with `auth()` calls for session data.
 - **Client State**: Minimal — React hooks and local component state.
-- **Provider Hierarchy**: `AuthProvider` wraps `SessionProvider` from `next-auth/react`.
+- **Provider Hierarchy**: `AuthProvider` wraps `SessionProvider` from `next-auth/react` and `CreditsProvider`. `UserSettingsProvider` wraps theme/locale state (see Theme section).
 
 ### 5. Imports
 
@@ -186,7 +210,7 @@ The project uses **next-auth v5 (beta.25)** with **Google OAuth** as the sole pr
 The project uses **PostgreSQL 16** with **Drizzle ORM**.
 
 - **Connection**: `postgres-js` driver configured in `src/lib/db/index.ts`.
-- **Schema**: All tables defined in `src/lib/db/schema.ts` (9 tables: `user`, `account`, `session`, `verification_token`, `generation`, `credits`, `credit_transactions`, `purchases`, `user_settings`). The `generation` table stores TTS generation history with voice (as a Postgres enum), speed, audio path, karaoke segments (JSON), and cost. The `credits` table stores per-user balance (1:1 with users). `credit_transactions` is an append-only ledger. `purchases` tracks Stripe payment lifecycle. `user_settings` stores per-user theme and locale preferences.
+- **Schema**: All tables defined in `src/lib/db/schema.ts` (11 tables: `user`, `account`, `session`, `verification_token`, `generation`, `credits`, `credit_transactions`, `purchases`, `user_settings`, `sign_in_logs`, `assessments`). The `generation` table stores TTS generation history with voice (as a Postgres enum), speed, audio path, karaoke segments (JSON), cost, and `expiresAt`. The `assessments` table stores pronunciation assessment results with reference/recognized text, 5-dimension scores (Accuracy, Fluency, Completeness, Prosody, PronScore), words/phonemes/syllables (JSONB), recording audio path, reference audio path, cost, and `expiresAt`. The `credits` table stores per-user balance (1:1 with users). `credit_transactions` is an append-only ledger. `purchases` tracks Stripe payment lifecycle. `user_settings` stores per-user theme and locale preferences. `sign_in_logs` records user sign-in events.
 - **Migrations**: SQL migration files in `scripts/` (e.g., `init-db.sql`, `add-segments-column.sql`). Drizzle migrations in `drizzle/`.
 - **Config**: `drizzle.config.ts` at project root.
 
@@ -212,6 +236,89 @@ The project uses **PostgreSQL 16** with **Drizzle ORM**.
 - **Azure Word Boundaries**: During synthesis, the Azure Speech SDK emits `wordBoundary` events with per-word start/end timestamps. These are ground-truth timing from the same engine that produces the audio.
 - **Segment Building**: `buildSegmentsFromAzureBoundaries()` maps boundary events onto source text sentences/words. Per-word timing is derived via character-position proportional alignment (`mapWordsToTimings`) to handle minor vocabulary differences between source and synthesis output.
 - **Fallback**: If Azure returns fewer boundary events than source words for a sentence, timing is distributed proportionally by character length (`distributeTimingToWords`).
+
+---
+
+## Pronunciation Assessment
+
+A full pronunciation coaching system built on Azure Speech SDK's Pronunciation Assessment API. Users read reference text aloud, receive scored feedback across 5 dimensions, and can drill into word/phoneme/syllable-level detail.
+
+### Types (`src/types/assessment.ts`)
+
+- **ErrorType**: `"None" | "Omission" | "Insertion" | "Mispronunciation" | "UnexpectedBreak" | "MissingBreak" | "Monotone"`
+- **PronunciationScores**: 5-dimension scoring (Accuracy, Fluency, Completeness, Prosody, PronScore)
+- **AccuracyTier**: `"Excellent" | "Good" | "Fair"` — derived from score thresholds (>=90, >=80, rest)
+- **AssessmentFilter**: Union type supporting `"All"`, error types, and accuracy tiers like `"None:Excellent"`
+- **GranularityLevel**: `"FullText" | "Word" | "Phoneme"`
+- **RecordingMode**: `"auto" | "manual"` — auto-detect end vs. user-controlled stop
+- **RecordingState**: `"idle" | "recording" | "processing" | "done"`
+- Helper functions: `getAccuracyTier()`, `filterWords()`
+
+### Recording Modes
+
+- **Auto mode**: Single-shot `recognizeOnceAsync` — Azure detects end of speech automatically.
+- **Manual mode**: Continuous `recognizeContinuousAsync` with user-controlled stop. Combines multiple recognition results, averages scores, applies client-side miscue correction for unmatched words (marks as Insertion).
+
+### Cost Model
+
+- Assessment cost = `duration_hours * ASSESSMENT_PRICE_USD_PER_HOUR * 7.8 HKD`. Configurable via `ASSESSMENT_PRICE_USD_PER_HOUR` env var (default `1.00`).
+- Additional costs for word pronunciation playback (`/api/tts/word`) and reference audio generation are accumulated incrementally via PATCH on the assessment record.
+- Recordings saved to `data/recording/` with nanoid filenames. Reference audio saved to standard TTS output path.
+
+### Word-Level TTS (`src/lib/word-tts.ts`)
+
+Dedicated single-word TTS synthesizer with its own Azure endpoint pool (separate round-robin cursor from main TTS). Synthesizes via SSML with 15% slower rate for clearer pronunciation. XML-escapes the word. Used by `PlayWordButton` and `TranscriptView` for inline pronunciation playback.
+
+### Text Selection → Assessment Flow
+
+- **`useTextSelectionPopover`** (`src/hooks/use-text-selection.tsx`): Tracks text selection within a `<textarea>`. Uses a hidden "mirror" `<div>` to compute selection bounding rect. Debounces `selectionchange` events (150ms). Auto-adjusts popup position to avoid screen edges.
+- **`SelectionPopover`** (`src/components/selection-popover.tsx`): Floating button that appears above selected text, navigating to `/assessment?text=<selected_text>`.
+
+---
+
+## Admin System
+
+### Architecture
+
+- **`src/lib/admin.ts`**: `getAdminEmails()` parses comma-separated `ADMIN_EMAIL` env var. `isAdminEmail()` checks if email is in admin list.
+- **Session augmentation** (`src/types/next-auth.d.ts`): `isAdmin` boolean added to `Session.user` and `JWT` interfaces. Set in `auth.ts` JWT callback via `isAdminEmail()`.
+- **Admin layout** (`src/app/(dashboard)/admin/layout.tsx`): Server-side guard — calls `auth()` + `isAdminEmail()`, redirects to `/` if unauthorized.
+
+### Admin Access Rules
+
+- All admin API routes (`/api/admin/*`) check `isAdminEmail()` and return 403 if not admin.
+- All user-facing API routes (assessment GET, audio serving) grant admin users access to any record regardless of ownership or expiry.
+
+---
+
+## Audio Retention & Data Expiry
+
+### Expiry System
+
+- **TTS audio**: `generations.expiresAt` set on creation based on `AUDIO_RETENTION_DAYS` env var (default 365).
+- **Assessment recordings**: `assessments.expiresAt` set only when `audioPath` is present, based on `RECORDING_RETENTION_DAYS` (falls back to `AUDIO_RETENTION_DAYS`).
+- All user-facing GET endpoints exclude expired records via `or(isNull(expiresAt), gt(expiresAt, new Date()))`.
+
+### Cleanup API (`/api/cleanup`)
+
+- POST endpoint deletes expired generations and assessments (and their audio files) in a single pass.
+- Returns `{ deletedGenerations, deletedAssessments }`.
+- No auth required if `CLEANUP_SECRET` env var is unset; otherwise requires `Bearer` token.
+
+### Expiry UI
+
+- History lists show expiry badges ("Xd left") with red styling when <=14 days remaining. Near-expiry cards get red border.
+
+---
+
+## History Page (Tabbed Interface)
+
+The history page uses a tabbed interface with "Audio" and "Assessment" tabs:
+
+- **`history-tabs.tsx`**: Reads `?tab=assessment` search param for default tab.
+- **`history-list.tsx`**: TTS generation history with pagination (page size selector: 10/20/30/50), expiry badges, and text selection popover in detail view.
+- **`assessment-history.tsx`**: Paginated assessment history with detail drill-down, audio playback, and full score/transcript display.
+- History page uses `Suspense` boundary because `HistoryTabs` uses `useSearchParams()`.
 
 ---
 
@@ -245,7 +352,7 @@ The project uses a **custom-built, lightweight i18n system** with no external li
 
 ### Translation Namespaces
 
-Dictionaries are organized into namespaces: `common`, `header`, `dashboard`, `tts`, `history`, `credits`, `install`, `settings`.
+Dictionaries are organized into namespaces: `common`, `header`, `dashboard`, `tts`, `history`, `credits`, `assessment`, `admin`, `landing`, `install`, `settings`.
 
 ### Usage Patterns
 
@@ -377,6 +484,11 @@ Refer to `.env.example` for all available environment variables.
 | `STRIPE_PLAN_A_PRICE_HKD` | Price in HKD for Starter plan (default: `15`) |
 | `STRIPE_PLAN_B_CREDITS` | Credits in Best Value plan (default: `50`) |
 | `STRIPE_PLAN_B_PRICE_HKD` | Price in HKD for Best Value plan (default: `45`) |
+| `ADMIN_EMAIL` | Comma-separated admin email addresses |
+| `ASSESSMENT_PRICE_USD_PER_HOUR` | Cost per hour of assessment audio in USD (default: `1.00`) |
+| `AUDIO_RETENTION_DAYS` | Days before TTS audio is auto-deleted (default: `365`) |
+| `RECORDING_RETENTION_DAYS` | Days before assessment recordings are deleted (falls back to `AUDIO_RETENTION_DAYS`) |
+| `CLEANUP_SECRET` | Optional Bearer token for `/api/cleanup` endpoint (no auth if unset) |
 
 - **Never commit** `.env` or `.env.local` files.
 
@@ -393,14 +505,28 @@ API routes are in `src/app/api/`. Key endpoints:
 | `/api/auth/[...nextauth]` | GET/POST | NextAuth handler |
 | `/api/tts` | POST | Generate TTS audio from text (deducts credits) |
 | `/api/tts` | GET | List user's TTS generations |
+| `/api/tts/word` | POST | Synthesize single word for pronunciation playback (returns audio + credit headers) |
 | `/api/extract-text` | POST | Extract text from uploaded file (FormData) |
 | `/api/generations/[id]` | GET | Get single generation details |
 | `/api/generations/[id]` | PATCH | Update generation title |
 | `/api/generations/[id]` | DELETE | Delete generation and its audio file |
 | `/api/audio/[id]` | GET | Serve audio file (supports Range requests for seeking) |
+| `/api/assessment` | POST | Save pronunciation assessment (FormData: JSON + audio blob, deducts credits) |
+| `/api/assessment` | GET | List user's assessments (paginated, excludes expired) |
+| `/api/assessment/[id]` | GET | Get full assessment detail (admin bypasses ownership/expiry checks) |
+| `/api/assessment/[id]` | DELETE | Delete assessment and its audio files |
+| `/api/assessment/[id]` | PATCH | Update reference audio path or increment cost |
+| `/api/assessment/[id]/audio` | GET | Serve recording audio (mp4/m4a/webm, Range requests, admin bypass) |
+| `/api/assessment/[id]/reference-audio` | GET | Serve reference audio MP3 (admin bypass) |
+| `/api/speech/token` | GET | Issue Azure Speech auth token (round-robin, for client-side assessment) |
+| `/api/admin/assessments` | GET | Paginated list of all assessments with user info (admin-only) |
+| `/api/admin/generations` | GET | Admin-only generation listing |
+| `/api/admin/purchases` | GET | Admin-only purchase listing |
+| `/api/admin/sign-ins` | GET | Admin-only sign-in log listing |
 | `/api/stripe/checkout` | POST | Create Stripe Checkout Session |
 | `/api/stripe/webhook` | POST | Handle Stripe webhooks (no auth — Stripe signs requests) |
 | `/api/stripe/plans` | GET | Return available credit plans |
+| `/api/cleanup` | POST | Delete expired generations + assessments and their audio files |
 | `/api/user/credits` | GET | Return user's credit balance |
 | `/api/user/purchases` | GET | Return user's purchase history |
 | `/api/user/settings` | GET | Return user's theme and locale preferences |
@@ -409,6 +535,8 @@ API routes are in `src/app/api/`. Key endpoints:
 ### 2. API Patterns
 
 - All API routes (except `/api/auth/*` and `/api/stripe/webhook`) require authentication via `auth()` check.
+- Admin routes (`/api/admin/*`) additionally check `isAdminEmail(session.user.email)` and return 403 if unauthorized.
+- User-facing routes (assessment, audio serving) grant admin users access to any record regardless of ownership or expiry.
 - Return `NextResponse.json()` with appropriate HTTP status codes.
 - Audio serving supports HTTP Range requests for efficient seeking in the audio player.
 
@@ -418,7 +546,8 @@ API routes are in `src/app/api/`. Key endpoints:
 
 - **Secrets**: Do not hardcode API keys or credentials.
 - **Auth Checks**: All API routes and dashboard pages require authentication. Auth checks are performed server-side via `auth()`.
-- **File Serving**: Audio files are served only to the owning user (verified via `userId` match in database query).
+- **Admin Checks**: Admin routes (`/api/admin/*`, `/admin/*`) additionally verify `isAdminEmail()`.
+- **File Serving**: Audio files are served only to the owning user (verified via `userId` match in database query). Admin users bypass ownership/expiry checks.
 - **Temp Files**: Uploaded files are stored in OS tmpdir and deleted after processing in a `finally` block.
 - **Destructive Actions**: Avoid `rm -rf` or history rewriting in git unless explicitly requested.
 
