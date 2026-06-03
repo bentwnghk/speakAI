@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Settings, SunMoon, Languages } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { useUserSettings } from "@/hooks/use-settings";
 import type { Locale } from "@/lib/i18n";
@@ -30,7 +31,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{t.settings.title}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Settings className="size-5" />
+              {t.settings.title}
+            </DialogTitle>
           <DialogDescription>
             {t.settings.theme} & {t.settings.language}
           </DialogDescription>
@@ -38,7 +42,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
         <div className="space-y-6">
           <div className="space-y-2">
-            <Label>{t.settings.theme}</Label>
+            <Label className="flex items-center gap-1.5">
+              <SunMoon className="size-4" />
+              {t.settings.theme}
+            </Label>
             <Select value={theme} onValueChange={(v) => setTheme(v as typeof theme)}>
               <SelectTrigger>
                 <SelectValue />
@@ -52,7 +59,10 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
           </div>
 
           <div className="space-y-2">
-            <Label>{t.settings.language}</Label>
+            <Label className="flex items-center gap-1.5">
+              <Languages className="size-4" />
+              {t.settings.language}
+            </Label>
             <Select
               value={locale}
               onValueChange={(v) => setLocale(v as Locale)}
