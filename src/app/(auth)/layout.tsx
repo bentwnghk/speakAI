@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 
 export const metadata: Metadata = {
-  title: "Mr.\u{1F196} SpeakAI - Turn text into natural-sounding audio with karaoke-style playback",
+  title: "Mr.\u{1F196} SpeakAI - AI Text-to-Speech & Pronunciation Coach",
 };
 
 export default async function AuthLayout({
