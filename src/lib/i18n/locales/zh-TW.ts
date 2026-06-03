@@ -242,7 +242,7 @@ const zhTW: TranslationKeys = {
     expiresIn: "剩餘 {days} 天",
     playPronunciation: "播放發音",
     wordPronunciationCost: "已播放發音 — 扣除 HK${cost}",
-    listenToReference: "收聽參考文本",
+    listenToReference: "收聽正確發音",
     listenToReferenceDesc: "收聽或生成參考文本的語音，聆聽正確發音。",
     generateReferenceAudio: "生成語音",
     generatingReferenceAudio: "生成中...",
