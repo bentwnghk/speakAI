@@ -94,10 +94,50 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   const recognizerRef = useRef<import("microsoft-cognitiveservices-speech-sdk").SpeechRecognizer | null>(null);
   const userStoppedRef = useRef(false);
   const recordStartRef = useRef(0);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const rafRef = useRef<number>(0);
+  const micLevelRef = useRef<number>(0);
 
   const wordCount = referenceText.trim()
     ? referenceText.trim().split(/\s+/).length
     : 0;
+
+  function setupVolumeMeter(stream: MediaStream) {
+    const audioCtx = new AudioContext();
+    audioCtxRef.current = audioCtx;
+    const source = audioCtx.createMediaStreamSource(stream);
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+
+    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    const update = () => {
+      analyser.getByteTimeDomainData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        const v = (dataArray[i] - 128) / 128;
+        sum += v * v;
+      }
+      const rms = Math.sqrt(sum / dataArray.length);
+      const target = Math.min(1, rms * 4);
+      micLevelRef.current = micLevelRef.current * 0.6 + target * 0.4;
+      rafRef.current = requestAnimationFrame(update);
+    };
+    rafRef.current = requestAnimationFrame(update);
+  }
+
+  function cleanupVolumeMeter() {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
+    if (audioCtxRef.current) {
+      void audioCtxRef.current.close().catch(() => {});
+      audioCtxRef.current = null;
+    }
+    micLevelRef.current = 0;
+  }
 
   const handleStart = useCallback(async () => {
     if (!referenceText.trim()) return;
@@ -113,6 +153,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setupVolumeMeter(stream);
       const mimeType = MediaRecorder.isTypeSupported("audio/mp4")
         ? "audio/mp4"
         : MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
@@ -175,6 +216,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
       }
     } catch (err) {
       console.error("Assessment error:", err);
+      cleanupVolumeMeter();
       setRecordingState("idle");
       if (err instanceof Error && err.message === "token") {
         toast.error(at.tokenError);
@@ -331,6 +373,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   }
 
   function stopMediaRecorder(): Promise<{ blob: Blob | null; recordingDurationMs: number }> {
+    cleanupVolumeMeter();
     const recorder = mediaRecorderRef.current;
     const duration = recordStartRef.current > 0 ? Date.now() - recordStartRef.current : 0;
     recordStartRef.current = 0;
@@ -686,6 +729,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
             onStop={handleStop}
             t={at}
             disabled={!referenceText.trim()}
+            micLevelRef={micLevelRef}
           />
         </CardContent>
       </Card>
