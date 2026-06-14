@@ -13,10 +13,11 @@ interface ReferenceAudioSectionProps {
   referenceText: string;
   t: Record<string, string>;
   assessmentId?: string;
+  hasReferenceAudio?: boolean;
   onCostUpdate?: (cost: number) => void;
 }
 
-export function ReferenceAudioSection({ referenceText, t, assessmentId, onCostUpdate }: ReferenceAudioSectionProps) {
+export function ReferenceAudioSection({ referenceText, t, assessmentId, hasReferenceAudio, onCostUpdate }: ReferenceAudioSectionProps) {
   const [refAudioUrl, setRefAudioUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [voice, setVoice] = useState("Female 1");
@@ -25,7 +26,12 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, onCostUp
 
   useEffect(() => {
     if (!assessmentId) return;
+    if (hasReferenceAudio === false) return;
     const audioUrl = `/api/assessment/${assessmentId}/reference-audio`;
+    if (hasReferenceAudio === true) {
+      setRefAudioUrl(audioUrl);
+      return;
+    }
     let cancelled = false;
     fetch(audioUrl, { method: "HEAD" }).then((res) => {
       if (!cancelled && res.ok) {
@@ -33,7 +39,7 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, onCostUp
       }
     }).catch(() => {});
     return () => { cancelled = true; };
-  }, [assessmentId]);
+  }, [assessmentId, hasReferenceAudio]);
 
   async function handleGenerate() {
     if (!referenceText.trim()) return;

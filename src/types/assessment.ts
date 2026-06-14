@@ -117,6 +117,7 @@ export interface SavedAssessment {
   phonemes: PhonemeResult[][] | null;
   syllables: SyllableResult[][] | null;
   audioPath: string | null;
+  referenceAudioPath: string | null;
   cost: number;
   expiresAt: string | null;
   createdAt: string;

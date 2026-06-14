@@ -330,7 +330,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
 
         <Separator />
 
-        <ReferenceAudioSection referenceText={detail.referenceText} t={t} assessmentId={detail.id} onCostUpdate={() => void loadDetail(detail.id)} />
+        <ReferenceAudioSection referenceText={detail.referenceText} t={t} assessmentId={detail.id} hasReferenceAudio={!!detail.referenceAudioPath} onCostUpdate={() => void loadDetail(detail.id)} />
 
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">

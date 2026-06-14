@@ -1106,7 +1106,7 @@ export default function AdminDashboardPage() {
 
                   <Separator />
 
-                  <ReferenceAudioSection referenceText={assessmentDetail.referenceText} t={t.assessment} assessmentId={assessmentDetail.id} onCostUpdate={() => { void fetch(`/api/assessment/${assessmentDetail.id}`).then((res) => (res.ok ? res.json() : null)).then((data) => { if (data) setAssessmentDetail(data as SavedAssessment); }); }} />
+                  <ReferenceAudioSection referenceText={assessmentDetail.referenceText} t={t.assessment} assessmentId={assessmentDetail.id} hasReferenceAudio={!!assessmentDetail.referenceAudioPath} onCostUpdate={() => { void fetch(`/api/assessment/${assessmentDetail.id}`).then((res) => (res.ok ? res.json() : null)).then((data) => { if (data) setAssessmentDetail(data as SavedAssessment); }); }} />
 
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
