@@ -32,7 +32,7 @@ const zhTW: TranslationKeys = {
     ],
     footerBuiltBy: "Mr.🆖 為學習英語的學生用 ❤️ 打造",
     footerPoweredBy: "由",
-    footerPoweredBySuffix: "驅動",
+    footerPoweredBySuffix: " 驅動",
   },
   tts: {
     source: "來源",
