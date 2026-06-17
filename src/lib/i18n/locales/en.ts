@@ -30,6 +30,7 @@ const en = {
     ],
     footerBuiltBy: "Built with ❤️ by Mr.🆖 for students learning English.",
     footerPoweredBy: "Powered by",
+    footerPoweredBySuffix: "",
   },
   tts: {
     source: "Source",

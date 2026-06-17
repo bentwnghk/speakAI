@@ -12,7 +12,7 @@ export function DashboardFooter({ t: serverT }: { t: ReturnType<typeof import("@
         {dict.dashboard.footerBuiltBy}
       </p>
       <p className="text-center text-xs text-muted-foreground mt-1">
-        {dict.dashboard.footerPoweredBy} <a href="https://api.mr5ai.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Mr.🆖 AI Hub</a>
+        {dict.dashboard.footerPoweredBy} <a href="https://api.mr5ai.com" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">Mr.🆖 AI Hub</a>{dict.dashboard.footerPoweredBySuffix}
       </p>
     </footer>
   );

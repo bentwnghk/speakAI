@@ -31,7 +31,8 @@ const zhTW: TranslationKeys = {
       "朗讀",
     ],
     footerBuiltBy: "Mr.🆖 為學習英語的學生用 ❤️ 打造",
-    footerPoweredBy: "技術支援",
+    footerPoweredBy: "由",
+    footerPoweredBySuffix: "驅動",
   },
   tts: {
     source: "來源",
