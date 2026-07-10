@@ -118,6 +118,7 @@ export interface SavedAssessment {
   syllables: SyllableResult[][] | null;
   audioPath: string | null;
   referenceAudioPath: string | null;
+  feedback: { strengths: string[]; weaknesses: string[]; tips: string[] } | null;
   cost: number;
   expiresAt: string | null;
   createdAt: string;

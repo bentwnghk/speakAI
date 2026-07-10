@@ -46,6 +46,7 @@ import {
   SyllableView,
 } from "@/components/assessment/word-detail";
 import { PhonemeAnalysis } from "@/components/assessment/phoneme-analysis";
+import { FeedbackCard } from "@/components/assessment/feedback-card";
 import { Separator } from "@/components/ui/separator";
 import type { SavedAssessment } from "@/types/assessment";
 import { type AssessmentFilter, filterWords } from "@/types/assessment";
@@ -1073,7 +1074,7 @@ export default function AdminDashboardPage() {
                     <div className="flex items-center justify-between">
                       <h3 className="text-sm font-semibold">{t.assessment.granularity}</h3>
                       <TabsList>
-                        <TabsTrigger value="fulltext">{t.assessment.granFullText}</TabsTrigger>
+                        <TabsTrigger value="fulltext">{t.assessment.granCoach}</TabsTrigger>
                         <TabsTrigger value="word">{t.assessment.granWord}</TabsTrigger>
                         <TabsTrigger value="syllable">{t.assessment.granSyllable}</TabsTrigger>
                         <TabsTrigger value="phoneme">{t.assessment.granPhoneme}</TabsTrigger>
@@ -1082,7 +1083,12 @@ export default function AdminDashboardPage() {
 
                     <TabsContent value="fulltext">
                       <div className="rounded-lg border p-4">
-                        <ScoreOverview scores={scores} t={t.assessment} />
+                        <FeedbackCard
+                          assessmentId={assessmentDetail.id}
+                          initialFeedback={assessmentDetail.feedback ?? undefined}
+                          t={t.assessment}
+                          onCostUpdate={() => { void fetch(`/api/assessment/${assessmentDetail.id}`).then((res) => (res.ok ? res.json() : null)).then((data) => { if (data) setAssessmentDetail(data as SavedAssessment); }); }}
+                        />
                       </div>
                     </TabsContent>
 

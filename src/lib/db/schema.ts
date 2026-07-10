@@ -145,6 +145,7 @@ export const assessments = pgTable(
     syllables: jsonb("syllables"),
     audioPath: text("audioPath"),
     referenceAudioPath: text("referenceAudioPath"),
+    feedback: jsonb("feedback"),
     cost: real("cost").notNull(),
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
     expiresAt: timestamp("expiresAt", { mode: "date" }),

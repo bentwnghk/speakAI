@@ -27,6 +27,7 @@ import {
   SyllableView,
 } from "@/components/assessment/word-detail";
 import { PhonemeAnalysis } from "@/components/assessment/phoneme-analysis";
+import { FeedbackCard } from "@/components/assessment/feedback-card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -297,7 +298,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">{t.granularity}</h3>
             <TabsList>
-              <TabsTrigger value="fulltext">{t.granFullText}</TabsTrigger>
+              <TabsTrigger value="fulltext">{t.granCoach}</TabsTrigger>
               <TabsTrigger value="word">{t.granWord}</TabsTrigger>
               <TabsTrigger value="syllable">{t.granSyllable}</TabsTrigger>
               <TabsTrigger value="phoneme">{t.granPhoneme}</TabsTrigger>
@@ -306,7 +307,12 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
 
           <TabsContent value="fulltext">
             <div className="rounded-lg border p-4">
-              <ScoreOverview scores={scores} t={t} />
+              <FeedbackCard
+                assessmentId={detail.id}
+                initialFeedback={detail.feedback ?? undefined}
+                t={t}
+                onCostUpdate={() => void loadDetail(detail.id)}
+              />
             </div>
           </TabsContent>
 

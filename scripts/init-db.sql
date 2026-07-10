@@ -120,6 +120,8 @@ CREATE TABLE "assessments" (
   "phonemes" JSONB,
   "syllables" JSONB,
   "audioPath" TEXT,
+  "referenceAudioPath" TEXT,
+  "feedback" JSONB,
   "cost" REAL NOT NULL,
   "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
   "expiresAt" TIMESTAMP

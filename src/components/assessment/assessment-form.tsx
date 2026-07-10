@@ -29,6 +29,7 @@ import { ScoreOverview } from "./score-overview";
 import { TranscriptView } from "./transcript-view";
 import { WordDetail, SyllableView } from "./word-detail";
 import { PhonemeAnalysis } from "./phoneme-analysis";
+import { FeedbackCard } from "./feedback-card";
 import { ErrorSummary } from "./error-summary";
 import { ReferenceAudioSection } from "./reference-audio-section";
 import type {
@@ -799,7 +800,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">{at.granularity}</h3>
                 <TabsList>
-                  <TabsTrigger value="fulltext">{at.granFullText}</TabsTrigger>
+                  <TabsTrigger value="fulltext">{at.granCoach}</TabsTrigger>
                   <TabsTrigger value="word">{at.granWord}</TabsTrigger>
                   <TabsTrigger value="syllable">{at.granSyllable}</TabsTrigger>
                   <TabsTrigger value="phoneme">{at.granPhoneme}</TabsTrigger>
@@ -808,7 +809,11 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
               <TabsContent value="fulltext">
                 <div className="rounded-lg border p-4">
-                  <ScoreOverview scores={result.scores} t={at} />
+                  <FeedbackCard
+                    assessmentId={savedAssessmentId}
+                    t={at}
+                    onCostUpdate={handleWordCost}
+                  />
                 </div>
               </TabsContent>
 
