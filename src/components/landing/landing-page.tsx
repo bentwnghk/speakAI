@@ -27,6 +27,9 @@ import {
   Trophy,
   Activity,
   Globe,
+  AlertTriangle,
+  Lightbulb,
+  Shuffle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -457,6 +460,20 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       title: l.scoreTrackTitle,
       desc: l.scoreTrackDesc,
     },
+    {
+      icon: Sparkles,
+      key: "ai-coach",
+      color: "text-emerald-600 dark:text-emerald-400",
+      title: l.coachFeatureTitle,
+      desc: l.coachFeatureDesc,
+    },
+    {
+      icon: Shuffle,
+      key: "confusion",
+      color: "text-fuchsia-600 dark:text-fuchsia-400",
+      title: l.confusionTitle,
+      desc: l.confusionDesc,
+    },
   ];
 
   const listenJourney = [
@@ -476,7 +493,8 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
     { num: 4, icon: Activity, key: "scores", label: l.stepScores },
     { num: 5, icon: MessageCircle, key: "transcript", label: l.stepTranscript },
     { num: 6, icon: BarChart3, key: "phonemes", label: l.stepPhonemes },
-    { num: 7, icon: Trophy, key: "improve", label: l.stepImprove },
+    { num: 7, icon: Sparkles, key: "coach", label: l.stepCoach },
+    { num: 8, icon: Trophy, key: "improve", label: l.stepImprove },
   ];
 
   const capabilities = [
@@ -495,6 +513,8 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
     l.capFluency,
     l.capAssessHistory,
     l.capScoreTrack,
+    l.capAiCoach,
+    l.capConfusionMatrix,
     l.capAnyDevice,
   ];
 
@@ -507,6 +527,8 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
     l.capFluency,
     l.capAssessHistory,
     l.capScoreTrack,
+    l.capAiCoach,
+    l.capConfusionMatrix,
   ]);
 
   return (
@@ -837,6 +859,106 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
                 </motion.div>
               ),
             )}
+          </AnimatedSection>
+        </div>
+      </section>
+
+      {/* ── AI Pronunciation Coach Showcase ── */}
+      <section className="relative py-20 px-4 overflow-hidden bg-gradient-to-b from-[#0f172a] via-[#0b2515] to-[#0f172a]">
+        <GalaxyBackground />
+        <div className="relative z-10 container mx-auto">
+          <AnimatedSection>
+            <motion.span
+              variants={sectionTitleVariants}
+              className="block text-center text-xs font-semibold uppercase tracking-widest text-emerald-400 mb-3"
+            >
+              {l.coachBadge}
+            </motion.span>
+            <motion.h2
+              variants={sectionTitleVariants}
+              className="text-3xl sm:text-5xl font-bold tracking-tight text-center mb-4 text-white"
+            >
+              {l.coachTitle}
+            </motion.h2>
+            <motion.div
+              variants={sectionTitleVariants}
+              className="w-24 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 mx-auto rounded-full mb-4"
+            />
+            <motion.p
+              variants={sectionTitleVariants}
+              className="text-center text-white/50 mb-12 max-w-2xl mx-auto"
+            >
+              {l.coachDesc}
+            </motion.p>
+          </AnimatedSection>
+
+          <AnimatedSection
+            className="grid gap-5 sm:grid-cols-3 max-w-5xl mx-auto"
+            staggerDelay={0.15}
+          >
+            <motion.div
+              variants={cardVariants}
+              className="rounded-2xl p-6 bg-green-500/10 border border-green-500/20 backdrop-blur-xl"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <CheckCircle2 className="size-5 text-green-400" />
+                <h3 className="font-semibold text-white">
+                  {l.coachStrengthsTitle}
+                </h3>
+              </div>
+              <ul className="space-y-2.5 text-sm text-white/70">
+                <li className="flex gap-2 leading-relaxed">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-green-400/60" />
+                  <span>{l.coachStrengths1}</span>
+                </li>
+                <li className="flex gap-2 leading-relaxed">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-green-400/60" />
+                  <span>{l.coachStrengths2}</span>
+                </li>
+              </ul>
+            </motion.div>
+
+            <motion.div
+              variants={cardVariants}
+              className="rounded-2xl p-6 bg-amber-500/10 border border-amber-500/20 backdrop-blur-xl"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <AlertTriangle className="size-5 text-amber-400" />
+                <h3 className="font-semibold text-white">
+                  {l.coachWeaknessesTitle}
+                </h3>
+              </div>
+              <ul className="space-y-2.5 text-sm text-white/70">
+                <li className="flex gap-2 leading-relaxed">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-400/60" />
+                  <span>{l.coachWeaknesses1}</span>
+                </li>
+                <li className="flex gap-2 leading-relaxed">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-400/60" />
+                  <span>{l.coachWeaknesses2}</span>
+                </li>
+              </ul>
+            </motion.div>
+
+            <motion.div
+              variants={cardVariants}
+              className="rounded-2xl p-6 bg-yellow-500/10 border border-yellow-500/20 backdrop-blur-xl"
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <Lightbulb className="size-5 text-yellow-400" />
+                <h3 className="font-semibold text-white">{l.coachTipsTitle}</h3>
+              </div>
+              <ul className="space-y-2.5 text-sm text-white/70">
+                <li className="flex gap-2 leading-relaxed">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-yellow-400/60" />
+                  <span>{l.coachTips1}</span>
+                </li>
+                <li className="flex gap-2 leading-relaxed">
+                  <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-yellow-400/60" />
+                  <span>{l.coachTips2}</span>
+                </li>
+              </ul>
+            </motion.div>
           </AnimatedSection>
         </div>
       </section>

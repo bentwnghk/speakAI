@@ -314,6 +314,19 @@ const en = {
     ipaPhonemeBreakdown: "IPA phoneme breakdown",
     errorClassification: "Error classification",
     progressTracking: "Progress tracking",
+    coachBadge: "AI Coach",
+    coachTitle: "Your Personal AI Pronunciation Coach",
+    coachDesc:
+      "After every assessment, AI analyzes your speech and delivers a personalized breakdown — your strengths, what to work on, and tailored practice tips.",
+    coachStrengthsTitle: "Strengths",
+    coachStrengths1: "Strong rhythm with natural intonation",
+    coachStrengths2: "Vowel sounds are clear and accurate",
+    coachWeaknessesTitle: "Areas to Improve",
+    coachWeaknesses1: "Consonant clusters like /str/ and /ks/ need work",
+    coachWeaknesses2: "Stress shifts on multi-syllable words",
+    coachTipsTitle: "Practice Tips",
+    coachTips1: "Slow down on clusters — isolate and repeat \"strikes\" 5×",
+    coachTips2: "Shadow the reference audio 3× before re-recording",
     ttsBadge: "Text-to-Speech",
     ttsTitle: "Lifelike AI Voices",
     ttsDesc:
@@ -357,6 +370,12 @@ const en = {
     scoreTrackTitle: "Score Tracking",
     scoreTrackDesc:
       "Review past assessments, compare scores over time, and track your pronunciation improvement.",
+    coachFeatureTitle: "AI Pronunciation Coach",
+    coachFeatureDesc:
+      "Get personalized strengths, weaknesses, and actionable practice tips after every assessment — powered by AI.",
+    confusionTitle: "Phoneme Analytics",
+    confusionDesc:
+      "Every sound ranked by accuracy and frequency — sort, filter to your weak spots, and reveal exactly which sounds you mix up.",
     howBadge: "How It Works",
     howTitle: "Two Powerful Tools",
     listenTitle: "Listen to Any Text",
@@ -375,6 +394,7 @@ const en = {
     stepTranscript: "Review Word-by-Word",
     stepPhonemes: "Explore Phoneme Detail",
     stepImprove: "Track Your Progress",
+    stepCoach: "Get AI Coach Feedback",
     capBadge: "Capabilities",
     capTitle: "Everything in One Place",
     capPdf: "PDF Support",
@@ -392,6 +412,8 @@ const en = {
     capFluency: "Fluency & Prosody Scores",
     capAssessHistory: "Assessment History",
     capScoreTrack: "Score Tracking Over Time",
+    capAiCoach: "AI Pronunciation Coach",
+    capConfusionMatrix: "Sound Confusion Detection",
     capAnyDevice: "Access from Any Device",
     ctaTitle: "Ready to Speak Better?",
     ctaDesc:
