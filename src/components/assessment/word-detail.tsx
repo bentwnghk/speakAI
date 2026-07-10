@@ -9,7 +9,6 @@ import { PlayWordButton } from "./play-word-button";
 interface WordDetailProps {
   words: WordResult[];
   t: Record<string, string>;
-  expandAll?: boolean;
   onCostUpdate?: (cost: number) => void;
 }
 
@@ -43,7 +42,7 @@ function getAccuracyBg(score: number): string {
   return "bg-yellow-500/10 border-yellow-500/20";
 }
 
-export function WordDetail({ words, t, expandAll, onCostUpdate }: WordDetailProps) {
+export function WordDetail({ words, t, onCostUpdate }: WordDetailProps) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
 
   return (
@@ -53,7 +52,7 @@ export function WordDetail({ words, t, expandAll, onCostUpdate }: WordDetailProp
         const isError = errorType !== "None";
         const rawScore = word.PronunciationAssessment.AccuracyScore;
         const score = Number.isFinite(rawScore) ? Math.round(rawScore) : null;
-        const isExpanded = expandAll || expandedIdx === i;
+        const isExpanded = expandedIdx === i;
         const hasPhonemes = word.Phonemes && word.Phonemes.length > 0;
 
         const resolvedScore = score ?? 0;
@@ -66,10 +65,10 @@ export function WordDetail({ words, t, expandAll, onCostUpdate }: WordDetailProp
                 "flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-accent/50",
                 isError ? ERROR_BG[errorType] : getAccuracyBg(resolvedScore)
               )}
-              onClick={() => !expandAll && setExpandedIdx(isExpanded ? null : i)}
+              onClick={() => setExpandedIdx(isExpanded ? null : i)}
             >
               <span className="shrink-0 text-muted-foreground">
-                {expandAll ? null : isExpanded ? (
+                {isExpanded ? (
                   <ChevronDown className="size-4" />
                 ) : hasPhonemes ? (
                   <ChevronRight className="size-4" />

@@ -28,6 +28,7 @@ import { RecordingControls } from "./recording-controls";
 import { ScoreOverview } from "./score-overview";
 import { TranscriptView } from "./transcript-view";
 import { WordDetail, SyllableView } from "./word-detail";
+import { PhonemeAnalysis } from "./phoneme-analysis";
 import { ErrorSummary } from "./error-summary";
 import { ReferenceAudioSection } from "./reference-audio-section";
 import type {
@@ -825,7 +826,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
               <TabsContent value="phoneme">
                 <div className="max-h-96 overflow-y-auto">
-                  <WordDetail words={filteredWords} t={at} expandAll onCostUpdate={handleWordCost} />
+                  <PhonemeAnalysis words={filteredWords} t={at} onCostUpdate={handleWordCost} />
                 </div>
               </TabsContent>
             </Tabs>

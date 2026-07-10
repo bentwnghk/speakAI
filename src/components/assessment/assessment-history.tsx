@@ -26,6 +26,7 @@ import {
   WordDetail,
   SyllableView,
 } from "@/components/assessment/word-detail";
+import { PhonemeAnalysis } from "@/components/assessment/phoneme-analysis";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -323,7 +324,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
 
           <TabsContent value="phoneme">
             <div className="max-h-96 overflow-y-auto">
-              <WordDetail words={filteredWords} t={t} expandAll onCostUpdate={handleWordCost} />
+              <PhonemeAnalysis words={filteredWords} t={t} onCostUpdate={handleWordCost} />
             </div>
           </TabsContent>
         </Tabs>

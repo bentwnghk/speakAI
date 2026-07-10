@@ -45,6 +45,7 @@ import {
   WordDetail,
   SyllableView,
 } from "@/components/assessment/word-detail";
+import { PhonemeAnalysis } from "@/components/assessment/phoneme-analysis";
 import { Separator } from "@/components/ui/separator";
 import type { SavedAssessment } from "@/types/assessment";
 import { type AssessmentFilter, filterWords } from "@/types/assessment";
@@ -1099,7 +1100,7 @@ export default function AdminDashboardPage() {
 
                     <TabsContent value="phoneme">
                       <div className="max-h-96 overflow-y-auto">
-                        <WordDetail words={filteredWords} t={t.assessment} expandAll onCostUpdate={handleAssessmentWordCost} />
+                        <PhonemeAnalysis words={filteredWords} t={t.assessment} onCostUpdate={handleAssessmentWordCost} />
                       </div>
                     </TabsContent>
                   </Tabs>
