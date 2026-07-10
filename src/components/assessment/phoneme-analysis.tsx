@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import type { WordResult, NBestPhoneme } from "@/types/assessment";
 import { PlayWordButton } from "./play-word-button";
 
@@ -64,6 +65,7 @@ export function PhonemeAnalysis({ words, t, onCostUpdate }: PhonemeAnalysisProps
   const [sortMode, setSortMode] = useState<SortMode>("worst");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [openConfusion, setOpenConfusion] = useState<number | null>(null);
 
   const aggregates = useMemo<PhonemeAggregate[]>(() => {
     const map = new Map<string, PhonemeAggregate>();
@@ -210,18 +212,34 @@ export function PhonemeAnalysis({ words, t, onCostUpdate }: PhonemeAnalysisProps
           </p>
           <div className="flex flex-wrap gap-2">
             {confusions.slice(0, 8).map((pair, i) => (
-              <span
-                key={i}
-                className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-xs"
-                title={`${t.phonemeSources ?? "In words"}: ${pair.words.join(", ")}`}
-              >
-                <span className="font-mono font-medium">/{pair.expected}/</span>
-                <span className="text-muted-foreground">&rarr;</span>
-                <span className="font-mono text-red-600 dark:text-red-400">/{pair.spoken}/</span>
-                <span className="rounded-full bg-muted px-1.5 tabular-nums text-muted-foreground">
-                  &times;{pair.count}
-                </span>
-              </span>
+              <Popover key={i} open={openConfusion === i} onOpenChange={(o) => setOpenConfusion(o ? i : null)}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-xs transition-colors hover:bg-accent"
+                  >
+                    <span className="font-mono font-medium">/{pair.expected}/</span>
+                    <span className="text-muted-foreground">&rarr;</span>
+                    <span className="font-mono text-red-600 dark:text-red-400">/{pair.spoken}/</span>
+                    <span className="rounded-full bg-muted px-1.5 tabular-nums text-muted-foreground">
+                      &times;{pair.count}
+                    </span>
+                    <Info className="size-3 text-muted-foreground/70" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto max-w-xs p-3 text-xs">
+                  <p className="mb-1 font-medium text-muted-foreground">
+                    {t.phonemeSources ?? "In words"}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {pair.words.map((word, k) => (
+                      <span key={k} className="rounded bg-muted px-1.5 py-0.5 font-medium text-foreground">
+                        {word}
+                      </span>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             ))}
           </div>
         </div>
@@ -306,7 +324,7 @@ export function PhonemeAnalysis({ words, t, onCostUpdate }: PhonemeAnalysisProps
                         key={j}
                         className="flex items-center gap-2 rounded border bg-background px-2 py-1.5 text-sm"
                       >
-                        <span className="w-20 shrink-0 truncate font-medium text-foreground">
+                        <span className="shrink-0 font-medium text-foreground">
                           {inst.word}
                         </span>
 
