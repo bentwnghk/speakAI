@@ -381,7 +381,6 @@ const zhTW: TranslationKeys = {
     stepScores: "查看整體評分",
     stepTranscript: "逐詞回顧",
     stepPhonemes: "探索音素詳情",
-    stepImprove: "追蹤你的進度",
     stepCoach: "獲取 AI 教練建議",
     capBadge: "功能",
     capTitle: "一站式解決方案",

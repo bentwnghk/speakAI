@@ -494,7 +494,6 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
     { num: 5, icon: MessageCircle, key: "transcript", label: l.stepTranscript },
     { num: 6, icon: BarChart3, key: "phonemes", label: l.stepPhonemes },
     { num: 7, icon: Sparkles, key: "coach", label: l.stepCoach },
-    { num: 8, icon: Trophy, key: "improve", label: l.stepImprove },
   ];
 
   const capabilities = [

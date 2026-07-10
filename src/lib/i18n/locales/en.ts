@@ -393,7 +393,6 @@ const en = {
     stepScores: "View Overall Scores",
     stepTranscript: "Review Word-by-Word",
     stepPhonemes: "Explore Phoneme Detail",
-    stepImprove: "Track Your Progress",
     stepCoach: "Get AI Coach Feedback",
     capBadge: "Capabilities",
     capTitle: "Everything in One Place",
