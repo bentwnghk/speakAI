@@ -25,6 +25,7 @@ import { ReferenceAudioSection } from "@/components/assessment/reference-audio-s
 import { WordDetail } from "@/components/assessment/word-detail";
 import { PhonemeAnalysis } from "@/components/assessment/phoneme-analysis";
 import { FeedbackCard } from "@/components/assessment/feedback-card";
+import { StressAnalysis } from "@/components/assessment/stress-analysis";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -298,6 +299,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
               <TabsTrigger value="fulltext">{t.granCoach}</TabsTrigger>
               <TabsTrigger value="word">{t.granWord}</TabsTrigger>
               <TabsTrigger value="phoneme">{t.granPhoneme}</TabsTrigger>
+              <TabsTrigger value="stress">{t.granStress}</TabsTrigger>
             </TabsList>
           </div>
 
@@ -321,6 +323,12 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
           <TabsContent value="phoneme">
             <div className="max-h-96 overflow-y-auto">
               <PhonemeAnalysis words={filteredWords} t={t} onCostUpdate={handleWordCost} />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="stress">
+            <div className="max-h-96 overflow-y-auto">
+              <StressAnalysis stress={detail.stress} t={t} />
             </div>
           </TabsContent>
         </Tabs>

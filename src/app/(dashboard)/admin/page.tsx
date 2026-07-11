@@ -44,6 +44,7 @@ import { ReferenceAudioSection } from "@/components/assessment/reference-audio-s
 import { WordDetail } from "@/components/assessment/word-detail";
 import { PhonemeAnalysis } from "@/components/assessment/phoneme-analysis";
 import { FeedbackCard } from "@/components/assessment/feedback-card";
+import { StressAnalysis } from "@/components/assessment/stress-analysis";
 import { Separator } from "@/components/ui/separator";
 import type { SavedAssessment } from "@/types/assessment";
 import { type AssessmentFilter, filterWords } from "@/types/assessment";
@@ -1074,6 +1075,7 @@ export default function AdminDashboardPage() {
                         <TabsTrigger value="fulltext">{t.assessment.granCoach}</TabsTrigger>
                         <TabsTrigger value="word">{t.assessment.granWord}</TabsTrigger>
                         <TabsTrigger value="phoneme">{t.assessment.granPhoneme}</TabsTrigger>
+                        <TabsTrigger value="stress">{t.assessment.granStress}</TabsTrigger>
                       </TabsList>
                     </div>
 
@@ -1097,6 +1099,12 @@ export default function AdminDashboardPage() {
                     <TabsContent value="phoneme">
                       <div className="max-h-96 overflow-y-auto">
                         <PhonemeAnalysis words={filteredWords} t={t.assessment} onCostUpdate={handleAssessmentWordCost} />
+                      </div>
+                    </TabsContent>
+
+                    <TabsContent value="stress">
+                      <div className="max-h-96 overflow-y-auto">
+                        <StressAnalysis stress={assessmentDetail.stress} t={t.assessment} />
                       </div>
                     </TabsContent>
                   </Tabs>

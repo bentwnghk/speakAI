@@ -121,6 +121,7 @@ CREATE TABLE "assessments" (
   "audioPath" TEXT,
   "referenceAudioPath" TEXT,
   "feedback" JSONB,
+  "stress" JSONB,
   "cost" REAL NOT NULL,
   "createdAt" TIMESTAMP NOT NULL DEFAULT NOW(),
   "expiresAt" TIMESTAMP

@@ -145,6 +145,7 @@ export const assessments = pgTable(
     audioPath: text("audioPath"),
     referenceAudioPath: text("referenceAudioPath"),
     feedback: jsonb("feedback"),
+    stress: jsonb("stress"),
     cost: real("cost").notNull(),
     createdAt: timestamp("createdAt", { mode: "date" }).defaultNow().notNull(),
     expiresAt: timestamp("expiresAt", { mode: "date" }),

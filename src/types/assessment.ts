@@ -93,6 +93,20 @@ export type RecordingMode = "auto" | "manual";
 
 export type RecordingState = "idle" | "recording" | "processing" | "done";
 
+export interface StressSyllable {
+  text: string;
+  durationMs: number;
+  prominence: number;
+}
+
+export interface StressWord {
+  word: string;
+  syllables: StressSyllable[];
+  expectedIndex: number;
+  actualIndex: number;
+  correct: boolean | null;
+}
+
 export interface SavedAssessment {
   id: string;
   referenceText: string;
@@ -108,6 +122,7 @@ export interface SavedAssessment {
   audioPath: string | null;
   referenceAudioPath: string | null;
   feedback: { strengths: string[]; weaknesses: string[]; tips: string[] } | null;
+  stress: StressWord[] | null;
   cost: number;
   expiresAt: string | null;
   createdAt: string;

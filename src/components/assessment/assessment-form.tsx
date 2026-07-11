@@ -30,6 +30,7 @@ import { TranscriptView } from "./transcript-view";
 import { WordDetail } from "./word-detail";
 import { PhonemeAnalysis } from "./phoneme-analysis";
 import { FeedbackCard } from "./feedback-card";
+import { StressAnalysis } from "./stress-analysis";
 import { ErrorSummary } from "./error-summary";
 import { ReferenceAudioSection } from "./reference-audio-section";
 import type {
@@ -39,6 +40,7 @@ import type {
   RecordingState,
   WordResult,
   PronunciationScores,
+  StressWord,
 } from "@/types/assessment";
 import { type AssessmentFilter, filterWords } from "@/types/assessment";
 
@@ -80,6 +82,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [savedAssessmentId, setSavedAssessmentId] = useState<string | null>(null);
   const [savedCost, setSavedCost] = useState<number | null>(null);
+  const [stress, setStress] = useState<StressWord[] | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 
   const handleWordCost = useCallback((cost: number) => {
@@ -147,6 +150,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
     setResult(null);
     setSavedAssessmentId(null);
     setSavedCost(null);
+    setStress(null);
     setRecordingState("recording");
     audioChunksRef.current = [];
     userStoppedRef.current = false;
@@ -590,9 +594,10 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
       }
 
       if (res.ok) {
-        const data = (await res.json()) as { cost: number; id: string };
+        const data = (await res.json()) as { cost: number; id: string; stress: StressWord[] };
         setSavedAssessmentId(data.id);
         setSavedCost(data.cost);
+        setStress(data.stress ?? null);
         toast.success(at.saved.replace("${cost}", data.cost.toFixed(2)));
         void refreshBalance();
       } else {
@@ -636,6 +641,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
     if (audioUrl) URL.revokeObjectURL(audioUrl);
     setAudioUrl(null);
     setSavedAssessmentId(null);
+    setStress(null);
     setRecordingState("idle");
     setErrorFilter("All");
   }
@@ -802,6 +808,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
                   <TabsTrigger value="fulltext">{at.granCoach}</TabsTrigger>
                   <TabsTrigger value="word">{at.granWord}</TabsTrigger>
                   <TabsTrigger value="phoneme">{at.granPhoneme}</TabsTrigger>
+                  <TabsTrigger value="stress">{at.granStress}</TabsTrigger>
                 </TabsList>
               </div>
 
@@ -824,6 +831,12 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
               <TabsContent value="phoneme">
                 <div className="max-h-96 overflow-y-auto">
                   <PhonemeAnalysis words={filteredWords} t={at} onCostUpdate={handleWordCost} />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="stress">
+                <div className="max-h-96 overflow-y-auto">
+                  <StressAnalysis stress={stress} t={at} />
                 </div>
               </TabsContent>
             </Tabs>

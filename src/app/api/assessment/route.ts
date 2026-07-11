@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { assessments } from "@/lib/db/schema";
 import { deductCredits, refundCredits } from "@/lib/db/credits";
+import { analyzeStress } from "@/lib/stress";
 import { eq, desc, sql, or, isNull, gt, and } from "drizzle-orm";
 import { z } from "zod";
 import { mkdir, writeFile } from "fs/promises";
@@ -60,9 +61,11 @@ export async function POST(request: Request) {
 
     const audioFile = formData.get("audio") as File | null;
 
-    const cost = calculateCost(data.durationMs);
+      const cost = calculateCost(data.durationMs);
 
-    const deductResult = await deductCredits(
+      const stress = analyzeStress(data.words);
+
+      const deductResult = await deductCredits(
       userId,
       cost,
       `Speaking assessment: "${data.referenceText.slice(0, 50)}${data.referenceText.length > 50 ? "..." : ""}"`
@@ -105,6 +108,7 @@ export async function POST(request: Request) {
           pronScore: data.pronScore,
           words: data.words,
           phonemes: data.phonemes ?? null,
+          stress,
           audioPath,
           cost,
           expiresAt: audioPath ? getExpiresAt() : null,
@@ -117,6 +121,7 @@ export async function POST(request: Request) {
         id: savedId,
         cost,
         balance: deductResult.balance,
+        stress,
       });
     } catch (dbError) {
       await refundCredits(userId, cost, "Assessment save failed - refund");
