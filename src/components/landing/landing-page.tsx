@@ -30,6 +30,7 @@ import {
   AlertTriangle,
   Lightbulb,
   Shuffle,
+  Waves,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -474,6 +475,13 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
       title: l.confusionTitle,
       desc: l.confusionDesc,
     },
+    {
+      icon: Waves,
+      key: "stress",
+      color: "text-purple-600 dark:text-purple-400",
+      title: l.stressTitle,
+      desc: l.stressDesc,
+    },
   ];
 
   const listenJourney = [
@@ -514,6 +522,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
     l.capScoreTrack,
     l.capAiCoach,
     l.capConfusionMatrix,
+    l.capStress,
     l.capAnyDevice,
   ];
 
@@ -528,6 +537,7 @@ export function LandingPage({ onSignIn }: LandingPageProps) {
     l.capScoreTrack,
     l.capAiCoach,
     l.capConfusionMatrix,
+    l.capStress,
   ]);
 
   return (

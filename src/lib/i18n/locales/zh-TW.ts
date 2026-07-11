@@ -370,10 +370,13 @@ const zhTW: TranslationKeys = {
     scoreTrackDesc: "回顧過去的評估、比較不同時間的分數，追蹤你的發音進步。",
     coachFeatureTitle: "AI 發音教練",
     coachFeatureDesc:
-      "每次評估後獲得專屬的優勢分析、待改進之處與切實可行的練習建議 — 由 AI 驅動。",
+      "AI 分析你的評分、音素、混淆與重音位置，提供專屬的優勢分析、待改進之處與練習建議。",
     confusionTitle: "音素數據分析",
     confusionDesc:
       "每個音素按準確度與頻率排序 — 排序、篩選你的弱項，精準找出最容易混淆的音素。",
+    stressTitle: "詞重音評估",
+    stressDesc:
+      "精確查看你重讀的音節與預期對比 — 每個多音節單詞都有視覺化重音強度條。",
     howBadge: "如何運作",
     howTitle: "兩大強大工具",
     listenTitle: "聆聽任意文字",
@@ -411,6 +414,7 @@ const zhTW: TranslationKeys = {
     capScoreTrack: "評分追蹤",
     capAiCoach: "AI 發音教練",
     capConfusionMatrix: "混淆音素偵測",
+    capStress: "詞重音位置",
     capAnyDevice: "從任何裝置存取",
     ctaTitle: "準備好說得更好了嗎？",
     ctaDesc:

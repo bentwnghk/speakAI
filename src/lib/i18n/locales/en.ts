@@ -382,10 +382,13 @@ const en = {
       "Review past assessments, compare scores over time, and track your pronunciation improvement.",
     coachFeatureTitle: "AI Pronunciation Coach",
     coachFeatureDesc:
-      "Get personalized strengths, weaknesses, and actionable practice tips after every assessment — powered by AI.",
+      "AI analyzes your scores, phonemes, confusions, and stress placement to deliver personalized strengths, weaknesses, and practice tips.",
     confusionTitle: "Phoneme Analytics",
     confusionDesc:
       "Every sound ranked by accuracy and frequency — sort, filter to your weak spots, and reveal exactly which sounds you mix up.",
+    stressTitle: "Lexical Stress Assessment",
+    stressDesc:
+      "See exactly which syllable you stressed vs. the expected one — with visual emphasis bars for every multi-syllable word.",
     howBadge: "How It Works",
     howTitle: "Two Powerful Tools",
     listenTitle: "Listen to Any Text",
@@ -423,6 +426,7 @@ const en = {
     capScoreTrack: "Score Tracking Over Time",
     capAiCoach: "AI Pronunciation Coach",
     capConfusionMatrix: "Sound Confusion Detection",
+    capStress: "Lexical Stress Placement",
     capAnyDevice: "Access from Any Device",
     ctaTitle: "Ready to Speak Better?",
     ctaDesc:
