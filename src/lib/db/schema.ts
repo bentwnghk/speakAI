@@ -142,7 +142,6 @@ export const assessments = pgTable(
     pronScore: real("pronScore").notNull(),
     words: jsonb("words").notNull(),
     phonemes: jsonb("phonemes"),
-    syllables: jsonb("syllables"),
     audioPath: text("audioPath"),
     referenceAudioPath: text("referenceAudioPath"),
     feedback: jsonb("feedback"),

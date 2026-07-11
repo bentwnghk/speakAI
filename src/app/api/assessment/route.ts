@@ -35,7 +35,6 @@ const saveSchema = z.object({
   pronScore: z.number().min(0).max(100),
   words: z.array(z.any()),
   phonemes: z.array(z.array(z.any())).nullable().optional(),
-  syllables: z.array(z.array(z.any())).nullable().optional(),
 });
 
 export async function POST(request: Request) {
@@ -106,7 +105,6 @@ export async function POST(request: Request) {
           pronScore: data.pronScore,
           words: data.words,
           phonemes: data.phonemes ?? null,
-          syllables: data.syllables ?? null,
           audioPath,
           cost,
           expiresAt: audioPath ? getExpiresAt() : null,

@@ -22,15 +22,6 @@ export interface PhonemeResult {
   };
 }
 
-export interface SyllableResult {
-  Syllable: string;
-  Offset: number;
-  Duration: number;
-  PronunciationAssessment: {
-    AccuracyScore: number;
-  };
-}
-
 export interface WordResult {
   Word: string;
   Offset: number;
@@ -40,7 +31,6 @@ export interface WordResult {
     ErrorType: ErrorType;
   };
   Phonemes?: PhonemeResult[];
-  Syllables?: SyllableResult[];
 }
 
 export interface PronunciationScores {
@@ -115,7 +105,6 @@ export interface SavedAssessment {
   pronScore: number;
   words: WordResult[];
   phonemes: PhonemeResult[][] | null;
-  syllables: SyllableResult[][] | null;
   audioPath: string | null;
   referenceAudioPath: string | null;
   feedback: { strengths: string[]; weaknesses: string[]; tips: string[] } | null;

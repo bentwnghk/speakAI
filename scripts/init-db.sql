@@ -118,7 +118,6 @@ CREATE TABLE "assessments" (
   "pronScore" REAL NOT NULL,
   "words" JSONB NOT NULL,
   "phonemes" JSONB,
-  "syllables" JSONB,
   "audioPath" TEXT,
   "referenceAudioPath" TEXT,
   "feedback" JSONB,

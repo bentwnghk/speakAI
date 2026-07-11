@@ -27,7 +27,7 @@ import { useCredits } from "@/hooks/use-credits";
 import { RecordingControls } from "./recording-controls";
 import { ScoreOverview } from "./score-overview";
 import { TranscriptView } from "./transcript-view";
-import { WordDetail, SyllableView } from "./word-detail";
+import { WordDetail } from "./word-detail";
 import { PhonemeAnalysis } from "./phoneme-analysis";
 import { FeedbackCard } from "./feedback-card";
 import { ErrorSummary } from "./error-summary";
@@ -571,7 +571,6 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
           pronScore: assessment.scores.PronScore,
           words: assessment.words,
           phonemes: assessment.words.map((w) => w.Phonemes || []),
-          syllables: assessment.words.map((w) => w.Syllables || []),
         })
       );
       if (audioBlob) {
@@ -802,7 +801,6 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
                 <TabsList>
                   <TabsTrigger value="fulltext">{at.granCoach}</TabsTrigger>
                   <TabsTrigger value="word">{at.granWord}</TabsTrigger>
-                  <TabsTrigger value="syllable">{at.granSyllable}</TabsTrigger>
                   <TabsTrigger value="phoneme">{at.granPhoneme}</TabsTrigger>
                 </TabsList>
               </div>
@@ -820,12 +818,6 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
               <TabsContent value="word">
                 <div className="max-h-96 overflow-y-auto">
                   <WordDetail words={filteredWords} t={at} onCostUpdate={handleWordCost} />
-                </div>
-              </TabsContent>
-
-              <TabsContent value="syllable">
-                <div className="max-h-96 overflow-y-auto">
-                  <SyllableView words={filteredWords} t={at} onCostUpdate={handleWordCost} />
                 </div>
               </TabsContent>
 

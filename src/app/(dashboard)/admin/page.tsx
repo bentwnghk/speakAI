@@ -41,10 +41,7 @@ import { ScoreOverview } from "@/components/assessment/score-overview";
 import { TranscriptView } from "@/components/assessment/transcript-view";
 import { ErrorSummary } from "@/components/assessment/error-summary";
 import { ReferenceAudioSection } from "@/components/assessment/reference-audio-section";
-import {
-  WordDetail,
-  SyllableView,
-} from "@/components/assessment/word-detail";
+import { WordDetail } from "@/components/assessment/word-detail";
 import { PhonemeAnalysis } from "@/components/assessment/phoneme-analysis";
 import { FeedbackCard } from "@/components/assessment/feedback-card";
 import { Separator } from "@/components/ui/separator";
@@ -1076,7 +1073,6 @@ export default function AdminDashboardPage() {
                       <TabsList>
                         <TabsTrigger value="fulltext">{t.assessment.granCoach}</TabsTrigger>
                         <TabsTrigger value="word">{t.assessment.granWord}</TabsTrigger>
-                        <TabsTrigger value="syllable">{t.assessment.granSyllable}</TabsTrigger>
                         <TabsTrigger value="phoneme">{t.assessment.granPhoneme}</TabsTrigger>
                       </TabsList>
                     </div>
@@ -1095,12 +1091,6 @@ export default function AdminDashboardPage() {
                     <TabsContent value="word">
                       <div className="max-h-96 overflow-y-auto">
                         <WordDetail words={filteredWords} t={t.assessment} onCostUpdate={handleAssessmentWordCost} />
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent value="syllable">
-                      <div className="max-h-96 overflow-y-auto">
-                        <SyllableView words={filteredWords} t={t.assessment} onCostUpdate={handleAssessmentWordCost} />
                       </div>
                     </TabsContent>
 

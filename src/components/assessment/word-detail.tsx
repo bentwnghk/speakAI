@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { WordResult, ErrorType, PhonemeResult, SyllableResult } from "@/types/assessment";
+import type { WordResult, ErrorType, PhonemeResult } from "@/types/assessment";
 import { PlayWordButton } from "./play-word-button";
 
 interface WordDetailProps {
@@ -221,81 +221,6 @@ function NBestDetail({
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-export function SyllableView({ words, t, onCostUpdate }: { words: WordResult[]; t: Record<string, string>; onCostUpdate?: (cost: number) => void }) {
-  const allSyllables: { word: string; syllable: SyllableResult }[] = [];
-  for (const w of words) {
-    if (w.Syllables) {
-      for (const s of w.Syllables) {
-        allSyllables.push({ word: w.Word, syllable: s });
-      }
-    }
-  }
-
-  if (allSyllables.length === 0) {
-    return (
-      <p className="py-6 text-center text-sm text-muted-foreground">
-        No syllable data available.
-      </p>
-    );
-  }
-
-  return (
-    <div className="space-y-1">
-      {allSyllables.map((item, i) => {
-        const rawAcc = item.syllable.PronunciationAssessment.AccuracyScore;
-        const acc = Number.isFinite(rawAcc) ? Math.round(rawAcc) : 0;
-        const displayAcc = Number.isFinite(rawAcc) ? Math.round(rawAcc) : null;
-
-        return (
-          <div
-            key={i}
-            className="flex items-center gap-3 rounded-lg border px-3 py-2 text-sm"
-          >
-            <span className="font-mono font-medium text-foreground w-16 shrink-0">
-              {item.syllable.Syllable}
-            </span>
-
-            <span className="text-xs text-muted-foreground w-20 shrink-0 truncate">
-              ({item.word})
-            </span>
-
-            <PlayWordButton word={item.word} label={t.playPronunciation} costLabel={t.wordPronunciationCost} onCostUpdate={onCostUpdate} />
-
-            <div className="flex-1">
-              <div className="h-2 overflow-hidden rounded-full bg-muted">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all duration-500",
-                    acc >= 80
-                      ? "bg-green-500"
-                      : acc >= 60
-                        ? "bg-yellow-500"
-                        : "bg-red-500"
-                  )}
-                  style={{ width: `${acc}%` }}
-                />
-              </div>
-            </div>
-
-            <span
-              className={cn(
-                "w-8 text-right tabular-nums font-semibold",
-                acc >= 80
-                  ? "text-green-600 dark:text-green-400"
-                  : acc >= 60
-                    ? "text-yellow-600 dark:text-yellow-400"
-                    : "text-red-600 dark:text-red-400"
-              )}
-            >
-              {displayAcc ?? "\u2013"}
-            </span>
-          </div>
-        );
-      })}
     </div>
   );
 }

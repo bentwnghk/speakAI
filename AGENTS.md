@@ -210,7 +210,7 @@ The project uses **next-auth v5 (beta.25)** with **Google OAuth** as the sole pr
 The project uses **PostgreSQL 16** with **Drizzle ORM**.
 
 - **Connection**: `postgres-js` driver configured in `src/lib/db/index.ts`.
-- **Schema**: All tables defined in `src/lib/db/schema.ts` (11 tables: `user`, `account`, `session`, `verification_token`, `generation`, `credits`, `credit_transactions`, `purchases`, `user_settings`, `sign_in_logs`, `assessments`). The `generation` table stores TTS generation history with voice (as a Postgres enum), speed, audio path, karaoke segments (JSON), cost, and `expiresAt`. The `assessments` table stores pronunciation assessment results with reference/recognized text, 5-dimension scores (Accuracy, Fluency, Completeness, Prosody, PronScore), words/phonemes/syllables (JSONB), recording audio path, reference audio path, cost, and `expiresAt`. The `credits` table stores per-user balance (1:1 with users). `credit_transactions` is an append-only ledger. `purchases` tracks Stripe payment lifecycle. `user_settings` stores per-user theme and locale preferences. `sign_in_logs` records user sign-in events.
+- **Schema**: All tables defined in `src/lib/db/schema.ts` (11 tables: `user`, `account`, `session`, `verification_token`, `generation`, `credits`, `credit_transactions`, `purchases`, `user_settings`, `sign_in_logs`, `assessments`). The `generation` table stores TTS generation history with voice (as a Postgres enum), speed, audio path, karaoke segments (JSON), cost, and `expiresAt`. The `assessments` table stores pronunciation assessment results with reference/recognized text, 5-dimension scores (Accuracy, Fluency, Completeness, Prosody, PronScore), words/phonemes (JSONB), recording audio path, reference audio path, cost, and `expiresAt`. The `credits` table stores per-user balance (1:1 with users). `credit_transactions` is an append-only ledger. `purchases` tracks Stripe payment lifecycle. `user_settings` stores per-user theme and locale preferences. `sign_in_logs` records user sign-in events.
 - **Migrations**: SQL migration files in `scripts/` (e.g., `init-db.sql`, `add-segments-column.sql`). Drizzle migrations in `drizzle/`.
 - **Config**: `drizzle.config.ts` at project root.
 
@@ -241,7 +241,7 @@ The project uses **PostgreSQL 16** with **Drizzle ORM**.
 
 ## Pronunciation Assessment
 
-A full pronunciation coaching system built on Azure Speech SDK's Pronunciation Assessment API. Users read reference text aloud, receive scored feedback across 5 dimensions, and can drill into word/phoneme/syllable-level detail.
+A full pronunciation coaching system built on Azure Speech SDK's Pronunciation Assessment API. Users read reference text aloud, receive scored feedback across 5 dimensions, and can drill into word/phoneme-level detail.
 
 ### Types (`src/types/assessment.ts`)
 
