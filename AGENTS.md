@@ -269,6 +269,12 @@ A full pronunciation coaching system built on Azure Speech SDK's Pronunciation A
 
 Dedicated single-word TTS synthesizer with its own Azure endpoint pool (separate round-robin cursor from main TTS). Synthesizes via SSML with 15% slower rate for clearer pronunciation. XML-escapes the word. Used by `PlayWordButton` and `TranscriptView` for inline pronunciation playback.
 
+#### `onCostUpdate` Callback Pattern (Critical)
+
+Every component in the Breakdown section that renders a `PlayWordButton` **must** thread the `onCostUpdate` callback prop from its parent down to `PlayWordButton`. This callback updates the cost display at the bottom of the page when the user plays a word's pronunciation. Without it, credits are still deducted server-side and the balance refreshes, but the cumulative cost display won't update — a silent UX bug.
+
+The flow is: parent component (`assessment-form.tsx` / `assessment-history.tsx` / `admin/page.tsx`) defines a `handleWordCost` (or `handleAssessmentWordCost`) callback → passes it as `onCostUpdate` to each Breakdown tab component (`WordDetail`, `PhonemeAnalysis`, `StressAnalysis`, `TranscriptView`, `FeedbackCard`, `ReferenceAudioSection`) → which forwards it to `PlayWordButton`. When adding `PlayWordButton` to any new Breakdown component, add `onCostUpdate?: (cost: number) => void` to the component's props interface and pass it through.
+
 ### Text Selection → Assessment Flow
 
 - **`useTextSelectionPopover`** (`src/hooks/use-text-selection.tsx`): Tracks text selection within a `<textarea>`. Uses a hidden "mirror" `<div>` to compute selection bounding rect. Debounces `selectionchange` events (150ms). Auto-adjusts popup position to avoid screen edges.

@@ -836,7 +836,7 @@ export function AssessmentForm({ pricePerMinHkd, initialText = "" }: { pricePerM
 
               <TabsContent value="stress">
                 <div className="max-h-96 overflow-y-auto">
-                  <StressAnalysis stress={stress} t={at} />
+                  <StressAnalysis stress={stress} t={at} onCostUpdate={handleWordCost} />
                 </div>
               </TabsContent>
             </Tabs>

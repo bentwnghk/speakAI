@@ -8,9 +8,10 @@ import { PlayWordButton } from "./play-word-button";
 interface StressAnalysisProps {
   stress: StressWord[] | null;
   t: Record<string, string>;
+  onCostUpdate?: (cost: number) => void;
 }
 
-export function StressAnalysis({ stress, t }: StressAnalysisProps) {
+export function StressAnalysis({ stress, t, onCostUpdate }: StressAnalysisProps) {
   if (!stress || stress.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
@@ -45,7 +46,7 @@ export function StressAnalysis({ stress, t }: StressAnalysisProps) {
 
       <div className="space-y-2">
         {stress.map((w, i) => (
-          <StressRow key={i} word={w} t={t} />
+          <StressRow key={i} word={w} t={t} onCostUpdate={onCostUpdate} />
         ))}
       </div>
 
@@ -57,7 +58,7 @@ export function StressAnalysis({ stress, t }: StressAnalysisProps) {
   );
 }
 
-function StressRow({ word, t }: { word: StressWord; t: Record<string, string> }) {
+function StressRow({ word, t, onCostUpdate }: { word: StressWord; t: Record<string, string>; onCostUpdate?: (cost: number) => void; }) {
   const isWrong = word.correct === false;
   const isUncertain = word.correct === null;
 
@@ -79,6 +80,7 @@ function StressRow({ word, t }: { word: StressWord; t: Record<string, string> })
             word={word.word}
             label={t.playPronunciation}
             costLabel={t.wordPronunciationCost}
+            onCostUpdate={onCostUpdate}
           />
         </span>
         <span

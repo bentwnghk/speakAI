@@ -328,7 +328,7 @@ export function AssessmentHistory({ t, ht }: AssessmentHistoryProps) {
 
           <TabsContent value="stress">
             <div className="max-h-96 overflow-y-auto">
-              <StressAnalysis stress={detail.stress} t={t} />
+              <StressAnalysis stress={detail.stress} t={t} onCostUpdate={handleWordCost} />
             </div>
           </TabsContent>
         </Tabs>

@@ -1104,7 +1104,7 @@ export default function AdminDashboardPage() {
 
                     <TabsContent value="stress">
                       <div className="max-h-96 overflow-y-auto">
-                        <StressAnalysis stress={assessmentDetail.stress} t={t.assessment} />
+                        <StressAnalysis stress={assessmentDetail.stress} t={t.assessment} onCostUpdate={handleAssessmentWordCost} />
                       </div>
                     </TabsContent>
                   </Tabs>
