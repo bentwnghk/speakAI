@@ -3,7 +3,7 @@ import type { StressWord } from "@/types/assessment";
 
 const VOWEL_RE = /^(AA|AE|AH|AO|AW|AY|EH|ER|EY|IH|IY|OW|OY|UH|UW)([012])$/;
 
-const STRESS_GAP_THRESHOLD = 0.15;
+const STRESS_GAP_THRESHOLD = 0.12;
 
 interface StressPattern {
   syllableCount: number;
