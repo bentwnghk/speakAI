@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { CheckCircle2, XCircle, MinusCircle } from "lucide-react";
 import type { StressWord } from "@/types/assessment";
+import { PlayWordButton } from "./play-word-button";
 
 interface StressAnalysisProps {
   stress: StressWord[] | null;
@@ -72,7 +73,14 @@ function StressRow({ word, t }: { word: StressWord; t: Record<string, string> })
       )}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="font-medium">{word.word}</span>
+        <span className="flex items-center gap-1.5">
+          <span className="font-medium">{word.word}</span>
+          <PlayWordButton
+            word={word.word}
+            label={t.playPronunciation}
+            costLabel={t.wordPronunciationCost}
+          />
+        </span>
         <span
           className={cn(
             "inline-flex items-center gap-1 text-xs font-medium",
