@@ -279,7 +279,7 @@ Dedicated single-word TTS synthesizer with its own Azure endpoint pool (separate
 Azure's Pronunciation Assessment does **not** expose per-word stress placement. Stress is inferred heuristically and surfaced in the "Stress" Breakdown tab (`StressAnalysis` component):
 - **Expected stress**: looked up server-side from the CMU Pronouncing Dictionary (`cmu-pronouncing-dictionary` npm package, loaded once). The primary-stress vowel's position among a word's vowels = the expected stressed syllable index. Single-syllable and unknown words are skipped.
 - **Actual stress**: derived from the Azure `Syllables[].Duration` returned with `Phoneme` granularity — the longest syllable (by relative duration share) is treated as the emphasized one. This is Microsoft's own recommended cue (stressed syllables are longer).
-- **Verdict**: `correct` when expected/actual match; `false` (misplaced) when they differ and the prominence gap ≥ 0.12; `null` (uncertain) for near-ties. Computed in `POST /api/assessment`, persisted in the `assessments.stress` JSONB column, returned in the save response. Duration-based (no audio DSP); works in auto and manual recording modes.
+- **Verdict**: `correct` when the expected syllable is prominent (it's the longest, or within a 0.15 prominence gap of the longest); `false` (misplaced) only when another syllable clearly dominates (gap ≥ 0.15). Borderline near-ties resolve to `correct` rather than uncertain, since the expected syllable is still substantially emphasized. Computed in `POST /api/assessment`, persisted in the `assessments.stress` JSONB column, returned in the save response. Duration-based (no audio DSP); works in auto and manual recording modes.
 
 ---
 

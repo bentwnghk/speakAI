@@ -3,7 +3,7 @@ import type { StressWord } from "@/types/assessment";
 
 const VOWEL_RE = /^(AA|AE|AH|AO|AW|AY|EH|ER|EY|IH|IY|OW|OY|UH|UW)([012])$/;
 
-const UNCERTAINTY_THRESHOLD = 0.12;
+const STRESS_GAP_THRESHOLD = 0.15;
 
 interface StressPattern {
   syllableCount: number;
@@ -72,7 +72,7 @@ export function analyzeStress(words: unknown): StressWord[] {
       correct = true;
     } else {
       const gap = prominence[actualIndex] - prominence[pattern.stressIndex];
-      correct = gap >= UNCERTAINTY_THRESHOLD ? false : null;
+      correct = gap >= STRESS_GAP_THRESHOLD ? false : true;
     }
 
     results.push({
