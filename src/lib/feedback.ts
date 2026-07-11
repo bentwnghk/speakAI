@@ -1,7 +1,7 @@
 import { generateObject } from "ai";
 import { createOpenAI } from "@ai-sdk/openai";
 import { z } from "zod";
-import type { WordResult } from "@/types/assessment";
+import type { WordResult, StressWord } from "@/types/assessment";
 
 const FEEDBACK_INPUT_PRICE_PER_1M = Number(
   process.env.FEEDBACK_PRICE_INPUT_PER_1M_TOKENS ??
@@ -41,6 +41,12 @@ interface ConfusionStat {
   spoken: string;
   count: number;
 }
+interface StressError {
+  word: string;
+  expectedIndex: number;
+  actualIndex: number;
+  syllables: string[];
+}
 
 export interface AssessmentSummary {
   scores: {
@@ -57,6 +63,7 @@ export interface AssessmentSummary {
   errorCounts: Record<string, number>;
   worstPhonemes: PhonemeStat[];
   topConfusions: ConfusionStat[];
+  stressErrors: StressError[];
 }
 
 export function summarizeAssessment(
@@ -65,6 +72,7 @@ export function summarizeAssessment(
   referenceText: string,
   recognizedText: string,
   durationMs: number,
+  stress?: StressWord[] | null,
 ): AssessmentSummary {
   const errorCounts: Record<string, number> = {};
   const phonemeMap = new Map<string, { sum: number; count: number }>();
@@ -115,6 +123,15 @@ export function summarizeAssessment(
     .sort((a, b) => b.count - a.count)
     .slice(0, 8);
 
+  const stressErrors: StressError[] = (stress ?? [])
+    .filter((s) => s.correct === false)
+    .map((s) => ({
+      word: s.word,
+      expectedIndex: s.expectedIndex,
+      actualIndex: s.actualIndex,
+      syllables: s.syllables.map((sy) => sy.text),
+    }));
+
   return {
     scores,
     referenceText,
@@ -124,6 +141,7 @@ export function summarizeAssessment(
     errorCounts,
     worstPhonemes,
     topConfusions,
+    stressErrors,
   };
 }
 
@@ -143,6 +161,12 @@ function buildPrompt(summary: AssessmentSummary, locale: string): string {
   const confusions = summary.topConfusions
     .map((c) => `/${c.expected}/→/${c.spoken}/ (×${c.count})`)
     .join(", ");
+  const stressErrors = summary.stressErrors
+    .map(
+      (s) =>
+        `${s.word} [${s.syllables.join("·")}] (expected syllable ${s.expectedIndex + 1}, stressed syllable ${s.actualIndex + 1})`,
+    )
+    .join("\n");
 
   return `You are an expert English pronunciation coach analyzing a student's speaking assessment. Provide personalized, specific, actionable feedback grounded in the data below — not generic advice.
 
@@ -165,6 +189,9 @@ ${worst || "None"}
 MOST COMMON CONFUSIONS (expected → spoken):
 ${confusions || "None"}
 
+STRESS ERRORS (misplaced lexical stress — syllable numbering is 1-based):
+${stressErrors || "None"}
+
 REFERENCE TEXT (what they should have said):
 "${summary.referenceText.slice(0, 500)}"
 
@@ -173,8 +200,8 @@ RECOGNIZED TEXT (what they actually said):
 
 Provide:
 - "strengths": 1-5 concise points on what the student did well (be specific, reference scores/phonemes when relevant).
-- "weaknesses": 1-5 concise points identifying specific areas needing improvement (reference actual error types, weak phonemes, or confusion patterns).
-- "tips": 1-5 actionable, specific practice tips to address the weaknesses (e.g., specific phonemes to drill, techniques).`;
+- "weaknesses": 1-5 concise points identifying specific areas needing improvement (reference actual error types, weak phonemes, confusion patterns, or stress errors when present).
+- "tips": 1-5 actionable, specific practice tips to address the weaknesses (e.g., specific phonemes to drill, stress placement exercises, techniques).`;
 }
 
 export async function generateFeedback(

@@ -6,7 +6,7 @@ import { assessments } from "@/lib/db/schema";
 import { eq, and, or, isNull, gt, sql } from "drizzle-orm";
 import { deductCredits, refundCredits } from "@/lib/db/credits";
 import { summarizeAssessment, generateFeedback } from "@/lib/feedback";
-import type { WordResult } from "@/types/assessment";
+import type { WordResult, StressWord } from "@/types/assessment";
 
 export async function POST(
   request: Request,
@@ -57,6 +57,7 @@ export async function POST(
     row.referenceText,
     row.recognizedText,
     row.durationMs,
+    row.stress as StressWord[] | null,
   );
 
   let feedbackCost = 0;
