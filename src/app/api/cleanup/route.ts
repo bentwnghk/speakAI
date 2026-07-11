@@ -44,6 +44,14 @@ export async function POST(request: Request) {
       if (assessment.audioPath) {
         await unlink(assessment.audioPath).catch(() => {});
       }
+      if (assessment.referenceAudioPath) {
+        await unlink(assessment.referenceAudioPath).catch(() => {});
+        const deleted = await db
+          .delete(generations)
+          .where(eq(generations.audioPath, assessment.referenceAudioPath))
+          .returning({ id: generations.id });
+        deletedGenerations += deleted.length;
+      }
       await db.delete(assessments).where(eq(assessments.id, assessment.id));
       deletedAssessments++;
     } catch {

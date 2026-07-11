@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { isAdminEmail } from "@/lib/admin";
 import { db } from "@/lib/db";
-import { assessments } from "@/lib/db/schema";
+import { assessments, generations } from "@/lib/db/schema";
 import { eq, and, or, isNull, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { unlink } from "fs/promises";
@@ -74,6 +74,12 @@ export async function DELETE(
     .where(
       and(eq(assessments.id, id), eq(assessments.userId, session.user.id))
     );
+
+  if (row.referenceAudioPath) {
+    await db
+      .delete(generations)
+      .where(eq(generations.audioPath, row.referenceAudioPath));
+  }
 
   for (const filePath of [row.audioPath, row.referenceAudioPath]) {
     if (filePath) {
