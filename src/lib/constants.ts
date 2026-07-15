@@ -7,6 +7,15 @@ export const VOICE_MAP: Record<string, string> = {
   "Male 3": "ollie",
 };
 
+export const VOICE_ACCENT: Record<string, string> = {
+  "Female 1": "US",
+  "Male 1": "US",
+  "Female 2": "US",
+  "Male 2": "US",
+  "Female 3": "US",
+  "Male 3": "UK",
+};
+
 export const VOICE_OPTIONS = Object.keys(VOICE_MAP);
 
 const OLD_VOICE_MAP: Record<string, string> = {

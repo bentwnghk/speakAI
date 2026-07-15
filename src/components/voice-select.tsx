@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Mic } from "lucide-react";
-import { VOICE_MAP, VOICE_OPTIONS } from "@/lib/constants";
+import { VOICE_ACCENT, VOICE_MAP, VOICE_OPTIONS } from "@/lib/constants";
 import { useUserSettings } from "@/hooks/use-settings";
 
 interface VoiceSelectProps {
@@ -31,11 +31,11 @@ export function VoiceSelect({ value, onValueChange }: VoiceSelectProps) {
           <SelectValue placeholder={t.tts.selectVoice} />
         </SelectTrigger>
         <SelectContent>
-          {VOICE_OPTIONS.map((voice) => (
-            <SelectItem key={voice} value={voice}>
-              {VOICE_MAP[voice].charAt(0).toUpperCase()}{VOICE_MAP[voice].slice(1)} ({voice.split(" ")[0].toLowerCase()})
-            </SelectItem>
-          ))}
+              {VOICE_OPTIONS.map((voice) => (
+                <SelectItem key={voice} value={voice}>
+                  {VOICE_MAP[voice].charAt(0).toUpperCase()}{VOICE_MAP[voice].slice(1)} ({VOICE_ACCENT[voice]} {voice.split(" ")[0].toLowerCase()})
+                </SelectItem>
+              ))}
         </SelectContent>
       </Select>
     </div>
