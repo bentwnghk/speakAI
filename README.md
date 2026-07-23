@@ -1,157 +1,185 @@
-# Mr.🆖 SpeakAI 🗣️
+# Mr.🆖 SpeakAI
 
-<p style="text-align:center; font-size: 1.2em;">
-  <strong>🪄 Turn text from documents and images into high-quality audio with one click. ✨ Convert articles, stories, and other content into clear speech for easy listening. 💡 Ideal for students to practice listening and speaking skills by turning any text into natural-sounding audio.</strong>
-</p>
-
-## Overview
-
-SpeakAI is an AI-powered web application that converts text from various sources — including pasted text, uploaded documents (PDF, DOCX, TXT), or images — into high-quality audio speech using advanced text-to-speech technology. It leverages OpenAI's TTS API for natural-sounding voices and supports concurrent processing for fast audio generation. The app features a user-friendly Gradio-based web interface and includes OCR capabilities for extracting text from images via OpenAI's Vision API.
+**Turn text into natural-sounding audio with karaoke-style playback.** Upload documents, paste text, or extract text from images — then listen with word-by-word highlighting, adjustable speed, and multiple voices.
 
 ## Features
 
-- **Multi-Input Sources:** Accept text from:
-  - Direct text input (paste your content)
-  - File uploads (PDF, DOCX, TXT documents)
-  - Images (JPG, JPEG, PNG) with automatic text extraction using AI vision
-- **High-Quality Audio:** Generates lifelike speech using OpenAI's text-to-speech models
-- **Multiple Voices:** Choose from 6 voice options: Female 1 (nova), Male 1 (alloy), Female 2 (fable), Male 2 (echo), Female 3 (shimmer), Male 3 (onyx)
-- **Speed Control:** Adjustable playback speed from 50% (slower) to 200% (faster) for customized listening experience
-- **Concurrent Processing:** Efficiently processes large texts by splitting into chunks and generating audio in parallel
-- **Audio History & Archives:** Browser-based storage system using IndexedDB to save, load, rename, and delete previously generated audio files
-- **Cost Estimation:** Real-time calculation and display of TTS API costs (approximately $15 per million characters)
-- **Robust Text Handling:** Intelligently splits text at paragraph and sentence boundaries for natural pacing
-- **User-Friendly Interface:** Built with Gradio for an intuitive web experience with responsive design
-- **API Integration:** Supports custom overlays for OpenAI and Vision API providers, plus Mr.🆖 AI Hub integration
-- **Persistent API Keys:** Browser localStorage stores your API keys for convenience across sessions
-- **Error Resilient:** Includes retries, logging with Sentry, and comprehensive error handling with user-friendly messages
-- **Containerized Deployment:** Docker-ready with proper volume management for persistent data storage
+- **Multi-format input** — Paste text, upload PDF/DOCX/TXT files, or extract text from images via AI vision (JPG, PNG)
+- **6 high-quality voices** — Three female (Nova, Phoebe, Ava) and three male (Alloy, Adam, Ollie) voices powered by Azure Speech
+- **Karaoke playback** — Word-by-word highlighting synced to the audio, using ground-truth timing from the synthesis engine
+- **Speed control** — Adjustable from 0.5x to 2.0x
+- **Credit system** — Pay-as-you-go with Stripe integration (1 credit = HK$1); new users get 3 free credits
+- **Generation history** — Browse, rename, and replay past generations; audio files served with Range support for seeking
+- **PWA** — Installable as a standalone app with offline support via Serwist service worker
+- **Dark mode** — System/Light/Dark themes with FOUC prevention and cross-device sync
+- **i18n** — English and Traditional Chinese (繁體中文) with type-safe translations
+- **Multi-endpoint load balancing** — Round-robin across multiple Azure Speech endpoints for even cost distribution
 
-## Requirements
+## Tech Stack
 
-- **API Keys:**
-  - OpenAI TTS API key (set as `TTS_API_KEY` environment variable)
-  - OpenAI Vision API key (set as `VISION_API_KEY` environment variable, required for image processing)
-- **Python:** 3.12 or higher
-- **Dependencies:** Managed via `uv` package manager
+| Layer | Technology |
+| --- | --- |
+| Framework | Next.js 15 (App Router, React 19, Server Components) |
+| Language | TypeScript (strict mode) |
+| Styling | Tailwind CSS v4 (OKLCH color variables) |
+| UI Components | Shadcn UI (new-york style) + Radix primitives |
+| Auth | NextAuth v5 (Google OAuth, JWT strategy) |
+| Database | PostgreSQL 16 + Drizzle ORM |
+| TTS | Azure Speech SDK with word-boundary alignment |
+| Payments | Stripe Checkout + webhooks |
+| PWA | Serwist (service worker generation) |
+| Animations | Motion (Framer Motion successor) |
+| Validation | Zod v3 |
+| Container | Docker (multi-stage, node:22-slim, non-root) |
+| CI/CD | GitHub Actions → Docker Hub + GHCR (amd64/arm64) |
 
-## Installation
+## Getting Started
 
-### Option 1: Local Installation
+### Prerequisites
 
-1. **Clone the repository:**
+- Node.js >= 18
+- PostgreSQL 16
+- Azure Speech resource
+- Google OAuth credentials
+- Stripe account (for payments)
+
+### Local Development
+
+1. **Clone and install:**
+
    ```bash
    git clone https://github.com/bentwnghk/speakAI.git
    cd speakAI
+   npm install
    ```
 
-2. **Install dependencies:**
+2. **Configure environment:**
+
    ```bash
-   uv sync
+   cp .env.example .env.local
    ```
 
-3. **Set up environment variables:**
-   Create a `.env` file or export variables directly:
+   Edit `.env.local` with your credentials (see [Configuration](#configuration)).
+
+3. **Set up the database:**
+
    ```bash
-   export TTS_API_KEY="your-openai-tts-api-key"
-   export VISION_API_KEY="your-openai-vision-api-key"
+   npm run db:push
    ```
 
-### Option 2: Docker Deployment
+4. **Start the dev server:**
 
-The project includes Docker support for easy containerized deployment.
-
-1. **Build and run with Docker Compose:**
    ```bash
-   docker-compose up --build
+   npm run dev
    ```
 
-2. **Or build manually:**
-   ```bash
-   docker build -t speakai .
-   docker run -p 8000:8000 -e TTS_API_KEY="your-key" -e VISION_API_KEY="your-key" speakai
-   ```
+   Open [http://localhost:3000](http://localhost:3000).
 
-## Usage
+### Docker
 
-1. **Start the application:**
-    ```bash
-    python main.py
-    ```
-    Or with Docker, the app will be available on port 8000.
+```bash
+docker compose up --build
+```
 
-2. **Access the web interface:**
-    Open your browser and go to `http://localhost:8000`
-
-3. **Generate audio:**
-    - Choose your input method: Enter Text, or Upload Files
-    - For file uploads, select PDF, DOCX, TXT, or image files
-    - Select your preferred voice from the dropdown (6 options available)
-    - Adjust playback speed using the slider (50% to 200%)
-    - (Optional) Enter your Mr.🆖 AI Hub API Key in Advanced Settings for enhanced functionality
-    - Click "✨ Generate Audio" to start the process
-
-4. **View results and manage audio:**
-    - The generated MP3 file will be available for immediate playback and download
-    - View the extracted text transcript with copy functionality
-    - Estimated costs are displayed in real-time
-    - Audio is automatically saved to browser history for future access
-
-5. **Manage audio archives:**
-    - Expand the "📜 Archives" section to view previously generated audio
-    - Load any saved audio back into the player
-    - Rename audio files in your history
-    - Delete unwanted audio from your browser storage
-    - Audio files are stored locally in your browser for offline access
-
-## Supported File Types
-
-- **Documents:** PDF (.pdf), Word (.docx), Text (.txt)
-- **Images:** JPG (.jpg, .jpeg), PNG (.png)
+This starts PostgreSQL on port 5432 and the app on port 3000. Audio data persists in a Docker volume.
 
 ## Configuration
 
-Customize the application by setting these environment variables:
+All configuration is via environment variables. Copy `.env.example` as a starting point.
 
-- `TTS_API_KEY`: Your OpenAI API key for text-to-speech
-- `VISION_API_KEY`: Your OpenAI API key for vision/OCR
-- `TTS_BASE_URL`: Custom base URL for TTS API (optional)
-- `VISION_BASE_URL`: Custom base URL for Vision API (optional)
-- `SENTRY_DSN`: Sentry DSN for error logging (optional)
+### Required
 
-## Browser Storage & Archives
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `AUTH_SECRET` | NextAuth secret key |
+| `AUTH_GOOGLE_ID` | Google OAuth client ID |
+| `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
+| `AZURE_SPEECH_KEY_1` | Azure Speech subscription key |
+| `AZURE_SPEECH_REGION_1` | Azure Speech region |
 
-The application includes a sophisticated browser-based storage system:
+### Optional
 
-- **Local Storage:** Audio files are stored in your browser's IndexedDB for offline access
-- **Automatic Saving:** Generated audio is automatically saved to your browser history
-- **Archive Management:** Load, rename, or delete previously generated audio files
-- **Persistent API Keys:** Your Mr.🆖 AI Hub API key is saved locally for convenience
-- **Storage Cleanup:** Temporary audio files are automatically removed after 7 days
-- **Cross-Session Access:** Access your audio history across browser sessions
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `AZURE_SPEECH_KEY_2`…`_20` | — | Additional Azure endpoints for round-robin load balancing |
+| `AZURE_SPEECH_PRICE_USD_PER_1M_CHARS` | `16` | Cost per 1M characters (USD) |
+| `VISION_API_KEY` | falls back to `TTS_API_KEY` | API key for image OCR |
+| `VISION_BASE_URL` | falls back to `TTS_BASE_URL` | Base URL for vision model |
+| `VISION_MODEL` | `gpt-4.1-mini` | Vision model name |
+| `STRIPE_SECRET_KEY` | — | Stripe secret key |
+| `STRIPE_WEBHOOK_SECRET` | — | Stripe webhook signing secret |
+| `WELCOME_CREDITS` | `3` | Free credits for new users |
+| `STRIPE_PLAN_A_CREDITS` / `_PRICE_HKD` | 15 / 15 | Starter plan |
+| `STRIPE_PLAN_B_CREDITS` / `_PRICE_HKD` | 50 / 45 | Best Value plan |
+| `AUDIO_RETENTION_DAYS` | `365` | Days before auto-deletion of audio files |
 
-**Note:** Audio files are stored locally in your browser only. Clearing browser data will remove all archived audio.
+## Project Structure
 
-## API Usage Details
+```
+src/
+├── app/
+│   ├── (auth)/              # Login page (unauthenticated)
+│   ├── (dashboard)/         # Main app (authenticated)
+│   │   ├── page.tsx         # TTS generation page
+│   │   ├── credits/         # Credit purchase page
+│   │   └── history/         # Generation history
+│   └── api/                 # API route handlers
+├── components/
+│   ├── tts-form.tsx         # Main TTS form
+│   ├── audio-player.tsx     # Audio player with karaoke
+│   ├── voice-select.tsx     # Voice selector
+│   ├── landing/             # Public landing page
+│   └── ui/                  # Shadcn UI primitives
+├── lib/
+│   ├── auth.ts              # NextAuth v5 config
+│   ├── tts.ts               # Azure Speech TTS + karaoke alignment
+│   ├── stripe.ts            # Stripe client + plan definitions
+│   ├── i18n/                # Type-safe i18n (en, zh-TW)
+│   └── db/
+│       ├── schema.ts        # 9 tables (Drizzle ORM)
+│       └── credits.ts       # Credit engine
+├── hooks/
+│   ├── use-credits.tsx      # Credit balance context
+│   └── use-settings.tsx     # Theme + locale context
+└── sw/
+    └── index.ts             # Serwist service worker
+```
 
-- **Text Splitting:** Long texts are automatically split into 4000-character chunks with intelligent paragraph and sentence boundary detection
-- **Voice Options:** 6 high-quality voices available:
-  - Female 1 (nova) - Default English female voice
-  - Male 1 (alloy) - English male voice
-  - Female 2 (fable) - Alternative English female voice
-  - Male 2 (echo) - Alternative English male voice
-  - Female 3 (shimmer) - Alternative English female voice
-  - Male 3 (onyx) - Alternative English male voice
-- **Speed Control:** Adjustable playback speed from 0.5x to 2.0x (50% to 200% in the interface)
-- **Cost Estimation:** Real-time calculation at approximately $15 per million characters for TTS
-- **Concurrent Workers:** Up to 10 parallel audio generations for optimal performance
-- **Audio History:** Browser-based storage with IndexedDB for offline access and management
-- **Error Handling:** Robust retry mechanism with exponential backoff for API failures
+## API Endpoints
+
+| Endpoint | Methods | Description |
+| --- | --- | --- |
+| `/api/tts` | POST | Generate TTS audio (deducts credits) |
+| `/api/tts` | GET | List user's generations |
+| `/api/extract-text` | POST | Extract text from uploaded file |
+| `/api/generations/[id]` | GET / PATCH / DELETE | Single generation CRUD |
+| `/api/audio/[id]` | GET | Serve audio (Range support) |
+| `/api/stripe/checkout` | POST | Create Stripe Checkout Session |
+| `/api/stripe/webhook` | POST | Stripe webhook handler |
+| `/api/stripe/plans` | GET | Available credit plans |
+| `/api/user/credits` | GET | Credit balance |
+| `/api/user/settings` | GET / PUT | Theme and locale preferences |
+
+All endpoints except `/api/auth/*` and `/api/stripe/webhook` require authentication.
+
+## Scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Start development server |
+| `npm run build` | Production build |
+| `npm run start` | Start production server |
+| `npm run lint` | Run ESLint |
+| `npm run db:generate` | Generate Drizzle migrations |
+| `npm run db:push` | Push schema to database |
+| `npm run db:migrate` | Run migrations |
+| `npm run db:studio` | Open Drizzle Studio |
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit pull requests or open issues for bugs and enhancement requests.
+Contributions are welcome. Please open an issue or submit a pull request.
 
 ## License
 
-This project is licensed under the Apache 2.0 License. See the [LICENSE](LICENSE) file for more information.
+[Apache 2.0](LICENSE)
