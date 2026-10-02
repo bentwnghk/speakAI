@@ -233,7 +233,9 @@ export async function generateFeedback(
     ),
     schema: feedbackSchema,
     prompt: buildPrompt(summary, locale),
-    temperature: 0.4,
+    temperature: process.env.FEEDBACK_TEMPERATURE
+      ? Number(process.env.FEEDBACK_TEMPERATURE)
+      : undefined,
   });
 
   const cost = estimateFeedbackCostHkd(usage.promptTokens, usage.completionTokens);

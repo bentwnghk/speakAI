@@ -93,7 +93,6 @@ Instructions:
         maxCompletionTokens: 32768,
       },
     },
-    temperature: 0,
   });
 
   return {
