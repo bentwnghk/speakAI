@@ -225,6 +225,8 @@ export async function generateFeedback(
 
   const openai = createOpenAI({ apiKey, baseURL });
 
+  const reasoningEffort = process.env.FEEDBACK_REASONING_EFFORT || undefined;
+
   const { object, usage } = await generateObject({
     model: openai(
       process.env.FEEDBACK_MODEL ||
@@ -235,6 +237,9 @@ export async function generateFeedback(
     prompt: buildPrompt(summary, locale),
     temperature: process.env.FEEDBACK_TEMPERATURE
       ? Number(process.env.FEEDBACK_TEMPERATURE)
+      : undefined,
+    providerOptions: reasoningEffort
+      ? { openai: { reasoningEffort } }
       : undefined,
   });
 
