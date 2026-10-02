@@ -331,9 +331,9 @@ export default function CreditsPage() {
             <TabsContent value="usage">
               {usageTransactions.length > 0 ? (
                 <div className="rounded-md border overflow-x-auto max-h-80 overflow-y-auto">
-                  <table className="w-full min-w-[600px] text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10 bg-muted">
+                      <tr className="border-b">
                         <th className="p-3 text-left font-medium">{t.credits.date}</th>
                         <th className="p-3 text-left font-medium">{t.credits.type}</th>
                         <th className="p-3 text-left font-medium">{t.credits.details}</th>
@@ -343,7 +343,7 @@ export default function CreditsPage() {
                     <tbody>
                       {usageTransactions.map((txn) => (
                         <tr key={txn.id} className="border-b last:border-0">
-                          <td className="p-3 whitespace-nowrap">
+                          <td className="p-3 whitespace-normal sm:whitespace-nowrap">
                             {new Date(txn.createdAt).toLocaleString("en-HK", {
                               timeZone: "Asia/Hong_Kong",
                               year: "numeric",
@@ -391,9 +391,9 @@ export default function CreditsPage() {
             <TabsContent value="purchases">
               {purchases.length > 0 ? (
                 <div className="rounded-md border overflow-x-auto max-h-80 overflow-y-auto">
-                  <table className="w-full min-w-[500px] text-sm">
-                    <thead>
-                      <tr className="border-b bg-muted/50">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10 bg-muted">
+                      <tr className="border-b">
                         <th className="p-3 text-left font-medium">{t.credits.date}</th>
                         <th className="p-3 text-left font-medium">{t.credits.package}</th>
                         <th className="p-3 text-right font-medium">{t.credits.amount}</th>
