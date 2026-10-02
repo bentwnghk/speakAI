@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Volume2, Loader2, Download } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Volume2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useCredits } from "@/hooks/use-credits";
 import { VoiceSelect } from "@/components/voice-select";
 import { SpeedSlider } from "@/components/speed-slider";
+import { AudioPlayer } from "@/components/audio-player";
+import { KaraokeText } from "@/components/karaoke-text";
+import type { Segment } from "@/types/karaoke";
 
 interface ReferenceAudioSectionProps {
   referenceText: string;
@@ -22,14 +24,30 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, hasRefer
   const [isGenerating, setIsGenerating] = useState(false);
   const [voice, setVoice] = useState("Female 1");
   const [speed, setSpeed] = useState(100);
+  const [refSegments, setRefSegments] = useState<Segment[]>([]);
+  const [generatedText, setGeneratedText] = useState("");
+  const [refCurrentTime, setRefCurrentTime] = useState(0);
+  const [refIsPlaying, setRefIsPlaying] = useState(false);
+  const [karaokeActive, setKaraokeActive] = useState(false);
+  // Set when the user generates audio in this session. The assessment-detail
+  // refetch after PATCH can flip hasReferenceAudio to true and re-fire the
+  // effect below — without this guard the player src would be swapped
+  // mid-playback, interrupting the audio and resetting karaoke timing.
+  const generatedUrlRef = useRef<string | null>(null);
   const { refreshBalance } = useCredits();
+
+  useEffect(() => {
+    if (refIsPlaying) {
+      setKaraokeActive(true);
+    }
+  }, [refIsPlaying]);
 
   useEffect(() => {
     if (!assessmentId) return;
     if (hasReferenceAudio === false) return;
     const audioUrl = `/api/assessment/${assessmentId}/reference-audio`;
     if (hasReferenceAudio === true) {
-      setRefAudioUrl(audioUrl);
+      if (!generatedUrlRef.current) setRefAudioUrl(audioUrl);
       return;
     }
     let cancelled = false;
@@ -54,9 +72,12 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, hasRefer
         const err = (await res.json()) as { error?: string };
         throw new Error(err.error || "Generation failed");
       }
-      const data = (await res.json()) as { audioUrl: string; audioPath: string; ttsCost: string };
+      const data = (await res.json()) as { audioUrl: string; audioPath: string; ttsCost: string; segments?: Segment[] };
       if (refAudioUrl && refAudioUrl.startsWith("blob:")) URL.revokeObjectURL(refAudioUrl);
       setRefAudioUrl(data.audioUrl);
+      generatedUrlRef.current = data.audioUrl;
+      setRefSegments(data.segments ?? []);
+      setGeneratedText(referenceText.trim());
       void refreshBalance();
       const cost = parseFloat(data.ttsCost ?? "0");
       onCostUpdate?.(cost);
@@ -90,20 +111,25 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, hasRefer
       </div>
 
       {refAudioUrl && (
-        <Card>
-          <CardContent className="flex items-center gap-3 py-3">
-            <audio controls className="w-full" preload="metadata">
-              <source src={refAudioUrl} />
-            </audio>
-            <a href={refAudioUrl} download="reference-audio.mp3">
-              <Button variant="ghost" size="icon" className="shrink-0" asChild>
-                <span>
-                  <Download className="size-4" />
-                </span>
-              </Button>
-            </a>
-          </CardContent>
-        </Card>
+        <div className="space-y-3">
+          {karaokeActive && refSegments.length > 0 && (
+            <div className="rounded-lg border p-4">
+              <KaraokeText
+                text={generatedText}
+                segments={refSegments}
+                currentTime={refCurrentTime}
+                isPlaying={refIsPlaying}
+              />
+            </div>
+          )}
+          <AudioPlayer
+            src={refAudioUrl}
+            onTimeUpdate={setRefCurrentTime}
+            onPlayStateChange={setRefIsPlaying}
+            onStop={() => setKaraokeActive(false)}
+            onEnded={() => setKaraokeActive(false)}
+          />
+        </div>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
