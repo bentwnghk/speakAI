@@ -144,6 +144,7 @@ export const assessments = pgTable(
     phonemes: jsonb("phonemes"),
     audioPath: text("audioPath"),
     referenceAudioPath: text("referenceAudioPath"),
+    referenceSegments: jsonb("referenceSegments"),
     feedback: jsonb("feedback"),
     stress: jsonb("stress"),
     cost: real("cost").notNull(),

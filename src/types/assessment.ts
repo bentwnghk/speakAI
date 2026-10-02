@@ -1,3 +1,5 @@
+import type { Segment } from "@/types/karaoke";
+
 export type ErrorType =
   | "None"
   | "Omission"
@@ -121,6 +123,7 @@ export interface SavedAssessment {
   phonemes: PhonemeResult[][] | null;
   audioPath: string | null;
   referenceAudioPath: string | null;
+  referenceSegments: Segment[] | null;
   feedback: { strengths: string[]; weaknesses: string[]; tips: string[] } | null;
   stress: StressWord[] | null;
   cost: number;

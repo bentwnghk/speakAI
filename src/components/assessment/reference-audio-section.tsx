@@ -16,10 +16,12 @@ interface ReferenceAudioSectionProps {
   t: Record<string, string>;
   assessmentId?: string;
   hasReferenceAudio?: boolean;
+  /** Karaoke segments persisted with the assessment's reference audio. */
+  referenceSegments?: Segment[] | null;
   onCostUpdate?: (cost: number) => void;
 }
 
-export function ReferenceAudioSection({ referenceText, t, assessmentId, hasReferenceAudio, onCostUpdate }: ReferenceAudioSectionProps) {
+export function ReferenceAudioSection({ referenceText, t, assessmentId, hasReferenceAudio, referenceSegments, onCostUpdate }: ReferenceAudioSectionProps) {
   const [refAudioUrl, setRefAudioUrl] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [voice, setVoice] = useState("Female 1");
@@ -41,6 +43,15 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, hasRefer
       setKaraokeActive(true);
     }
   }, [refIsPlaying]);
+
+  // Switching to a different assessment (e.g. admin detail view) — drop
+  // session-generated audio state so persisted data for the new record
+  // takes over cleanly.
+  useEffect(() => {
+    generatedUrlRef.current = null;
+    setRefSegments([]);
+    setKaraokeActive(false);
+  }, [assessmentId]);
 
   useEffect(() => {
     if (!assessmentId) return;
@@ -92,6 +103,7 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, hasRefer
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             referenceAudioPath: data.audioPath,
+            referenceSegments: data.segments ?? [],
             additionalCost: cost,
           }),
         });
@@ -112,16 +124,16 @@ export function ReferenceAudioSection({ referenceText, t, assessmentId, hasRefer
 
       {refAudioUrl && (
         <div className="space-y-3">
-          {karaokeActive && refSegments.length > 0 && (
+          {(karaokeActive && (refSegments.length > 0 || (referenceSegments?.length ?? 0) > 0)) ? (
             <div className="rounded-lg border p-4">
               <KaraokeText
-                text={generatedText}
-                segments={refSegments}
+                text={refSegments.length > 0 ? generatedText : referenceText.trim()}
+                segments={refSegments.length > 0 ? refSegments : referenceSegments!}
                 currentTime={refCurrentTime}
                 isPlaying={refIsPlaying}
               />
             </div>
-          )}
+          ) : null}
           <AudioPlayer
             src={refAudioUrl}
             onTimeUpdate={setRefCurrentTime}

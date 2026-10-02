@@ -90,12 +90,33 @@ export async function DELETE(
   return NextResponse.json({ success: true });
 }
 
+const segmentWordSchema = z.object({
+  word: z.string(),
+  start: z.number(),
+  end: z.number(),
+});
+
+const segmentSchema = z.object({
+  text: z.string(),
+  startTime: z.number(),
+  endTime: z.number(),
+  words: z.array(segmentWordSchema),
+});
+
 const patchSchema = z.object({
   referenceAudioPath: z.string().min(1).optional(),
+  referenceSegments: z.array(segmentSchema).optional(),
   additionalCost: z.number().positive().optional(),
-}).refine((d) => d.referenceAudioPath != null || d.additionalCost != null, {
-  message: "At least one of referenceAudioPath or additionalCost is required",
-});
+}).refine(
+  (d) =>
+    d.referenceAudioPath != null ||
+    d.referenceSegments != null ||
+    d.additionalCost != null,
+  {
+    message:
+      "At least one of referenceAudioPath, referenceSegments or additionalCost is required",
+  }
+);
 
 export async function PATCH(
   request: Request,
@@ -107,6 +128,7 @@ export async function PATCH(
   }
 
   const { id } = await params;
+  const isAdmin = isAdminEmail(session.user.email);
   const body = (await request.json()) as unknown;
   const data = patchSchema.parse(body);
 
@@ -116,12 +138,18 @@ export async function PATCH(
       ...(data.referenceAudioPath != null
         ? { referenceAudioPath: data.referenceAudioPath }
         : {}),
+      ...(data.referenceSegments != null
+        ? { referenceSegments: data.referenceSegments }
+        : {}),
       ...(data.additionalCost != null
         ? { cost: sql`${assessments.cost} + ${data.additionalCost}` }
         : {}),
     })
     .where(
-      and(eq(assessments.id, id), eq(assessments.userId, session.user.id))
+      and(
+        eq(assessments.id, id),
+        ...(isAdmin ? [] : [eq(assessments.userId, session.user.id)])
+      )
     )
     .returning({ id: assessments.id });
 
