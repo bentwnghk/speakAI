@@ -191,3 +191,17 @@ export async function getUserPurchases(userId: string) {
     .where(eq(purchases.userId, userId))
     .orderBy(sql`${purchases.createdAt} DESC`);
 }
+
+export async function getUserTransactions(userId: string) {
+  return db
+    .select({
+      id: creditTransactions.id,
+      amount: creditTransactions.amount,
+      type: creditTransactions.type,
+      description: creditTransactions.description,
+      createdAt: creditTransactions.createdAt,
+    })
+    .from(creditTransactions)
+    .where(eq(creditTransactions.userId, userId))
+    .orderBy(sql`${creditTransactions.createdAt} DESC`);
+}

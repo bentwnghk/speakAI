@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckCircle,
   XCircle,
@@ -41,6 +42,26 @@ interface PurchaseRecord {
   createdAt: string;
 }
 
+interface TransactionRecord {
+  id: string;
+  amount: number;
+  type: string;
+  description: string | null;
+  createdAt: string;
+}
+
+interface TransactionsResponse {
+  transactions?: TransactionRecord[];
+  error?: string;
+}
+
+const EXCLUDED_USAGE_TYPES = new Set(["welcome_bonus", "purchase"]);
+
+const TRANSACTION_TYPE_LABELS: Record<string, string> = {
+  generation: "Generation",
+  refund: "Refund",
+};
+
 interface PlansResponse {
   plans: PlanConfig[];
 }
@@ -62,6 +83,7 @@ export default function CreditsPage() {
   const [plans, setPlans] = useState<PlanConfig[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
 
   const isSuccess = searchParams.get("success") === "true";
   const isCanceled = searchParams.get("canceled") === "true";
@@ -92,6 +114,15 @@ export default function CreditsPage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    fetch("/api/user/transactions")
+      .then((res) => res.json())
+      .then((data: TransactionsResponse) =>
+        setTransactions(data.transactions || [])
+      )
+      .catch(() => {});
+  }, []);
+
   const handlePurchase = useCallback(async (planKey: string) => {
     setLoading(planKey);
     try {
@@ -112,6 +143,10 @@ export default function CreditsPage() {
       setLoading(null);
     }
   }, []);
+
+  const usageTransactions = transactions.filter(
+    (txn) => !EXCLUDED_USAGE_TYPES.has(txn.type)
+  );
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
@@ -238,59 +273,130 @@ export default function CreditsPage() {
         })}
       </div>
 
-      {purchases.length > 0 && (
+      {(usageTransactions.length > 0 || purchases.length > 0) && (
         <>
           <Separator className="my-8" />
-          <div>
-            <h2 className="mb-4 text-xl font-semibold">{t.credits.purchaseHistory}</h2>
-            <div className="rounded-md border overflow-x-auto max-h-80 overflow-y-auto">
-              <table className="w-full min-w-[500px] text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="p-3 text-left font-medium">{t.credits.date}</th>
-                    <th className="p-3 text-left font-medium">{t.credits.package}</th>
-                    <th className="p-3 text-right font-medium">{t.credits.amount}</th>
-                    <th className="p-3 text-right font-medium">{t.credits.credits}</th>
-                    <th className="p-3 text-right font-medium">{t.credits.status}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {purchases.map((p) => (
-                    <tr key={p.id} className="border-b last:border-0">
-                      <td className="p-3">
-                        {new Date(p.createdAt).toLocaleDateString("en-HK", {
-                          timeZone: "Asia/Hong_Kong",
-                          year: "numeric",
-                          month: "short",
-                          day: "numeric",
-                        })}
-                      </td>
-                      <td className="p-3">{p.planName}</td>
-                      <td className="p-3 text-right">
-                        HK${p.amountHKD.toFixed(2)}
-                      </td>
-                      <td className="p-3 text-right">
-                        {p.creditsAmount.toFixed(2)}
-                      </td>
-                      <td className="p-3 text-right">
-                        <Badge
-                          variant={
-                            p.status === "completed"
-                              ? "default"
-                              : p.status === "pending"
-                                ? "secondary"
-                                : "destructive"
-                          }
-                        >
-                          {p.status}
-                        </Badge>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <Tabs defaultValue="usage">
+            <TabsList className="mb-4">
+              <TabsTrigger value="usage">
+                {t.credits.usageHistory}
+              </TabsTrigger>
+              <TabsTrigger value="purchases">
+                {t.credits.purchaseHistory}
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="usage">
+              {usageTransactions.length > 0 ? (
+                <div className="rounded-md border overflow-x-auto max-h-80 overflow-y-auto">
+                  <table className="w-full min-w-[600px] text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="p-3 text-left font-medium">{t.credits.date}</th>
+                        <th className="p-3 text-left font-medium">{t.credits.type}</th>
+                        <th className="p-3 text-left font-medium">{t.credits.details}</th>
+                        <th className="p-3 text-right font-medium">{t.credits.amount}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {usageTransactions.map((txn) => (
+                        <tr key={txn.id} className="border-b last:border-0">
+                          <td className="p-3 whitespace-nowrap">
+                            {new Date(txn.createdAt).toLocaleString("en-HK", {
+                              timeZone: "Asia/Hong_Kong",
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </td>
+                          <td className="p-3">
+                            <Badge variant="outline">
+                              {TRANSACTION_TYPE_LABELS[txn.type] ?? txn.type}
+                            </Badge>
+                          </td>
+                          <td className="p-3 text-muted-foreground">
+                            {txn.description ?? "-"}
+                          </td>
+                          <td
+                            className={`p-3 text-right font-medium whitespace-nowrap ${
+                              txn.amount < 0
+                                ? "text-red-600 dark:text-red-400"
+                                : "text-green-600 dark:text-green-400"
+                            }`}
+                          >
+                            {txn.amount < 0 ? "-" : "+"}HK$
+                            {Math.abs(txn.amount).toFixed(2)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {t.credits.noUsage}
+                </p>
+              )}
+            </TabsContent>
+
+            <TabsContent value="purchases">
+              {purchases.length > 0 ? (
+                <div className="rounded-md border overflow-x-auto max-h-80 overflow-y-auto">
+                  <table className="w-full min-w-[500px] text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="p-3 text-left font-medium">{t.credits.date}</th>
+                        <th className="p-3 text-left font-medium">{t.credits.package}</th>
+                        <th className="p-3 text-right font-medium">{t.credits.amount}</th>
+                        <th className="p-3 text-right font-medium">{t.credits.credits}</th>
+                        <th className="p-3 text-right font-medium">{t.credits.status}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {purchases.map((p) => (
+                        <tr key={p.id} className="border-b last:border-0">
+                          <td className="p-3">
+                            {new Date(p.createdAt).toLocaleDateString("en-HK", {
+                              timeZone: "Asia/Hong_Kong",
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                            })}
+                          </td>
+                          <td className="p-3">{p.planName}</td>
+                          <td className="p-3 text-right">
+                            HK${p.amountHKD.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-right">
+                            {p.creditsAmount.toFixed(2)}
+                          </td>
+                          <td className="p-3 text-right">
+                            <Badge
+                              variant={
+                                p.status === "completed"
+                                  ? "default"
+                                  : p.status === "pending"
+                                    ? "secondary"
+                                    : "destructive"
+                              }
+                            >
+                              {p.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  {t.credits.noPurchases}
+                </p>
+              )}
+            </TabsContent>
+          </Tabs>
         </>
       )}
     </div>
