@@ -88,7 +88,11 @@ Instructions:
         ],
       },
     ],
-    maxTokens: 32768,
+    providerOptions: {
+      openai: {
+        maxCompletionTokens: 32768,
+      },
+    },
     temperature: 0,
   });
 
