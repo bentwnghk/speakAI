@@ -24,6 +24,7 @@ import {
   Zap,
   Package,
 } from "lucide-react";
+import type { TranslationKeys } from "@/lib/i18n";
 
 interface PlanConfig {
   key: string;
@@ -57,10 +58,40 @@ interface TransactionsResponse {
 
 const EXCLUDED_USAGE_TYPES = new Set(["welcome_bonus", "purchase"]);
 
-const TRANSACTION_TYPE_LABELS: Record<string, string> = {
-  generation: "Generation",
-  refund: "Refund",
-};
+function formatTransactionDescription(
+  description: string,
+  t: TranslationKeys["credits"]
+): string {
+  const firstQuote = description.indexOf('"');
+  const lastQuote = description.lastIndexOf('"');
+  const snippet =
+    firstQuote !== -1 && lastQuote > firstQuote
+      ? description.slice(firstQuote + 1, lastQuote)
+      : null;
+
+  if (description.startsWith("TTS generation")) {
+    const visionCost = description.match(/\(\+HK\$([\d.]+) vision\)/)?.[1];
+    return (visionCost ? t.descTtsVision : t.descTts)
+      .replace("${cost}", visionCost ?? "")
+      .replace("${text}", snippet ?? "");
+  }
+  if (description.startsWith("Word pronunciation:")) {
+    return t.descWord.replace("${word}", snippet ?? "");
+  }
+  if (description.startsWith("Speaking assessment:")) {
+    return t.descAssessment.replace("${text}", snippet ?? "");
+  }
+  if (description.startsWith("AI feedback for assessment:")) {
+    return t.descFeedback.replace("${text}", snippet ?? "");
+  }
+  if (description === "Assessment save failed - refund") {
+    return t.descAssessmentRefund;
+  }
+  if (description === "Feedback save failed - refund") {
+    return t.descFeedbackRefund;
+  }
+  return description;
+}
 
 interface PlansResponse {
   plans: PlanConfig[];
@@ -80,6 +111,17 @@ export default function CreditsPage() {
   const router = useRouter();
   const { balance, refreshBalance } = useCredits();
   const { t } = useUserSettings();
+
+  const transactionTypeLabels: Record<string, string> = {
+    generation: t.credits.typeGeneration,
+    refund: t.credits.typeRefund,
+  };
+
+  const purchaseStatusLabels: Record<string, string> = {
+    completed: t.credits.statusCompleted,
+    pending: t.credits.statusPending,
+    failed: t.credits.statusFailed,
+  };
   const [plans, setPlans] = useState<PlanConfig[]>([]);
   const [loading, setLoading] = useState<string | null>(null);
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
@@ -313,11 +355,16 @@ export default function CreditsPage() {
                           </td>
                           <td className="p-3">
                             <Badge variant="outline">
-                              {TRANSACTION_TYPE_LABELS[txn.type] ?? txn.type}
+                              {transactionTypeLabels[txn.type] ?? txn.type}
                             </Badge>
                           </td>
                           <td className="p-3 text-muted-foreground">
-                            {txn.description ?? "-"}
+                            {txn.description
+                              ? formatTransactionDescription(
+                                  txn.description,
+                                  t.credits
+                                )
+                              : "-"}
                           </td>
                           <td
                             className={`p-3 text-right font-medium whitespace-nowrap ${
@@ -382,7 +429,7 @@ export default function CreditsPage() {
                                     : "destructive"
                               }
                             >
-                              {p.status}
+                              {purchaseStatusLabels[p.status] ?? p.status}
                             </Badge>
                           </td>
                         </tr>
